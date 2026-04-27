@@ -14,6 +14,15 @@ struct SidebarView: View {
                 NavigationLink(value: PikaShellDestination.projects) {
                     Label("Projects", systemImage: "folder")
                 }
+                ForEach(workspace.activeProjects) { project in
+                    NavigationLink(value: PikaShellDestination.project(project.id)) {
+                        projectRow(
+                            project,
+                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
+                        )
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 34, bottom: 4, trailing: 12))
+                }
                 NavigationLink(value: PikaShellDestination.invoices) {
                     Label("Invoices", systemImage: "doc.text")
                 }
@@ -25,16 +34,6 @@ struct SidebarView: View {
                 }
             }
 
-            Section("Projects") {
-                ForEach(workspace.activeProjects) { project in
-                    NavigationLink(value: PikaShellDestination.project(project.id)) {
-                        projectRow(
-                            project,
-                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
-                        )
-                    }
-                }
-            }
         }
         .navigationTitle("Pika")
         .navigationSplitViewColumnWidth(min: 220, ideal: 250)
@@ -47,6 +46,15 @@ struct SidebarView: View {
                 sidebarButton(for: .projects) {
                     Label("Projects", systemImage: "folder")
                 }
+                ForEach(workspace.activeProjects) { project in
+                    sidebarButton(for: .project(project.id)) {
+                        projectRow(
+                            project,
+                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
+                        )
+                        .padding(.leading, 22)
+                    }
+                }
                 sidebarButton(for: .invoices) {
                     Label("Invoices", systemImage: "doc.text")
                 }
@@ -55,17 +63,6 @@ struct SidebarView: View {
                 }
                 sidebarButton(for: .settings) {
                     Label("Settings", systemImage: "gearshape")
-                }
-            }
-
-            Section("Projects") {
-                ForEach(workspace.activeProjects) { project in
-                    sidebarButton(for: .project(project.id)) {
-                        projectRow(
-                            project,
-                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
-                        )
-                    }
                 }
             }
         }
@@ -96,6 +93,8 @@ struct SidebarView: View {
                     .foregroundStyle(appearance.readyCountColor)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     #if !os(macOS)
