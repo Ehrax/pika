@@ -317,6 +317,190 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == ["Studio North client created"])
     }
 
+    @Test func inMemoryWorkspaceStoreUpdatesClientAndProjectReferences() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000811")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Original Client",
+                    email: "billing@original.example",
+                    billingAddress: "1 Original Street",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: UUID(uuidString: "20000000-0000-0000-0000-000000000811")!,
+                    name: "Matching project",
+                    clientName: "Original Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+                WorkspaceProject(
+                    id: UUID(uuidString: "20000000-0000-0000-0000-000000000812")!,
+                    name: "Other project",
+                    clientName: "Other Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let occurredAt = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let client = try store.updateClient(
+            clientID: clientID,
+            WorkspaceClientDraft(
+                name: "  Renamed Client  ",
+                email: "  billing@renamed.example  ",
+                billingAddress: "  8 Renamed Avenue  ",
+                defaultTermsDays: 30
+            ),
+            occurredAt: occurredAt
+        )
+
+        #expect(client.id == clientID)
+        #expect(client.name == "Renamed Client")
+        #expect(client.email == "billing@renamed.example")
+        #expect(client.billingAddress == "8 Renamed Avenue")
+        #expect(client.defaultTermsDays == 30)
+        #expect(store.workspace.clients.first == client)
+        #expect(store.workspace.projects.map(\.clientName) == [
+            "Renamed Client",
+            "Other Client",
+        ])
+        #expect(store.workspace.activity.map(\.message) == ["Renamed Client client updated"])
+        #expect(store.workspace.activity.first?.detail == "billing@renamed.example")
+        #expect(store.workspace.activity.first?.occurredAt == occurredAt)
+    }
+
+    @Test func persistentWorkspaceStoreSavesClientUpdates() throws {
+        let persistenceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.json")
+        defer {
+            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+        }
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000821")!
+        let store = WorkspaceStore(
+            seed: WorkspaceSnapshot(
+                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                clients: [
+                    WorkspaceClient(
+                        id: clientID,
+                        name: "Stored Client",
+                        email: "billing@stored.example",
+                        billingAddress: "4 Stored Street",
+                        defaultTermsDays: 21
+                    ),
+                ],
+                projects: [
+                    WorkspaceProject(
+                        id: UUID(uuidString: "20000000-0000-0000-0000-000000000821")!,
+                        name: "Stored project",
+                        clientName: "Stored Client",
+                        currencyCode: "EUR",
+                        isArchived: false,
+                        buckets: [],
+                        invoices: []
+                    ),
+                ],
+                activity: []
+            ),
+            persistenceURL: persistenceURL
+        )
+
+        try store.updateClient(
+            clientID: clientID,
+            WorkspaceClientDraft(
+                name: "Stored Client Updated",
+                email: "billing@updated.example",
+                billingAddress: "9 Updated Lane",
+                defaultTermsDays: 45
+            )
+        )
+
+        let relaunchedStore = WorkspaceStore(seed: .sample, persistenceURL: persistenceURL)
+        #expect(relaunchedStore.workspace.clients.first?.name == "Stored Client Updated")
+        #expect(relaunchedStore.workspace.clients.first?.email == "billing@updated.example")
+        #expect(relaunchedStore.workspace.clients.first?.billingAddress == "9 Updated Lane")
+        #expect(relaunchedStore.workspace.clients.first?.defaultTermsDays == 45)
+        #expect(relaunchedStore.workspace.projects.first?.clientName == "Stored Client Updated")
+    }
+
+    @Test func inMemoryWorkspaceStoreRejectsInvalidClientUpdatesWithoutMutation() {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000831")!
+        let originalWorkspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Stable Client",
+                    email: "billing@stable.example",
+                    billingAddress: "5 Stable Street",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: UUID(uuidString: "20000000-0000-0000-0000-000000000831")!,
+                    name: "Stable project",
+                    clientName: "Stable Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let store = WorkspaceStore(seed: originalWorkspace)
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.updateClient(clientID: clientID, WorkspaceClientDraft(
+                name: "",
+                email: "billing@valid.example",
+                billingAddress: "1 Valid Street",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.updateClient(clientID: clientID, WorkspaceClientDraft(
+                name: "Valid Client",
+                email: "   ",
+                billingAddress: "1 Valid Street",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.updateClient(clientID: clientID, WorkspaceClientDraft(
+                name: "Valid Client",
+                email: "billing@valid.example",
+                billingAddress: "",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.updateClient(clientID: clientID, WorkspaceClientDraft(
+                name: "Valid Client",
+                email: "billing@valid.example",
+                billingAddress: "1 Valid Street",
+                defaultTermsDays: 0
+            ))
+        }
+
+        #expect(store.workspace == originalWorkspace)
+    }
+
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientDrafts() {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: WorkspaceSnapshot.sample.businessProfile,

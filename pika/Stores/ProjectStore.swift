@@ -175,6 +175,53 @@ final class WorkspaceStore {
         return client
     }
 
+    @discardableResult
+    func updateClient(
+        clientID: WorkspaceClient.ID,
+        _ draft: WorkspaceClientDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceClient {
+        guard let clientIndex = workspace.clients.firstIndex(where: { $0.id == clientID }) else {
+            throw WorkspaceStoreError.invalidClient
+        }
+
+        let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let billingAddress = draft.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !name.isEmpty,
+              !email.isEmpty,
+              !billingAddress.isEmpty,
+              draft.defaultTermsDays > 0
+        else {
+            throw WorkspaceStoreError.invalidClient
+        }
+
+        let originalName = workspace.clients[clientIndex].name
+        let client = WorkspaceClient(
+            id: clientID,
+            name: name,
+            email: email,
+            billingAddress: billingAddress,
+            defaultTermsDays: draft.defaultTermsDays
+        )
+
+        workspace.clients[clientIndex] = client
+        if originalName != client.name {
+            for projectIndex in workspace.projects.indices where workspace.projects[projectIndex].clientName == originalName {
+                workspace.projects[projectIndex].clientName = client.name
+            }
+        }
+        appendActivity(
+            message: "\(client.name) client updated",
+            detail: client.email,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.clientUpdated(clientName: client.name)
+        try persistWorkspace()
+        return client
+    }
+
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
         let businessName = draft.businessName.trimmingCharacters(in: .whitespacesAndNewlines)
         let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)

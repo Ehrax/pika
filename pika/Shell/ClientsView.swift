@@ -266,6 +266,17 @@ private struct ClientRow: View {
 
 private struct ClientDetailSurface: View {
     let client: WorkspaceClient
+    @Environment(\.workspaceStore) private var workspaceStore
+    @State private var draft: WorkspaceClientDraft
+    @State private var savedDraft: WorkspaceClientDraft
+    @State private var saveFailure: ClientSaveFailure?
+
+    init(client: WorkspaceClient) {
+        self.client = client
+        let draft = WorkspaceClientDraft(client: client)
+        _draft = State(initialValue: draft)
+        _savedDraft = State(initialValue: draft)
+    }
 
     var body: some View {
         ScrollView {
@@ -282,44 +293,132 @@ private struct ClientDetailSurface: View {
 
                     Spacer()
 
-                    StatusBadge(.neutral, title: "Active")
+                    HStack(spacing: PikaSpacing.sm) {
+                        Button {
+                            revertChanges()
+                        } label: {
+                            Label("Revert", systemImage: "arrow.uturn.backward")
+                        }
+                        .disabled(!hasChanges)
+                        .help("Revert client changes")
+
+                        Button {
+                            saveChanges()
+                        } label: {
+                            Label("Save", systemImage: "checkmark")
+                        }
+                        .disabled(!hasChanges || !canSave)
+                        .help("Save client")
+
+                        StatusBadge(.neutral, title: "Active")
+                    }
                 }
 
                 HStack(spacing: PikaSpacing.md) {
                     ClientInfoTile(title: "Default terms", value: "\(client.defaultTermsDays) days")
-                    ClientInfoTile(title: "Invoices", value: "Not connected")
+                    ClientInfoTile(title: "Projects", value: "\(projectCount) linked")
                     ClientInfoTile(title: "Archive state", value: "Active")
                 }
 
                 VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    SectionHeader(title: "Billing details", detail: "Read-only")
+                    SectionHeader(title: "Billing details", detail: hasChanges ? "Unsaved changes" : "Saved")
 
                     VStack(spacing: 0) {
-                        ClientFieldRow(label: "Name", value: client.name)
+                        ClientEditableFieldRow(label: "Name") {
+                            TextField("Name", text: $draft.name)
+                                .textFieldStyle(.roundedBorder)
+                        }
                         ClientDivider()
-                        ClientFieldRow(label: "Email", value: client.email)
+                        ClientEditableFieldRow(label: "Email") {
+                            TextField("Billing email", text: $draft.email)
+                                .textFieldStyle(.roundedBorder)
+                        }
                         ClientDivider()
-                        ClientFieldRow(label: "Billing address", value: client.billingAddress)
+                        ClientEditableFieldRow(label: "Billing address") {
+                            TextField("Billing address", text: $draft.billingAddress, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(2...4)
+                        }
                         ClientDivider()
-                        ClientFieldRow(label: "Payment terms", value: "\(client.defaultTermsDays) days")
+                        ClientEditableFieldRow(label: "Payment terms") {
+                            Stepper(
+                                value: $draft.defaultTermsDays,
+                                in: 1...120
+                            ) {
+                                Text("\(draft.defaultTermsDays) days")
+                                    .font(.body.monospacedDigit())
+                            }
+                        }
+
+                        if let saveFailure {
+                            ClientDivider()
+                            Text(saveFailure.message)
+                                .font(PikaTypography.small)
+                                .foregroundStyle(PikaColor.danger)
+                                .padding(PikaSpacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                     .pikaSurface()
                 }
 
                 VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    SectionHeader(title: "Next", detail: "Coming later")
-                    Text("Client editing, archiving, and invoice defaults are not connected yet.")
-                        .font(PikaTypography.body)
-                        .foregroundStyle(PikaColor.textSecondary)
-                        .padding(PikaSpacing.md)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .pikaSurface()
+                    SectionHeader(title: "Invoice defaults", detail: "Client")
+
+                    VStack(spacing: 0) {
+                        ClientFieldRow(label: "Recipient", value: client.name)
+                        ClientDivider()
+                        ClientFieldRow(label: "Billing email", value: client.email)
+                        ClientDivider()
+                        ClientFieldRow(label: "Payment terms", value: "\(client.defaultTermsDays) days")
+                    }
+                    .pikaSurface()
                 }
             }
             .padding(.horizontal, PikaSpacing.xl)
             .padding(.vertical, PikaSpacing.lg)
         }
         .background(PikaColor.background)
+        .onChange(of: client) { _, updatedClient in
+            let updatedDraft = WorkspaceClientDraft(client: updatedClient)
+            draft = updatedDraft
+            savedDraft = updatedDraft
+            saveFailure = nil
+        }
+    }
+
+    private var hasChanges: Bool {
+        draft != savedDraft
+    }
+
+    private var canSave: Bool {
+        !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !draft.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !draft.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && draft.defaultTermsDays > 0
+    }
+
+    private var projectCount: Int {
+        workspaceStore.workspace.projects.filter { $0.clientName == client.name }.count
+    }
+
+    private func saveChanges() {
+        do {
+            let client = try workspaceStore.updateClient(clientID: client.id, draft)
+            let updatedDraft = WorkspaceClientDraft(client: client)
+            draft = updatedDraft
+            savedDraft = updatedDraft
+            saveFailure = nil
+        } catch WorkspaceStoreError.invalidClient {
+            saveFailure = ClientSaveFailure(message: "Name, billing email, billing address, and payment terms are required.")
+        } catch {
+            saveFailure = ClientSaveFailure(message: "Client could not be saved.")
+        }
+    }
+
+    private func revertChanges() {
+        draft = savedDraft
+        saveFailure = nil
     }
 }
 
@@ -364,9 +463,43 @@ private struct ClientFieldRow: View {
     }
 }
 
+private struct ClientEditableFieldRow<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.lg) {
+            Text(label)
+                .font(PikaTypography.small)
+                .foregroundStyle(PikaColor.textMuted)
+                .frame(width: 140, alignment: .leading)
+
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(PikaSpacing.md)
+    }
+}
+
 private struct ClientDivider: View {
     var body: some View {
         Divider()
             .overlay(PikaColor.border)
+    }
+}
+
+private struct ClientSaveFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private extension WorkspaceClientDraft {
+    init(client: WorkspaceClient) {
+        self.init(
+            name: client.name,
+            email: client.email,
+            billingAddress: client.billingAddress,
+            defaultTermsDays: client.defaultTermsDays
+        )
     }
 }
