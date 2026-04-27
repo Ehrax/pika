@@ -16,6 +16,10 @@ struct PikaScaffoldTests {
         #expect(SidebarProjectRowAppearance(isSelected: false).readyCountContrast == .success)
     }
 
+    @Test func clientRowsUseFullCellHitTargets() {
+        #expect(ClientRowHitTargetPolicy.hitTarget == .fullCell)
+    }
+
     @Test func moneyFormattingFormatsEuroMinorUnits() {
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 

@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum ClientRowHitTarget: Equatable {
+    case fullCell
+}
+
+struct ClientRowHitTargetPolicy: Equatable {
+    static let hitTarget: ClientRowHitTarget = .fullCell
+}
+
 struct ClientsView: View {
     let workspace: WorkspaceSnapshot
     @State private var selectedClientID: WorkspaceClient.ID?
@@ -83,8 +91,11 @@ private struct ClientListColumn: View {
                             onSelect(client.id)
                         } label: {
                             ClientRow(client: client, isSelected: client.id == selectedClientID)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 .padding(.horizontal, PikaSpacing.sm)
@@ -130,6 +141,7 @@ private struct ClientRow: View {
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(PikaColor.textMuted)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
         .background(isSelected ? PikaColor.surfaceAlt : Color.clear)
