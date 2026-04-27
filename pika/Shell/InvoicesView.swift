@@ -8,6 +8,7 @@ struct InvoicesView: View {
     @Environment(\.invoicePDFService) private var invoicePDFService
 
     let workspace: WorkspaceSnapshot
+    let workspaceStore: WorkspaceStore
     let currentDate: Date
     @State private var selectedInvoiceID: WorkspaceInvoice.ID?
     @State private var pdfActionFailure: PDFActionFailure?
@@ -34,7 +35,7 @@ struct InvoicesView: View {
                     )
 
                     PDFPreviewPlaceholder(
-                        profile: workspace.businessProfile,
+                        profile: projection.selectedRow.businessProfile ?? workspace.businessProfile,
                         row: projection.selectedRow,
                         dateStyle: dateStyle
                     )
@@ -72,20 +73,62 @@ struct InvoicesView: View {
             .help("Export the selected invoice PDF")
 
             Button {
+                markSelectedInvoiceSent()
             } label: {
                 Label("Mark Sent", systemImage: "paperplane")
             }
-            .disabled(true)
-            .help("Invoice status actions land in the invoice workflow")
+            .disabled(!canMarkSelectedInvoiceSent)
+            .help("Mark the selected invoice sent")
+
+            Button {
+                markSelectedInvoicePaid()
+            } label: {
+                Label("Mark Paid", systemImage: "checkmark.seal")
+            }
+            .disabled(!canMarkSelectedInvoicePaid)
+            .help("Mark the selected invoice paid")
         }
         .alert(item: $pdfActionFailure) { failure in
             Alert(
-                title: Text("PDF Action Failed"),
+                title: Text("Invoice Action Failed"),
                 message: Text(failure.message),
                 dismissButton: .default(Text("OK"))
             )
         }
         .accessibilityIdentifier("InvoicesView")
+    }
+
+    private var selectedInvoice: WorkspaceInvoice? {
+        projection?.selectedInvoice
+    }
+
+    private var canMarkSelectedInvoiceSent: Bool {
+        selectedInvoice?.status == .finalized
+    }
+
+    private var canMarkSelectedInvoicePaid: Bool {
+        guard let status = selectedInvoice?.status else { return false }
+        return status == .finalized || status == .sent
+    }
+
+    private func markSelectedInvoiceSent() {
+        guard let invoiceID = selectedInvoice?.id else { return }
+
+        do {
+            try workspaceStore.markInvoiceSent(invoiceID: invoiceID)
+        } catch {
+            pdfActionFailure = PDFActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func markSelectedInvoicePaid() {
+        guard let invoiceID = selectedInvoice?.id else { return }
+
+        do {
+            try workspaceStore.markInvoicePaid(invoiceID: invoiceID)
+        } catch {
+            pdfActionFailure = PDFActionFailure(message: error.localizedDescription)
+        }
     }
 
     private func openSelectedPDF() {
@@ -143,7 +186,7 @@ struct InvoicesView: View {
         }
 
         return try invoicePDFService.renderInvoice(
-            profile: workspace.businessProfile,
+            profile: row.businessProfile ?? workspace.businessProfile,
             row: row
         )
     }

@@ -2,7 +2,11 @@ import SwiftUI
 
 struct ProjectPlaceholderView: View {
     let project: WorkspaceProject?
+    let workspaceStore: WorkspaceStore
+    let currentDate: Date
     @State private var selectedBucketID: WorkspaceBucket.ID?
+    @State private var invoiceDraft: InvoiceDraftPresentation?
+    @State private var actionFailure: WorkflowActionFailure?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -28,7 +32,17 @@ struct ProjectPlaceholderView: View {
                         }
                     )
 
-                    BucketDetailPane(projection: projection)
+                    BucketDetailPane(
+                        projection: projection,
+                        onCreateInvoice: {
+                            prepareInvoiceDraft(
+                                projectID: project.id,
+                                bucketID: projection.selectedBucket.id,
+                                totalLabel: projection.totalLabel,
+                                lineItems: projection.lineItems
+                            )
+                        }
+                    )
                 }
                 .background(PikaColor.background)
                 .onAppear {
@@ -55,14 +69,105 @@ struct ProjectPlaceholderView: View {
             .help("Bucket creation lands in a later task")
 
             Button {
+                markSelectedBucketReady()
             } label: {
                 Label("Mark Ready", systemImage: "checkmark.circle")
             }
-            .disabled(true)
-            .help("Bucket status actions land in the bucket workflow task")
+            .disabled(!canMarkSelectedBucketReady)
+            .help("Mark the selected bucket ready for invoicing")
+        }
+        .sheet(item: $invoiceDraft) { presentation in
+            CreateInvoiceConfirmationSheet(
+                presentation: presentation,
+                onCancel: { invoiceDraft = nil },
+                onSave: { draft in
+                    finalizeInvoice(presentation: presentation, draft: draft)
+                }
+            )
+        }
+        .alert(item: $actionFailure) { failure in
+            Alert(
+                title: Text("Workflow Action Failed"),
+                message: Text(failure.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
+    private var selectedBucket: WorkspaceBucket? {
+        guard let project else { return nil }
+        let bucketID = project.normalizedBucketID(selectedBucketID)
+        return project.buckets.first { $0.id == bucketID }
+    }
+
+    private var canMarkSelectedBucketReady: Bool {
+        guard let selectedBucket else { return false }
+        return selectedBucket.status == .open && selectedBucket.totalMinorUnits > 0
+    }
+
+    private func markSelectedBucketReady() {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
+
+        do {
+            try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func prepareInvoiceDraft(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        totalLabel: String,
+        lineItems: [WorkspaceBucketLineItemProjection]
+    ) {
+        do {
+            let draft = try workspaceStore.defaultInvoiceDraft(
+                projectID: projectID,
+                bucketID: bucketID,
+                issueDate: currentDate
+            )
+            invoiceDraft = InvoiceDraftPresentation(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: draft,
+                totalLabel: totalLabel,
+                lineItems: lineItems.filter(\.isBillable)
+            )
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func finalizeInvoice(
+        presentation: InvoiceDraftPresentation,
+        draft: InvoiceFinalizationDraft
+    ) {
+        do {
+            try workspaceStore.finalizeInvoice(
+                projectID: presentation.projectID,
+                bucketID: presentation.bucketID,
+                draft: draft
+            )
+            invoiceDraft = nil
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+}
+
+private struct WorkflowActionFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct InvoiceDraftPresentation: Identifiable {
+    let id = UUID()
+    let projectID: WorkspaceProject.ID
+    let bucketID: WorkspaceBucket.ID
+    let draft: InvoiceFinalizationDraft
+    let totalLabel: String
+    let lineItems: [WorkspaceBucketLineItemProjection]
 }
 
 private struct BucketColumn: View {
@@ -185,11 +290,19 @@ private extension BucketStatus {
 
 private struct BucketDetailPane: View {
     let projection: WorkspaceBucketDetailProjection
+    let onCreateInvoice: () -> Void
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PikaSpacing.lg) {
                 BucketHeader(projection: projection)
+
+                if projection.selectedBucket.status == .ready {
+                    ReadyBucketSummary(
+                        projection: projection,
+                        onCreateInvoice: onCreateInvoice
+                    )
+                }
 
                 HStack(spacing: PikaSpacing.md) {
                     SummaryTile(title: "Billable", value: projection.billableSummary)
@@ -207,6 +320,40 @@ private struct BucketDetailPane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PikaColor.background)
+    }
+}
+
+private struct ReadyBucketSummary: View {
+    let projection: WorkspaceBucketDetailProjection
+    let onCreateInvoice: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: PikaSpacing.lg) {
+            VStack(alignment: .leading, spacing: PikaSpacing.xs) {
+                Text("Ready to invoice")
+                    .font(PikaTypography.micro)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .textCase(.uppercase)
+                Text(projection.totalLabel)
+                    .font(.title2.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.white)
+                Text("\(projection.billableSummary) · \(projection.fixedCostLabel) · \(projection.nonBillableSummary)")
+                    .font(PikaTypography.small)
+                    .foregroundStyle(.white.opacity(0.72))
+            }
+
+            Spacer()
+
+            Button {
+                onCreateInvoice()
+            } label: {
+                Label("Create Invoice", systemImage: "doc.badge.plus")
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(PikaSpacing.md)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.lg))
     }
 }
 
@@ -316,5 +463,90 @@ private struct TableHeader: View {
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, 10)
         .background(PikaColor.surfaceAlt)
+    }
+}
+
+private struct CreateInvoiceConfirmationSheet: View {
+    let presentation: InvoiceDraftPresentation
+    let onCancel: () -> Void
+    let onSave: (InvoiceFinalizationDraft) -> Void
+    @State private var draft: InvoiceFinalizationDraft
+
+    init(
+        presentation: InvoiceDraftPresentation,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (InvoiceFinalizationDraft) -> Void
+    ) {
+        self.presentation = presentation
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _draft = State(initialValue: presentation.draft)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Recipient") {
+                    TextField("Name", text: $draft.recipientName)
+                    TextField("Email", text: $draft.recipientEmail)
+                    TextField("Billing address", text: $draft.recipientBillingAddress, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+
+                Section("Invoice") {
+                    TextField("Invoice number", text: $draft.invoiceNumber)
+                    DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
+                    DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
+                    TextField("Currency", text: $draft.currencyCode)
+                    TextField("Note", text: $draft.note, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+
+                Section("Totals") {
+                    ForEach(presentation.lineItems) { item in
+                        HStack {
+                            Text(item.description)
+                            Spacer()
+                            Text(item.quantity)
+                                .foregroundStyle(PikaColor.textSecondary)
+                            Text(item.amountLabel)
+                                .monospacedDigit()
+                                .frame(width: 120, alignment: .trailing)
+                        }
+                    }
+
+                    HStack {
+                        Text("Total")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text(presentation.totalLabel)
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    onSave(draft)
+                } label: {
+                    Label("Save as finalized", systemImage: "checkmark.circle")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(draft.invoiceNumber.isEmpty || draft.recipientName.isEmpty)
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 520, idealWidth: 560, minHeight: 620)
     }
 }

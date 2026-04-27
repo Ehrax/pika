@@ -31,8 +31,36 @@ enum AppTelemetry {
         projectLogger.info("project.bucket_selected project=\(projectName, privacy: .private)")
     }
 
+    static func bucketMarkedReady(bucketName: String, projectName: String) {
+        projectLogger.info("bucket.marked_ready bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
+    }
+
+    static func bucketFinalized(bucketName: String, projectName: String) {
+        projectLogger.info("bucket.finalized bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
+    }
+
     static func invoicesLoaded(invoiceCount: Int) {
         invoiceLogger.info("invoices.loaded count=\(invoiceCount, privacy: .public)")
+    }
+
+    static func invoiceCreated(invoiceNumber: String, clientName: String) {
+        invoiceLogger.info("invoice.created number=\(invoiceNumber, privacy: .public) client=\(clientName, privacy: .private)")
+    }
+
+    static func invoiceFinalized(invoiceNumber: String, clientName: String) {
+        invoiceLogger.info("invoice.finalized number=\(invoiceNumber, privacy: .public) client=\(clientName, privacy: .private)")
+    }
+
+    static func invoiceMarkedSent(invoiceNumber: String) {
+        invoiceLogger.info("invoice.marked_sent number=\(invoiceNumber, privacy: .public)")
+    }
+
+    static func invoiceMarkedPaid(invoiceNumber: String) {
+        invoiceLogger.info("invoice.marked_paid number=\(invoiceNumber, privacy: .public)")
+    }
+
+    static func invoiceCancelled(invoiceNumber: String) {
+        invoiceLogger.info("invoice.cancelled number=\(invoiceNumber, privacy: .public)")
     }
 
     static func invoicePDFOpened(invoiceNumber: String) {

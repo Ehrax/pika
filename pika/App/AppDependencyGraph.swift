@@ -2,13 +2,14 @@ import SwiftUI
 
 private struct PikaDependencyModifier: ViewModifier {
     @State private var appRouter = AppRouter()
+    @State private var workspaceStore = WorkspaceStore(seed: .sample)
 
     func body(content: Content) -> some View {
         content
             .environment(\.appRouter, appRouter)
             .environment(\.appSettings, AppSettings())
             .environment(\.projectStore, NoopProjectStore())
-            .environment(\.workspaceStore, SampleWorkspaceStore())
+            .environment(\.workspaceStore, workspaceStore)
             .environment(\.invoicePDFService, InvoicePDFService.placeholder())
     }
 }
@@ -32,7 +33,7 @@ private struct ProjectStoreKey: EnvironmentKey {
 }
 
 private struct WorkspaceStoreKey: EnvironmentKey {
-    static let defaultValue: any WorkspaceStore = SampleWorkspaceStore()
+    static let defaultValue = WorkspaceStore(seed: .sample)
 }
 
 private struct InvoicePDFServiceKey: EnvironmentKey {
@@ -55,7 +56,7 @@ extension EnvironmentValues {
         set { self[ProjectStoreKey.self] = newValue }
     }
 
-    var workspaceStore: any WorkspaceStore {
+    var workspaceStore: WorkspaceStore {
         get { self[WorkspaceStoreKey.self] }
         set { self[WorkspaceStoreKey.self] = newValue }
     }

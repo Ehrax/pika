@@ -10,7 +10,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        let workspace = workspaceStore.workspace()
+        let workspace = workspaceStore.workspace
 
         NavigationSplitView {
             SidebarView(
@@ -44,13 +44,17 @@ struct RootView: View {
                 onSelectProject: { self.selection = $0 }
             )
         case .invoices:
-            InvoicesView(workspace: workspace, currentDate: currentDate)
+            InvoicesView(workspace: workspace, workspaceStore: workspaceStore, currentDate: currentDate)
         case .clients:
             ClientsView(workspace: workspace)
         case .settings:
             SettingsView(profile: workspace.businessProfile)
         case .project(let id):
-            ProjectPlaceholderView(project: workspace.projects.first { $0.id == id })
+            ProjectPlaceholderView(
+                project: workspace.projects.first { $0.id == id },
+                workspaceStore: workspaceStore,
+                currentDate: currentDate
+            )
         }
     }
 }

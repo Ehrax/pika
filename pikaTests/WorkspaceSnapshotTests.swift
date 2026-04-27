@@ -61,8 +61,8 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func sampleWorkspaceStoreProvidesBusinessProfileForSettings() {
-        let store: any WorkspaceStore = SampleWorkspaceStore()
-        let workspace = store.workspace()
+        let store = WorkspaceStore(seed: .sample)
+        let workspace = store.workspace
 
         #expect(workspace.businessProfile.businessName == "Ehrax Studio")
         #expect(workspace.businessProfile.invoicePrefix == "EHX")
@@ -72,6 +72,194 @@ struct WorkspaceSnapshotTests {
             "Happ.ines",
             "Northstar Labs",
             "Acme Studio",
+        ])
+    }
+
+    @Test func inMemoryWorkspaceStoreMarksOpenInvoiceableBucketReadyAndRecordsActivity() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000501")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000501")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Store workflow",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Open invoiceable",
+                            status: .open,
+                            totalMinorUnits: 75_000,
+                            billableMinutes: 360,
+                            fixedCostMinorUnits: 15_000,
+                            nonBillableMinutes: 45
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let occurredAt = Date(timeIntervalSince1970: 1_775_664_000)
+
+        try store.markBucketReady(projectID: projectID, bucketID: bucketID, occurredAt: occurredAt)
+
+        let project = try #require(store.workspace.projects.first)
+        let bucket = try #require(project.buckets.first)
+        #expect(bucket.status == .ready)
+        let activity = try #require(store.workspace.activity.first)
+        #expect(activity.message == "Open invoiceable marked ready")
+        #expect(activity.detail == "Store workflow")
+        #expect(activity.occurredAt == occurredAt)
+    }
+
+    @Test func inMemoryWorkspaceStoreFinalizesReadyBucketWithSnapshotAndNextNumber() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000601")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000601")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000601")!
+        var businessProfile = WorkspaceSnapshot.sample.businessProfile
+        businessProfile.nextInvoiceNumber = 9
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Snapshot Client",
+                    email: "billing@snapshot.example",
+                    billingAddress: "1 Snapshot Way",
+                    defaultTermsDays: 21
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Snapshot Project",
+                    clientName: "Snapshot Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Snapshot",
+                            status: .ready,
+                            totalMinorUnits: 132_000,
+                            billableMinutes: 600,
+                            fixedCostMinorUnits: 32_000,
+                            nonBillableMinutes: 90
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let issueDate = Date(timeIntervalSince1970: 1_777_392_000)
+        let dueDate = Date(timeIntervalSince1970: 1_779_984_000)
+
+        let invoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Snapshot Client",
+                recipientEmail: "billing@snapshot.example",
+                recipientBillingAddress: "1 Snapshot Way",
+                invoiceNumber: "EHX-2026-009",
+                issueDate: issueDate,
+                dueDate: dueDate,
+                currencyCode: "EUR",
+                note: "Thank you."
+            ),
+            occurredAt: issueDate
+        )
+
+        store.workspace.businessProfile.businessName = "Changed Business"
+        store.workspace.clients[0].billingAddress = "Changed Address"
+        store.workspace.projects[0].name = "Changed Project"
+        store.workspace.projects[0].buckets[0].name = "Changed Bucket"
+
+        let updatedProject = try #require(store.workspace.projects.first)
+        let updatedBucket = try #require(updatedProject.buckets.first)
+        let storedInvoice = try #require(updatedProject.invoices.first)
+        #expect(invoice.number == "EHX-2026-009")
+        #expect(updatedBucket.status == .finalized)
+        #expect(store.workspace.businessProfile.nextInvoiceNumber == 10)
+        #expect(storedInvoice.businessSnapshot?.businessName == "Ehrax Studio")
+        #expect(storedInvoice.clientSnapshot?.billingAddress == "1 Snapshot Way")
+        #expect(storedInvoice.projectName == "Snapshot Project")
+        #expect(storedInvoice.bucketName == "Ready Snapshot")
+        #expect(storedInvoice.currencyCode == "EUR")
+        #expect(storedInvoice.note == "Thank you.")
+        #expect(storedInvoice.lineItems.map(\.description) == [
+            "Billable time",
+            "Fixed costs",
+        ])
+        #expect(storedInvoice.lineItems.map(\.quantityLabel) == [
+            "10h",
+            "1 item",
+        ])
+        #expect(store.workspace.activity.map(\.message) == [
+            "EHX-2026-009 finalized",
+        ])
+    }
+
+    @Test func inMemoryWorkspaceStoreAppliesInvoiceStatusTransitionsAndRejectsInvalidOnes() throws {
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000701")!
+        var workspace = WorkspaceSnapshot.sample
+        workspace.projects = [
+            WorkspaceProject(
+                id: UUID(uuidString: "20000000-0000-0000-0000-000000000701")!,
+                name: "Status Project",
+                clientName: "Happ.ines",
+                currencyCode: "EUR",
+                isArchived: false,
+                buckets: [],
+                invoices: [
+                    WorkspaceInvoice(
+                        id: invoiceID,
+                        number: "EHX-2026-701",
+                        clientName: "Happ.ines",
+                        issueDate: Date(timeIntervalSince1970: 0),
+                        dueDate: Date(timeIntervalSince1970: 86_400),
+                        status: .finalized,
+                        totalMinorUnits: 42_000
+                    ),
+                ]
+            ),
+        ]
+        workspace.activity = []
+        let store = WorkspaceStore(seed: workspace)
+        let occurredAt = Date(timeIntervalSince1970: 172_800)
+
+        try store.markInvoiceSent(invoiceID: invoiceID, occurredAt: occurredAt)
+        #expect(store.workspace.projects[0].invoices[0].status == .sent)
+
+        try store.markInvoicePaid(invoiceID: invoiceID, occurredAt: occurredAt.addingTimeInterval(60))
+        #expect(store.workspace.projects[0].invoices[0].status == .paid)
+        #expect(throws: WorkspaceStoreError.invalidInvoiceStatusTransition(from: .paid, to: .sent)) {
+            try store.markInvoiceSent(invoiceID: invoiceID, occurredAt: occurredAt)
+        }
+
+        let finalizedInvoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000702")!
+        store.workspace.projects[0].invoices.append(WorkspaceInvoice(
+            id: finalizedInvoiceID,
+            number: "EHX-2026-702",
+            clientName: "Happ.ines",
+            issueDate: Date(timeIntervalSince1970: 0),
+            dueDate: Date(timeIntervalSince1970: 86_400),
+            status: .finalized,
+            totalMinorUnits: 24_000
+        ))
+
+        try store.markInvoicePaid(invoiceID: finalizedInvoiceID, occurredAt: occurredAt)
+        #expect(store.workspace.projects[0].invoices[1].status == .paid)
+        #expect(store.workspace.activity.map(\.message) == [
+            "EHX-2026-701 marked sent",
+            "EHX-2026-701 marked paid",
+            "EHX-2026-702 marked paid",
         ])
     }
 

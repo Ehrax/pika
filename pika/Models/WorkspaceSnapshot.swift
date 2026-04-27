@@ -405,6 +405,8 @@ struct WorkspaceBucket: Equatable, Identifiable {
 struct WorkspaceInvoice: Equatable, Identifiable {
     let id: UUID
     var number: String
+    var businessSnapshot: BusinessProfileProjection? = nil
+    var clientSnapshot: WorkspaceClient? = nil
     var clientName: String
     var projectName: String = ""
     var bucketName: String = ""
@@ -413,6 +415,8 @@ struct WorkspaceInvoice: Equatable, Identifiable {
     var status: InvoiceStatus
     var totalMinorUnits: Int
     var lineItems: [WorkspaceInvoiceLineItemSnapshot] = []
+    var currencyCode: String = ""
+    var note: String? = nil
 }
 
 struct WorkspaceActivity: Equatable, Identifiable {
@@ -593,6 +597,7 @@ struct WorkspaceInvoicePreviewProjection: Equatable {
 struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let id: WorkspaceInvoice.ID
     let number: String
+    let businessProfile: BusinessProfileProjection?
     let clientName: String
     let projectName: String
     let bucketName: String
@@ -615,7 +620,8 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     ) {
         id = invoice.id
         number = invoice.number
-        clientName = invoice.clientName
+        businessProfile = invoice.businessSnapshot
+        clientName = invoice.clientSnapshot?.name ?? invoice.clientName
         self.projectName = invoice.projectName.isEmpty ? projectName : invoice.projectName
         bucketName = invoice.bucketName.isEmpty ? "Project services" : invoice.bucketName
         issueDate = invoice.issueDate
@@ -624,7 +630,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         isOverdue = invoice.status.isOverdue(dueDate: invoice.dueDate, on: date)
         statusTitle = isOverdue ? "Overdue" : invoice.status.rawValue.capitalized
         totalLabel = formatter.string(fromMinorUnits: invoice.totalMinorUnits)
-        self.billingAddress = billingAddress
+        self.billingAddress = invoice.clientSnapshot?.billingAddress ?? billingAddress
         lineItems = Self.lineItems(for: invoice, formatter: formatter)
         self.invoice = invoice
     }
