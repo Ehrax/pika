@@ -249,11 +249,10 @@ private struct AttentionRow: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: PikaSpacing.md) {
+            HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.md) {
                 badge
 
-                titleBlock
-                    .frame(minWidth: 220, alignment: .leading)
+                inlineDescription
                     .layoutPriority(1)
 
                 Spacer(minLength: PikaSpacing.sm)
@@ -269,7 +268,7 @@ private struct AttentionRow: View {
                     amountText
                 }
 
-                titleBlock
+                inlineDescription
             }
             .padding(PikaSpacing.md)
         }
@@ -280,17 +279,19 @@ private struct AttentionRow: View {
             .fixedSize(horizontal: true, vertical: false)
     }
 
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private var inlineDescription: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.xs) {
             Text(item.title)
                 .font(PikaTypography.body.weight(.medium))
                 .foregroundStyle(PikaColor.textPrimary)
-                .lineLimit(2)
+                .lineLimit(1)
+
             Text(item.detail)
                 .font(PikaTypography.small)
                 .foregroundStyle(PikaColor.textSecondary)
-                .lineLimit(2)
+                .lineLimit(1)
         }
+        .frame(minWidth: 260, maxWidth: .infinity, alignment: .leading)
     }
 
     private var amountText: some View {
