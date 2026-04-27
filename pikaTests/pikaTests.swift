@@ -1,5 +1,9 @@
 import Foundation
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import SwiftData
 import SwiftUI
 import Testing
@@ -96,14 +100,10 @@ struct PikaScaffoldTests {
     @MainActor
     @Test func pikaDependenciesInjectsBoundaryDefaultsIntoViewEnvironment() throws {
         let probe = DependencyProbeBox()
-        let hostingView = NSHostingView(
-            rootView: DependencyProbeView(probe: probe)
+        renderDependencyProbe(
+            DependencyProbeView(probe: probe)
                 .pikaDependencies()
         )
-
-        hostingView.frame = NSRect(x: 0, y: 0, width: 10, height: 10)
-        hostingView.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
 
         let snapshot = try #require(probe.snapshot)
         #expect(snapshot.router != nil)
@@ -137,6 +137,24 @@ private struct DependencySnapshot {
     let defaultPaymentTermsDays: Int
     let placeholderProjectsAreEmpty: Bool
     let pdfThrowsNotImplemented: Bool
+}
+
+@MainActor
+private func renderDependencyProbe<Content: View>(_ content: Content) {
+    #if os(macOS)
+    let hostingView = NSHostingView(rootView: content)
+    hostingView.frame = NSRect(x: 0, y: 0, width: 10, height: 10)
+    hostingView.layoutSubtreeIfNeeded()
+    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+    #elseif os(iOS)
+    let hostingController = UIHostingController(rootView: content)
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 10, height: 10))
+    window.rootViewController = hostingController
+    window.makeKeyAndVisible()
+    hostingController.view.setNeedsLayout()
+    hostingController.view.layoutIfNeeded()
+    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+    #endif
 }
 
 private struct DependencyProbeView: View {
