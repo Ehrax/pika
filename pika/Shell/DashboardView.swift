@@ -1,5 +1,20 @@
 import SwiftUI
 
+enum DashboardPanel: String, Hashable {
+    case revenueHistory
+    case needsAttention
+}
+
+enum DashboardPanelLayoutMode: Equatable {
+    case stackedAtAllWidths
+}
+
+struct DashboardPanelLayoutPolicy: Equatable {
+    static let layoutMode: DashboardPanelLayoutMode = .stackedAtAllWidths
+    static let stackedOrder: [DashboardPanel] = [.revenueHistory, .needsAttention]
+    static let revenueChartHeight: CGFloat = 220
+}
+
 struct DashboardView: View {
     let workspace: WorkspaceSnapshot
     let currentDate: Date
@@ -13,7 +28,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: PikaSpacing.lg) {
                 metricStrip(summary: summary)
 
-                lowerPanels(summary: summary)
+                dashboardPanels(summary: summary)
             }
             .padding(PikaSpacing.lg)
         }
@@ -42,20 +57,21 @@ struct DashboardView: View {
         .accessibilityIdentifier("DashboardView")
     }
 
-    private func lowerPanels(summary: DashboardSummary) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: PikaSpacing.lg) {
-                needsAttention(summary: summary)
-                    .frame(minWidth: 480, maxWidth: .infinity, alignment: .topLeading)
-
-                revenueHistory(summary: summary)
-                    .frame(minWidth: 280, idealWidth: 300, maxWidth: 360, alignment: .topLeading)
+    private func dashboardPanels(summary: DashboardSummary) -> some View {
+        VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+            ForEach(DashboardPanelLayoutPolicy.stackedOrder, id: \.self) { panel in
+                dashboardPanel(panel, summary: summary)
             }
+        }
+    }
 
-            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
-                needsAttention(summary: summary)
-                revenueHistory(summary: summary)
-            }
+    @ViewBuilder
+    private func dashboardPanel(_ panel: DashboardPanel, summary: DashboardSummary) -> some View {
+        switch panel {
+        case .revenueHistory:
+            revenueHistory(summary: summary, chartHeight: DashboardPanelLayoutPolicy.revenueChartHeight)
+        case .needsAttention:
+            needsAttention(summary: summary)
         }
     }
 
@@ -88,7 +104,7 @@ struct DashboardView: View {
         }
     }
 
-    private func revenueHistory(summary: DashboardSummary) -> some View {
+    private func revenueHistory(summary: DashboardSummary, chartHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: PikaSpacing.md) {
             SectionHeader(title: "Revenue · 12 mo", detail: "\(summary.revenueHistory.first?.label ?? "") - \(summary.revenueHistory.last?.label ?? "")")
 
@@ -102,7 +118,7 @@ struct DashboardView: View {
                     .foregroundStyle(PikaColor.success)
 
                 RevenueSparkline(points: summary.revenueHistory)
-                    .frame(height: 120)
+                    .frame(height: chartHeight)
 
                 HStack {
                     Text(summary.revenueHistory.first?.label ?? "")

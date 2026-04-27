@@ -20,6 +20,12 @@ struct PikaScaffoldTests {
         #expect(ClientRowHitTargetPolicy.hitTarget == .fullCell)
     }
 
+    @Test func dashboardStackedLayoutPromotesRevenueBeforeAttention() {
+        #expect(DashboardPanelLayoutPolicy.layoutMode == .stackedAtAllWidths)
+        #expect(DashboardPanelLayoutPolicy.stackedOrder == [.revenueHistory, .needsAttention])
+        #expect(DashboardPanelLayoutPolicy.revenueChartHeight == 220)
+    }
+
     @Test func moneyFormattingFormatsEuroMinorUnits() {
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
