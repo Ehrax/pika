@@ -7,6 +7,7 @@ struct ProjectPlaceholderView: View {
     @State private var selectedBucketID: WorkspaceBucket.ID?
     @State private var invoiceDraft: InvoiceDraftPresentation?
     @State private var actionFailure: WorkflowActionFailure?
+    @State private var showsCreateBucket = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -29,7 +30,8 @@ struct ProjectPlaceholderView: View {
                         onSelect: { bucketID in
                             selectedBucketID = bucketID
                             AppTelemetry.projectBucketSelected(projectName: project.name)
-                        }
+                        },
+                        onCreateBucket: { showsCreateBucket = true }
                     )
 
                     BucketDetailWorkbench(
@@ -70,11 +72,12 @@ struct ProjectPlaceholderView: View {
         .navigationTitle(project?.name ?? "Project")
         .toolbar {
             Button {
+                showsCreateBucket = true
             } label: {
                 Label("New Bucket", systemImage: "plus")
             }
-            .disabled(true)
-            .help("Bucket creation lands in a later task")
+            .disabled(project == nil)
+            .help("Create a bucket")
 
             Button {
                 markSelectedBucketReady()
@@ -91,6 +94,13 @@ struct ProjectPlaceholderView: View {
                 onSave: { draft in
                     finalizeInvoice(presentation: presentation, draft: draft)
                 }
+            )
+        }
+        .sheet(isPresented: $showsCreateBucket) {
+            CreateBucketSheet(
+                defaultRateMinorUnits: selectedBucket?.hourlyRateMinorUnits ?? 8_000,
+                onCancel: { showsCreateBucket = false },
+                onSave: createBucket
             )
         }
         .alert(item: $actionFailure) { failure in
@@ -118,6 +128,21 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func createBucket(_ draft: WorkspaceBucketDraft) {
+        guard let project else { return }
+
+        do {
+            let bucket = try workspaceStore.createBucket(
+                projectID: project.id,
+                draft
+            )
+            selectedBucketID = bucket.id
+            showsCreateBucket = false
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
@@ -192,6 +217,67 @@ private struct InvoiceDraftPresentation: Identifiable {
     let draft: InvoiceFinalizationDraft
     let totalLabel: String
     let lineItems: [WorkspaceBucketLineItemProjection]
+}
+
+private struct CreateBucketSheet: View {
+    let defaultRateMinorUnits: Int
+    let onCancel: () -> Void
+    let onSave: (WorkspaceBucketDraft) -> Void
+
+    @State private var name = ""
+    @State private var hourlyRate: Double
+
+    init(
+        defaultRateMinorUnits: Int,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (WorkspaceBucketDraft) -> Void
+    ) {
+        self.defaultRateMinorUnits = defaultRateMinorUnits
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _hourlyRate = State(initialValue: Double(defaultRateMinorUnits) / 100)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Bucket") {
+                    TextField("Bucket name", text: $name)
+                    TextField("Hourly rate", value: $hourlyRate, format: .number.precision(.fractionLength(0...2)))
+                        .monospacedDigit()
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    onSave(WorkspaceBucketDraft(
+                        name: name,
+                        hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
+                    ))
+                } label: {
+                    Label("Create Bucket", systemImage: "tray.full")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canSave)
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 420, idealWidth: 460, minHeight: 260)
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hourlyRate > 0
+    }
 }
 
 private struct CreateInvoiceConfirmationSheet: View {

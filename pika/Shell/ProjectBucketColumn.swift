@@ -5,6 +5,7 @@ struct ProjectBucketColumn: View {
     let projection: WorkspaceBucketDetailProjection
     let selectedBucketID: WorkspaceBucket.ID
     let onSelect: (WorkspaceBucket.ID) -> Void
+    let onCreateBucket: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -53,12 +54,12 @@ struct ProjectBucketColumn: View {
             Spacer()
 
             Button {
+                onCreateBucket()
             } label: {
                 Image(systemName: "plus")
             }
             .buttonStyle(.borderless)
-            .disabled(true)
-            .help("Bucket creation lands in a later task")
+            .help("Create a bucket")
         }
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, PikaSpacing.md)

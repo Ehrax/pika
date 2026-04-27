@@ -11,7 +11,10 @@ struct ProjectsView: View {
     let workspace: WorkspaceSnapshot
     let currentDate: Date
     let onSelectProject: (PikaShellDestination) -> Void
+    @Environment(\.workspaceStore) private var workspaceStore
     @State private var filter = Filter.active
+    @State private var showsCreateProject = false
+    @State private var creationFailure: ProjectCreationFailure?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -89,17 +92,135 @@ struct ProjectsView: View {
         .navigationTitle("Projects")
         .toolbar {
             Button {
+                showsCreateProject = true
             } label: {
                 Label("New Project", systemImage: "plus")
             }
-            .disabled(true)
-            .help("Project creation lands in a later task")
+            .disabled(workspace.clients.isEmpty)
+            .help("Create a project")
+        }
+        .sheet(isPresented: $showsCreateProject) {
+            CreateProjectSheet(
+                clients: workspace.clients,
+                defaultCurrencyCode: workspace.businessProfile.currencyCode,
+                onCancel: { showsCreateProject = false },
+                onSave: createProject
+            )
+        }
+        .alert(item: $creationFailure) { failure in
+            Alert(
+                title: Text("Project Creation Failed"),
+                message: Text(failure.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .accessibilityIdentifier("ProjectsView")
     }
 
     private var summaryLine: String {
         "\(formatter.string(fromMinorUnits: summary.openMinorUnits)) open · \(formatter.string(fromMinorUnits: summary.readyMinorUnits)) ready · \(formatter.string(fromMinorUnits: summary.overdueMinorUnits)) overdue"
+    }
+
+    private func createProject(_ draft: WorkspaceProjectDraft) {
+        do {
+            let project = try workspaceStore.createProject(draft)
+            showsCreateProject = false
+            onSelectProject(.projectDestination(for: project))
+        } catch {
+            creationFailure = ProjectCreationFailure(message: error.localizedDescription)
+        }
+    }
+}
+
+private struct ProjectCreationFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct CreateProjectSheet: View {
+    let clients: [WorkspaceClient]
+    let defaultCurrencyCode: String
+    let onCancel: () -> Void
+    let onSave: (WorkspaceProjectDraft) -> Void
+
+    @State private var name = ""
+    @State private var clientName: String
+    @State private var currencyCode: String
+    @State private var firstBucketName = "MVP"
+    @State private var hourlyRate = 80.0
+
+    init(
+        clients: [WorkspaceClient],
+        defaultCurrencyCode: String,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (WorkspaceProjectDraft) -> Void
+    ) {
+        self.clients = clients
+        self.defaultCurrencyCode = defaultCurrencyCode
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _clientName = State(initialValue: clients.first?.name ?? "")
+        _currencyCode = State(initialValue: defaultCurrencyCode)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Project") {
+                    TextField("Project name", text: $name)
+
+                    Picker("Client", selection: $clientName) {
+                        ForEach(clients) { client in
+                            Text(client.name).tag(client.name)
+                        }
+                    }
+
+                    TextField("Currency", text: $currencyCode)
+                }
+
+                Section("Starter bucket") {
+                    TextField("Bucket name", text: $firstBucketName)
+                    TextField("Hourly rate", value: $hourlyRate, format: .number.precision(.fractionLength(0...2)))
+                        .monospacedDigit()
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    onSave(WorkspaceProjectDraft(
+                        name: name,
+                        clientName: clientName,
+                        currencyCode: currencyCode,
+                        firstBucketName: firstBucketName,
+                        hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
+                    ))
+                } label: {
+                    Label("Create Project", systemImage: "folder.badge.plus")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canSave)
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 460, idealWidth: 500, minHeight: 360)
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !clientName.isEmpty
+            && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && hourlyRate > 0
     }
 }
 

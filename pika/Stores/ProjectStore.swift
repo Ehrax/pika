@@ -29,10 +29,25 @@ struct WorkspaceTimeEntryDraft: Equatable {
     var isBillable: Bool
 }
 
+struct WorkspaceProjectDraft: Equatable {
+    var name: String
+    var clientName: String
+    var currencyCode: String
+    var firstBucketName: String
+    var hourlyRateMinorUnits: Int
+}
+
+struct WorkspaceBucketDraft: Equatable {
+    var name: String
+    var hourlyRateMinorUnits: Int
+}
+
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
     case invoiceNotFound
+    case invalidProject
+    case invalidBucket
     case bucketNotInvoiceable
     case bucketStatusNotReady(BucketStatus)
     case bucketLocked(BucketStatus)
@@ -46,6 +61,87 @@ final class WorkspaceStore {
 
     init(seed: WorkspaceSnapshot = .sample) {
         workspace = seed
+    }
+
+    @discardableResult
+    func createProject(
+        _ draft: WorkspaceProjectDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceProject {
+        let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !projectName.isEmpty,
+              !clientName.isEmpty,
+              !currencyCode.isEmpty,
+              !bucketName.isEmpty,
+              draft.hourlyRateMinorUnits > 0
+        else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        let project = WorkspaceProject(
+            id: UUID(),
+            name: projectName,
+            clientName: clientName,
+            currencyCode: currencyCode.uppercased(),
+            isArchived: false,
+            buckets: [
+                WorkspaceBucket(
+                    id: UUID(),
+                    name: bucketName,
+                    status: .open,
+                    totalMinorUnits: 0,
+                    billableMinutes: 0,
+                    fixedCostMinorUnits: 0,
+                    defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits
+                ),
+            ],
+            invoices: []
+        )
+
+        workspace.projects.append(project)
+        appendActivity(
+            message: "\(project.name) project created",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectCreated(projectName: project.name, clientName: project.clientName)
+        return project
+    }
+
+    @discardableResult
+    func createBucket(
+        projectID: WorkspaceProject.ID,
+        _ draft: WorkspaceBucketDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceBucket {
+        let projectIndex = try projectIndex(projectID)
+        let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
+            throw WorkspaceStoreError.invalidBucket
+        }
+
+        let bucket = WorkspaceBucket(
+            id: UUID(),
+            name: bucketName,
+            status: .open,
+            totalMinorUnits: 0,
+            billableMinutes: 0,
+            fixedCostMinorUnits: 0,
+            defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits
+        )
+
+        workspace.projects[projectIndex].buckets.append(bucket)
+        appendActivity(
+            message: "\(bucket.name) bucket created",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.bucketCreated(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        return bucket
     }
 
     func defaultInvoiceDraft(

@@ -221,6 +221,7 @@ struct WorkspaceBucket: Equatable, Identifiable {
     var billableMinutes: Int
     var fixedCostMinorUnits: Int
     var nonBillableMinutes: Int = 0
+    var defaultHourlyRateMinorUnits: Int? = nil
     var timeEntries: [WorkspaceTimeEntry] = []
     var fixedCostEntries: [WorkspaceFixedCostEntry] = []
 
@@ -277,6 +278,10 @@ struct WorkspaceBucket: Equatable, Identifiable {
     var hourlyRateMinorUnits: Int? {
         if let rate = timeEntries.first(where: \.isBillable)?.hourlyRateMinorUnits {
             return rate
+        }
+
+        if let defaultHourlyRateMinorUnits {
+            return defaultHourlyRateMinorUnits
         }
 
         guard billableMinutes > 0 else { return nil }

@@ -263,6 +263,55 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func inMemoryWorkspaceStoreCreatesProjectWithStarterBucket() throws {
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [],
+            activity: []
+        ))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let project = try store.createProject(
+            WorkspaceProjectDraft(
+                name: "Client portal",
+                clientName: "Happ.ines",
+                currencyCode: "EUR",
+                firstBucketName: "MVP",
+                hourlyRateMinorUnits: 12_000
+            ),
+            occurredAt: date
+        )
+
+        #expect(project.name == "Client portal")
+        #expect(project.buckets.map(\.name) == ["MVP"])
+        #expect(project.buckets.first?.hourlyRateMinorUnits == 12_000)
+        #expect(store.workspace.projects.map(\.id) == [project.id])
+        #expect(store.workspace.activity.map(\.message) == ["Client portal project created"])
+    }
+
+    @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
+        let store = WorkspaceStore()
+        let project = try #require(store.workspace.project(named: "Launch sprint"))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let bucket = try store.createBucket(
+            projectID: project.id,
+            WorkspaceBucketDraft(
+                name: "May sprint",
+                hourlyRateMinorUnits: 9_000
+            ),
+            occurredAt: date
+        )
+
+        let updatedProject = try #require(store.workspace.project(named: "Launch sprint"))
+        #expect(bucket.name == "May sprint")
+        #expect(bucket.status == .open)
+        #expect(updatedProject.buckets.last?.id == bucket.id)
+        #expect(updatedProject.buckets.last?.hourlyRateMinorUnits == 9_000)
+        #expect(store.workspace.activity.last?.message == "May sprint bucket created")
+    }
+
     @Test func inMemoryWorkspaceStoreAddsTimeEntryToOpenBucket() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000801")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000801")!
