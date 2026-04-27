@@ -15,6 +15,7 @@ struct ProjectPlaceholderView: View {
     @State private var actionFailure: WorkflowActionFailure?
     @State private var showsCreateBucket = false
     @State private var showsFixedCostSheet = false
+    @State private var showsArchiveConfirmation = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -90,7 +91,7 @@ struct ProjectPlaceholderView: View {
             } label: {
                 Label("New Bucket", systemImage: "plus")
             }
-            .disabled(project == nil)
+            .disabled(project == nil || project?.isArchived == true)
             .help("Create a bucket")
 
             Button {
@@ -100,6 +101,38 @@ struct ProjectPlaceholderView: View {
             }
             .disabled(!canMarkSelectedBucketReady)
             .help("Mark the selected bucket ready for invoicing")
+
+            Menu {
+                Button {
+                    if project?.isArchived == true {
+                        restoreProject()
+                    } else {
+                        showsArchiveConfirmation = true
+                    }
+                } label: {
+                    Label(
+                        project?.isArchived == true ? "Restore Project" : "Archive Project",
+                        systemImage: project?.isArchived == true ? "arrow.uturn.backward" : "archivebox"
+                    )
+                }
+                .disabled(project == nil)
+            } label: {
+                Label("Project Actions", systemImage: "ellipsis.circle")
+            }
+            .help("Project actions")
+        }
+        .confirmationDialog(
+            "Archive this project?",
+            isPresented: $showsArchiveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Archive Project", role: .destructive) {
+                archiveProject()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Archived projects are hidden from the active project list, but invoices and history stay available.")
         }
         .sheet(item: $invoiceDraft) { presentation in
             CreateInvoiceConfirmationSheet(
@@ -171,7 +204,7 @@ struct ProjectPlaceholderView: View {
     }
 
     private var canMarkSelectedBucketReady: Bool {
-        guard let selectedBucket else { return false }
+        guard project?.isArchived == false, let selectedBucket else { return false }
         return selectedBucket.status == .open && selectedBucket.effectiveTotalMinorUnits > 0
     }
 
@@ -180,6 +213,26 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func archiveProject() {
+        guard let project else { return }
+
+        do {
+            try workspaceStore.archiveProject(projectID: project.id)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func restoreProject() {
+        guard let project else { return }
+
+        do {
+            try workspaceStore.restoreProject(projectID: project.id)
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }

@@ -259,6 +259,14 @@ final class WorkspaceStore {
         try persistWorkspace()
     }
 
+    func archiveProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
+        try setProjectArchived(projectID: projectID, isArchived: true, occurredAt: occurredAt)
+    }
+
+    func restoreProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
+        try setProjectArchived(projectID: projectID, isArchived: false, occurredAt: occurredAt)
+    }
+
     @discardableResult
     func createProject(
         _ draft: WorkspaceProjectDraft,
@@ -625,6 +633,30 @@ final class WorkspaceStore {
             billingAddress: draft.recipientBillingAddress,
             defaultTermsDays: termsDays
         )
+    }
+
+    private func setProjectArchived(
+        projectID: WorkspaceProject.ID,
+        isArchived: Bool,
+        occurredAt: Date
+    ) throws {
+        let index = try projectIndex(projectID)
+        workspace.projects[index].isArchived = isArchived
+        let project = workspace.projects[index]
+
+        appendActivity(
+            message: "\(project.name) \(isArchived ? "archived" : "restored")",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+
+        if isArchived {
+            AppTelemetry.projectArchived(projectName: project.name)
+        } else {
+            AppTelemetry.projectRestored(projectName: project.name)
+        }
+
+        try persistWorkspace()
     }
 
     private func appendActivity(message: String, detail: String, occurredAt: Date) {

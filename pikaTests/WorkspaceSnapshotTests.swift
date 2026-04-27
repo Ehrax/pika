@@ -290,6 +290,46 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == ["Client portal project created"])
     }
 
+    @Test func inMemoryWorkspaceStoreArchivesAndRestoresProjects() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000851")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Lifecycle project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let archiveDate = Date.pikaDate(year: 2026, month: 4, day: 27)
+        let restoreDate = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        try store.archiveProject(projectID: projectID, occurredAt: archiveDate)
+        #expect(store.workspace.projects.first?.isArchived == true)
+        #expect(store.workspace.activeProjects.isEmpty)
+        #expect(store.workspace.archivedProjects.map(\.id) == [projectID])
+
+        try store.restoreProject(projectID: projectID, occurredAt: restoreDate)
+        #expect(store.workspace.projects.first?.isArchived == false)
+        #expect(store.workspace.activeProjects.map(\.id) == [projectID])
+        #expect(store.workspace.archivedProjects.isEmpty)
+        #expect(store.workspace.activity.map(\.message) == [
+            "Lifecycle project archived",
+            "Lifecycle project restored",
+        ])
+        #expect(store.workspace.activity.map(\.occurredAt) == [
+            archiveDate,
+            restoreDate,
+        ])
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesClientAndRecordsActivity() throws {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: WorkspaceSnapshot.sample.businessProfile,
