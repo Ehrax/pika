@@ -447,7 +447,7 @@ final class WorkspaceStore {
         try persistWorkspace()
     }
 
-    private static func loadWorkspace(from url: URL) -> WorkspaceSnapshot? {
+    nonisolated private static func loadWorkspace(from url: URL) -> WorkspaceSnapshot? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
     }

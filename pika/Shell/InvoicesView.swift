@@ -11,6 +11,7 @@ struct InvoicesView: View {
     let workspaceStore: WorkspaceStore
     let currentDate: Date
     @State private var selectedInvoiceID: WorkspaceInvoice.ID?
+    @State private var invoiceFilter = InvoiceListFilter.all
     @State private var pdfActionFailure: PDFActionFailure?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
@@ -24,25 +25,48 @@ struct InvoicesView: View {
         )
     }
 
+    private var filteredRows: [WorkspaceInvoiceRowProjection] {
+        projection?.rows.filter(invoiceFilter.includes) ?? []
+    }
+
+    private var selectedRow: WorkspaceInvoiceRowProjection? {
+        filteredRows.first { $0.id == selectedInvoiceID } ?? filteredRows.first
+    }
+
     var body: some View {
         Group {
             if let projection {
                 HStack(spacing: 0) {
                     InvoiceListColumn(
-                        projection: projection,
-                        selectedInvoiceID: selectedInvoiceID ?? projection.selectedInvoice.id,
+                        rows: filteredRows,
+                        summary: InvoiceListSummary(rows: projection.rows),
+                        filter: $invoiceFilter,
+                        selectedInvoiceID: selectedInvoiceID ?? selectedRow?.id,
                         onSelect: { selectedInvoiceID = $0 }
                     )
 
-                    PDFPreviewPlaceholder(
-                        profile: projection.selectedRow.businessProfile ?? workspace.businessProfile,
-                        row: projection.selectedRow,
-                        dateStyle: dateStyle
-                    )
+                    if let selectedRow {
+                        PDFPreviewPlaceholder(
+                            profile: selectedRow.businessProfile ?? workspace.businessProfile,
+                            row: selectedRow,
+                            dateStyle: dateStyle
+                        )
+                    } else {
+                        ContentUnavailableView(
+                            "No Matching Invoices",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("Change the status filter to show invoices.")
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(PikaColor.background)
+                    }
                 }
                 .onAppear {
-                    selectedInvoiceID = selectedInvoiceID ?? projection.selectedInvoice.id
+                    selectedInvoiceID = selectedInvoiceID ?? selectedRow?.id ?? projection.selectedInvoice.id
                     AppTelemetry.invoicesLoaded(invoiceCount: projection.rows.count)
+                }
+                .onChange(of: invoiceFilter) { _, _ in
+                    selectedInvoiceID = filteredRows.first?.id
                 }
             } else {
                 ContentUnavailableView(
@@ -61,7 +85,7 @@ struct InvoicesView: View {
             } label: {
                 Label("Open PDF", systemImage: "doc.text.magnifyingglass")
             }
-            .disabled(projection == nil)
+            .disabled(selectedRow == nil)
             .help("Open the selected invoice PDF")
 
             Button {
@@ -69,7 +93,7 @@ struct InvoicesView: View {
             } label: {
                 Label("Export PDF", systemImage: "arrow.down.doc")
             }
-            .disabled(projection == nil)
+            .disabled(selectedRow == nil)
             .help("Export the selected invoice PDF")
 
             Button {
@@ -99,7 +123,7 @@ struct InvoicesView: View {
     }
 
     private var selectedInvoice: WorkspaceInvoice? {
-        projection?.selectedInvoice
+        selectedRow?.invoice
     }
 
     private var canMarkSelectedInvoiceSent: Bool {
@@ -181,7 +205,7 @@ struct InvoicesView: View {
     }
 
     private func renderSelectedInvoice() throws -> InvoicePDFService.RenderedInvoice {
-        guard let row = projection?.selectedRow else {
+        guard let row = selectedRow else {
             throw PDFActionError.noSelectedInvoice
         }
 
@@ -223,22 +247,79 @@ private enum PDFActionError: LocalizedError {
     }
 }
 
+private enum InvoiceListFilter: String, CaseIterable, Equatable, Identifiable {
+    case all = "All"
+    case finalized = "Finalized"
+    case sent = "Sent"
+    case paid = "Paid"
+    case overdue = "Overdue"
+    case cancelled = "Cancelled"
+
+    var id: String { rawValue }
+
+    func includes(_ row: WorkspaceInvoiceRowProjection) -> Bool {
+        switch self {
+        case .all:
+            true
+        case .finalized:
+            row.status == .finalized && !row.isOverdue
+        case .sent:
+            row.status == .sent && !row.isOverdue
+        case .paid:
+            row.status == .paid
+        case .overdue:
+            row.isOverdue
+        case .cancelled:
+            row.status == .cancelled
+        }
+    }
+}
+
+private struct InvoiceListSummary {
+    let total: Int
+    let finalized: Int
+    let sent: Int
+    let paid: Int
+    let overdue: Int
+    let cancelled: Int
+
+    init(rows: [WorkspaceInvoiceRowProjection]) {
+        total = rows.count
+        finalized = rows.filter { $0.status == .finalized && !$0.isOverdue }.count
+        sent = rows.filter { $0.status == .sent && !$0.isOverdue }.count
+        paid = rows.filter { $0.status == .paid }.count
+        overdue = rows.filter(\.isOverdue).count
+        cancelled = rows.filter { $0.status == .cancelled }.count
+    }
+
+    var displayText: String {
+        "\(total) total · \(finalized) finalized · \(sent) sent · \(paid) paid · \(overdue) overdue · \(cancelled) cancelled"
+    }
+}
+
 private struct InvoiceListColumn: View {
-    let projection: WorkspaceInvoicePreviewProjection
-    let selectedInvoiceID: WorkspaceInvoice.ID
+    let rows: [WorkspaceInvoiceRowProjection]
+    let summary: InvoiceListSummary
+    @Binding var filter: InvoiceListFilter
+    let selectedInvoiceID: WorkspaceInvoice.ID?
     let onSelect: (WorkspaceInvoice.ID) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
-                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    Text("Invoices")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
+        VStack(alignment: .leading, spacing: 0) {
+            header
 
+            ScrollView {
+                if rows.isEmpty {
+                    ContentUnavailableView(
+                        "No Invoices",
+                        systemImage: "doc.text",
+                        description: Text("No invoices match this status.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 240)
+                    .foregroundStyle(PikaColor.textSecondary)
+                } else {
                     VStack(spacing: 2) {
-                        ForEach(projection.rows) { row in
+                        ForEach(rows) { row in
                             Button {
                                 onSelect(row.id)
                             } label: {
@@ -249,9 +330,10 @@ private struct InvoiceListColumn: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal, PikaSpacing.sm)
+                    .padding(.bottom, PikaSpacing.md)
                 }
             }
-            .padding(PikaSpacing.lg)
         }
         .frame(minWidth: 300, idealWidth: 340, maxWidth: 380)
         .frame(maxHeight: .infinity)
@@ -262,6 +344,61 @@ private struct InvoiceListColumn: View {
                 .frame(width: 1)
         }
     }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Invoices")
+                        .font(PikaTypography.micro)
+                        .foregroundStyle(PikaColor.textMuted)
+                        .textCase(.uppercase)
+                    Text(summary.displayText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(PikaColor.textSecondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+            }
+
+            FlowingInvoiceFilters(filter: $filter)
+        }
+        .padding(.horizontal, PikaSpacing.md)
+        .padding(.vertical, PikaSpacing.md)
+    }
+}
+
+private struct FlowingInvoiceFilters: View {
+    @Binding var filter: InvoiceListFilter
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(InvoiceListFilter.allCases) { option in
+                    Button {
+                        filter = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(PikaTypography.small.weight(filter == option ? .medium : .regular))
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(filter == option ? PikaColor.textPrimary : PikaColor.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(filter == option ? PikaColor.accentMuted : PikaColor.surfaceAlt)
+                    .clipShape(RoundedRectangle(cornerRadius: PikaRadius.pill))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: PikaRadius.pill)
+                            .stroke(filter == option ? PikaColor.accent : PikaColor.border)
+                    }
+                }
+            }
+            .padding(.vertical, 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 private struct InvoiceRow: View {
@@ -270,31 +407,76 @@ private struct InvoiceRow: View {
 
     var body: some View {
         HStack(spacing: PikaSpacing.sm) {
+            Image(systemName: row.statusIconName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(PikaColor.textMuted)
+                .frame(width: 14)
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.number)
-                    .font(.body.monospacedDigit().weight(.medium))
+                    .font(.body.monospacedDigit().weight(isSelected ? .semibold : .medium))
                     .foregroundStyle(PikaColor.textPrimary)
+                    .lineLimit(1)
                 Text(row.clientName)
                     .font(PikaTypography.small)
                     .foregroundStyle(PikaColor.textSecondary)
+                    .lineLimit(1)
+                Text(row.bucketName)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(PikaColor.textMuted)
+                    .lineLimit(1)
             }
 
-            Spacer()
+            Spacer(minLength: PikaSpacing.sm)
 
             VStack(alignment: .trailing, spacing: 5) {
                 Text(row.totalLabel)
                     .font(.caption.monospacedDigit().weight(.medium))
                     .foregroundStyle(PikaColor.textPrimary)
-                StatusBadge(row.isOverdue ? .danger : .neutral, title: row.statusTitle)
+                StatusBadge(row.statusTone, title: row.statusTitle)
             }
         }
-        .padding(PikaSpacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, PikaSpacing.sm)
+        .padding(.vertical, 10)
         .background(isSelected ? PikaColor.surfaceAlt : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(isSelected ? PikaColor.accent : Color.clear)
                 .frame(width: 2)
+        }
+    }
+}
+
+private extension WorkspaceInvoiceRowProjection {
+    var statusTone: PikaStatusTone {
+        if isOverdue { return .danger }
+
+        switch status {
+        case .finalized:
+            return .warning
+        case .sent:
+            return .neutral
+        case .paid:
+            return .success
+        case .cancelled:
+            return .neutral
+        }
+    }
+
+    var statusIconName: String {
+        if isOverdue { return "exclamationmark.circle" }
+
+        switch status {
+        case .finalized:
+            return "doc.text"
+        case .sent:
+            return "paperplane"
+        case .paid:
+            return "checkmark.seal"
+        case .cancelled:
+            return "xmark.circle"
         }
     }
 }
