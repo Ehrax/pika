@@ -11,6 +11,11 @@ struct PikaScaffoldTests {
         #expect(PikaStatusTone.success.accessibilityLabel == "Success")
     }
 
+    @Test func selectedSidebarProjectCountUsesHighContrastForeground() {
+        #expect(SidebarProjectRowAppearance(isSelected: true).readyCountContrast == .selectedForeground)
+        #expect(SidebarProjectRowAppearance(isSelected: false).readyCountContrast == .success)
+    }
+
     @Test func moneyFormattingFormatsEuroMinorUnits() {
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 

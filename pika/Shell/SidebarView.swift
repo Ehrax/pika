@@ -28,7 +28,10 @@ struct SidebarView: View {
             Section("Projects") {
                 ForEach(workspace.activeProjects) { project in
                     NavigationLink(value: PikaShellDestination.project(project.id)) {
-                        projectRow(project)
+                        projectRow(
+                            project,
+                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
+                        )
                     }
                 }
             }
@@ -58,7 +61,10 @@ struct SidebarView: View {
             Section("Projects") {
                 ForEach(workspace.activeProjects) { project in
                     sidebarButton(for: .project(project.id)) {
-                        projectRow(project)
+                        projectRow(
+                            project,
+                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
+                        )
                     }
                 }
             }
@@ -67,10 +73,10 @@ struct SidebarView: View {
         #endif
     }
 
-    private func projectRow(_ project: WorkspaceProject) -> some View {
+    private func projectRow(_ project: WorkspaceProject, appearance: SidebarProjectRowAppearance) -> some View {
         HStack(spacing: PikaSpacing.sm) {
             Circle()
-                .fill(PikaColor.accent)
+                .fill(appearance.projectDotColor)
                 .frame(width: 7, height: 7)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -87,7 +93,7 @@ struct SidebarView: View {
             if project.readyBucketCount > 0 {
                 Text("\(project.readyBucketCount)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(PikaColor.success)
+                    .foregroundStyle(appearance.readyCountColor)
             }
         }
     }
@@ -108,4 +114,30 @@ struct SidebarView: View {
         .foregroundStyle(selection == destination ? PikaColor.accent : PikaColor.textPrimary)
     }
     #endif
+}
+
+enum SidebarReadyCountContrast: Equatable {
+    case selectedForeground
+    case success
+}
+
+struct SidebarProjectRowAppearance: Equatable {
+    let isSelected: Bool
+
+    var readyCountContrast: SidebarReadyCountContrast {
+        isSelected ? .selectedForeground : .success
+    }
+
+    var readyCountColor: Color {
+        switch readyCountContrast {
+        case .selectedForeground:
+            Color.white
+        case .success:
+            PikaColor.success
+        }
+    }
+
+    var projectDotColor: Color {
+        isSelected ? Color.white.opacity(0.78) : PikaColor.accent
+    }
 }
