@@ -1,0 +1,35 @@
+import SwiftData
+import SwiftUI
+
+@main
+struct PikaApp: App {
+    let sharedModelContainer: ModelContainer
+
+    init() {
+        do {
+            sharedModelContainer = try Self.makeModelContainer(inMemory: false)
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .pikaDependencies()
+        }
+        .modelContainer(sharedModelContainer)
+    }
+
+    static func makeModelContainer(inMemory: Bool) throws -> ModelContainer {
+        let schema = Schema([
+            ProjectRecord.self,
+        ])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: inMemory
+        )
+
+        return try ModelContainer(for: schema, configurations: [configuration])
+    }
+}
