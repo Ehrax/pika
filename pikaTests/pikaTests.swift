@@ -16,6 +16,11 @@ struct PikaScaffoldTests {
         #expect(SidebarProjectRowAppearance(isSelected: false).readyCountContrast == .success)
     }
 
+    @Test func selectedSidebarProjectUsesAccentSelectionTreatment() {
+        #expect(SidebarProjectRowAppearance(isSelected: true).selectionTreatment == .accent)
+        #expect(SidebarProjectRowAppearance(isSelected: false).selectionTreatment == .none)
+    }
+
     @Test func clientRowsUseFullCellHitTargets() {
         #expect(ClientRowHitTargetPolicy.hitTarget == .fullCell)
     }

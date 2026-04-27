@@ -16,14 +16,14 @@ struct InlineEntryEditor: View {
         VStack(spacing: 0) {
             HStack(spacing: PikaSpacing.md) {
                 Text(dateLabel)
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 64, alignment: .leading)
+                    .font(PikaTypography.entry.monospacedDigit())
+                    .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
 
                 TextField("10:00-12:00", text: $timeInput)
                     .textFieldStyle(.plain)
-                    .font(.caption.monospacedDigit())
+                    .font(PikaTypography.input.monospacedDigit())
                     .padding(.horizontal, PikaSpacing.sm)
-                    .frame(width: 110, height: 28, alignment: .leading)
+                    .frame(width: BucketEntriesLayout.timeWidth, height: BucketEntriesLayout.inputHeight, alignment: .leading)
                     .background(PikaColor.surface)
                     .overlay {
                         RoundedRectangle(cornerRadius: PikaRadius.sm)
@@ -36,9 +36,9 @@ struct InlineEntryEditor: View {
 
                 TextField("what did you work on?", text: $description)
                     .textFieldStyle(.plain)
-                    .font(PikaTypography.body)
+                    .font(PikaTypography.input)
                     .padding(.horizontal, PikaSpacing.sm)
-                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: BucketEntriesLayout.inputHeight, alignment: .leading)
                     .background(PikaColor.surface)
                     .overlay {
                         RoundedRectangle(cornerRadius: PikaRadius.sm)
@@ -50,14 +50,14 @@ struct InlineEntryEditor: View {
                     }
 
                 Text(draft.hoursLabel)
-                    .font(.caption.monospacedDigit())
+                    .font(PikaTypography.entry.monospacedDigit())
                     .foregroundStyle(PikaColor.textMuted)
-                    .frame(width: 60, alignment: .trailing)
+                    .frame(width: BucketEntriesLayout.hoursWidth, alignment: .trailing)
 
                 Text(draft.amountLabel)
-                    .font(.caption.monospacedDigit().weight(.medium))
+                    .font(PikaTypography.entry.monospacedDigit().weight(.medium))
                     .foregroundStyle(PikaColor.textMuted)
-                    .frame(width: 92, alignment: .trailing)
+                    .frame(width: BucketEntriesLayout.amountWidth, alignment: .trailing)
             }
             .padding(.horizontal, PikaSpacing.md)
             .padding(.vertical, 10)
@@ -112,11 +112,11 @@ struct InlineEntryEditor: View {
             Spacer()
             Toggle("Billable", isOn: $isBillable)
                 .toggleStyle(.checkbox)
-                .font(PikaTypography.small)
+                .font(PikaTypography.entryHelper)
             Text("type ranges like 10-12 or 2h")
                 .foregroundStyle(PikaColor.textSecondary)
         }
-        .font(PikaTypography.small)
+        .font(PikaTypography.entryHelper)
         .foregroundStyle(PikaColor.textMuted)
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, PikaSpacing.sm)
@@ -162,7 +162,7 @@ private struct HelperKey: View {
 
     var body: some View {
         Text(title)
-            .font(.caption.monospacedDigit())
+            .font(PikaTypography.entryHelper.monospacedDigit())
             .foregroundStyle(PikaColor.textPrimary)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)

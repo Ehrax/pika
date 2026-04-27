@@ -16,6 +16,28 @@ struct WorkspaceSnapshot: Codable, Equatable {
         projects.filter(\.isArchived)
     }
 
+    mutating func normalizeMissingHourlyRates(defaultRateMinorUnits: Int = 8_000) {
+        for projectIndex in projects.indices {
+            let fallbackRate = projects[projectIndex].defaultHourlyRateMinorUnits ?? defaultRateMinorUnits
+
+            for bucketIndex in projects[projectIndex].buckets.indices {
+                let bucketRate = projects[projectIndex].buckets[bucketIndex].hourlyRateMinorUnits
+                if projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits.map({ $0 <= 0 }) == true {
+                    projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = bucketRate ?? fallbackRate
+                } else if bucketRate == nil {
+                    projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = fallbackRate
+                }
+
+                for entryIndex in projects[projectIndex].buckets[bucketIndex].timeEntries.indices {
+                    let entry = projects[projectIndex].buckets[bucketIndex].timeEntries[entryIndex]
+                    if entry.isBillable && entry.hourlyRateMinorUnits <= 0 {
+                        projects[projectIndex].buckets[bucketIndex].timeEntries[entryIndex].hourlyRateMinorUnits = fallbackRate
+                    }
+                }
+            }
+        }
+    }
+
     var recentActivity: [WorkspaceActivity] {
         activity.sorted { left, right in
             if left.occurredAt == right.occurredAt {
@@ -187,6 +209,10 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
         invoices.filter { $0.status.isOverdue(dueDate: $0.dueDate, on: date) }.count
     }
 
+    var defaultHourlyRateMinorUnits: Int? {
+        buckets.lazy.compactMap(\.hourlyRateMinorUnits).first
+    }
+
     func detailProjection(
         selectedBucketID: WorkspaceBucket.ID? = nil,
         formatter: MoneyFormatting
@@ -278,16 +304,17 @@ struct WorkspaceBucket: Codable, Equatable, Identifiable {
     }
 
     var hourlyRateMinorUnits: Int? {
-        if let rate = timeEntries.first(where: \.isBillable)?.hourlyRateMinorUnits {
+        if let rate = timeEntries.first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?.hourlyRateMinorUnits {
             return rate
         }
 
-        if let defaultHourlyRateMinorUnits {
+        if let defaultHourlyRateMinorUnits, defaultHourlyRateMinorUnits > 0 {
             return defaultHourlyRateMinorUnits
         }
 
         guard billableMinutes > 0 else { return nil }
-        return billableTimeMinorUnits * 60 / billableMinutes
+        let inferredRate = billableTimeMinorUnits * 60 / billableMinutes
+        return inferredRate > 0 ? inferredRate : nil
     }
 
     private static func hoursLabel(minutes: Int) -> String {

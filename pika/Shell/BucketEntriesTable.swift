@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum BucketEntriesLayout {
+    static let dateWidth: CGFloat = 70
+    static let timeWidth: CGFloat = 142
+    static let hoursWidth: CGFloat = 60
+    static let amountWidth: CGFloat = 92
+    static let inputHeight: CGFloat = 26
+}
+
 struct BucketEntriesTable: View {
     let projection: WorkspaceBucketDetailProjection
     let draftDate: Date
@@ -62,21 +70,21 @@ private struct BucketEntriesHeaderRow: View {
     var body: some View {
         HStack(spacing: PikaSpacing.md) {
             Text("Date")
-                .frame(width: 64, alignment: .leading)
+                .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
             Text("Time")
-                .frame(width: 110, alignment: .leading)
+                .frame(width: BucketEntriesLayout.timeWidth, alignment: .leading)
             Text("Description")
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text("Hrs")
-                .frame(width: 60, alignment: .trailing)
+                .frame(width: BucketEntriesLayout.hoursWidth, alignment: .trailing)
             Text("Amount")
-                .frame(width: 92, alignment: .trailing)
+                .frame(width: BucketEntriesLayout.amountWidth, alignment: .trailing)
         }
-        .font(PikaTypography.micro)
+        .font(PikaTypography.entry.weight(.medium))
         .foregroundStyle(PikaColor.textMuted)
         .textCase(.uppercase)
         .padding(.horizontal, PikaSpacing.md)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(PikaColor.surfaceAlt)
     }
 }
@@ -88,24 +96,24 @@ private struct BucketEntryRow: View {
         HStack(spacing: PikaSpacing.md) {
             Text(row.dateLabel)
                 .monospacedDigit()
-                .frame(width: 64, alignment: .leading)
+                .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
                 .foregroundStyle(PikaColor.textSecondary)
             Text(row.timeLabel)
                 .monospacedDigit()
-                .frame(width: 110, alignment: .leading)
+                .frame(width: BucketEntriesLayout.timeWidth, alignment: .leading)
             Text(row.description)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(row.hoursLabel)
                 .monospacedDigit()
-                .frame(width: 60, alignment: .trailing)
+                .frame(width: BucketEntriesLayout.hoursWidth, alignment: .trailing)
             Text(row.amountLabel)
                 .monospacedDigit()
                 .fontWeight(row.isBillable ? .medium : .regular)
-                .frame(width: 92, alignment: .trailing)
+                .frame(width: BucketEntriesLayout.amountWidth, alignment: .trailing)
         }
-        .font(PikaTypography.body)
+        .font(PikaTypography.entry)
         .foregroundStyle(row.isBillable ? PikaColor.textPrimary : PikaColor.textMuted)
         .padding(.horizontal, PikaSpacing.md)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
     }
 }

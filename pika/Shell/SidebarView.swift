@@ -15,13 +15,17 @@ struct SidebarView: View {
                     Label("Projects", systemImage: "folder")
                 }
                 ForEach(workspace.activeProjects) { project in
-                    NavigationLink(value: PikaShellDestination.project(project.id)) {
+                    Button {
+                        selection = .project(project.id)
+                    } label: {
                         projectRow(
                             project,
                             appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id))
                         )
                     }
+                    .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 4, leading: 34, bottom: 4, trailing: 12))
+                    .listRowBackground(Color.clear)
                 }
                 NavigationLink(value: PikaShellDestination.invoices) {
                     Label("Invoices", systemImage: "doc.text")
@@ -36,7 +40,7 @@ struct SidebarView: View {
 
         }
         .navigationTitle("Pika")
-        .navigationSplitViewColumnWidth(min: 220, ideal: 250)
+        .navigationSplitViewColumnWidth(min: 210, ideal: 240)
         #else
         List {
             Section("Workspace") {
@@ -94,6 +98,15 @@ struct SidebarView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, PikaSpacing.sm)
+        .padding(.vertical, 6)
+        .foregroundStyle(appearance.textColor)
+        .background {
+            if let selectionBackgroundColor = appearance.selectionBackgroundColor {
+                RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous)
+                    .fill(selectionBackgroundColor)
+            }
+        }
         .contentShape(Rectangle())
     }
 
@@ -115,6 +128,11 @@ struct SidebarView: View {
     #endif
 }
 
+enum SidebarProjectSelectionTreatment: Equatable {
+    case none
+    case accent
+}
+
 enum SidebarReadyCountContrast: Equatable {
     case selectedForeground
     case success
@@ -127,6 +145,28 @@ struct SidebarProjectRowAppearance: Equatable {
         isSelected ? .selectedForeground : .success
     }
 
+    var selectionTreatment: SidebarProjectSelectionTreatment {
+        isSelected ? .accent : .none
+    }
+
+    var selectionBackgroundColor: Color? {
+        switch selectionTreatment {
+        case .none:
+            nil
+        case .accent:
+            PikaColor.accent
+        }
+    }
+
+    var textColor: Color {
+        switch selectionTreatment {
+        case .none:
+            PikaColor.textPrimary
+        case .accent:
+            Color.white
+        }
+    }
+
     var readyCountColor: Color {
         switch readyCountContrast {
         case .selectedForeground:
@@ -137,6 +177,11 @@ struct SidebarProjectRowAppearance: Equatable {
     }
 
     var projectDotColor: Color {
-        isSelected ? Color.white.opacity(0.78) : PikaColor.accent
+        switch selectionTreatment {
+        case .none:
+            PikaColor.accent
+        case .accent:
+            Color.white
+        }
     }
 }

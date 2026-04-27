@@ -376,7 +376,7 @@ private struct AttentionRow: View {
 
     private var amountText: some View {
         Text(amount)
-            .font(.body.monospacedDigit())
+            .font(PikaTypography.body.monospacedDigit())
             .foregroundStyle(PikaColor.textPrimary)
             .multilineTextAlignment(.trailing)
             .fixedSize(horizontal: true, vertical: false)

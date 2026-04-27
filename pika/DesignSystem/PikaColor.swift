@@ -18,9 +18,11 @@ enum PikaColor {
     static let textSecondary = Color.pikaAdaptive(light: 0x52525B, dark: 0xA1A1AA)
     static let textMuted = Color.pikaAdaptive(light: 0x8E8E93, dark: 0x6B6B75)
 
-    static let accent = Color.pikaAdaptive(light: 0x6D28D9, dark: 0x6D28D9)
-    static let accentHover = Color.pikaAdaptive(light: 0x5B21B6, dark: 0x7C3AED)
-    static let accentMuted = Color.pikaAdaptive(light: 0x6D28D9, lightOpacity: 0.12, dark: 0x6D28D9, darkOpacity: 0.20)
+    static let accent = Color.pikaAdaptive(light: 0x7B61FF, dark: 0x9B8CFF)
+    static let accentHover = Color.pikaAdaptive(light: 0x6F55F2, dark: 0xB2A7FF)
+    static let accentMuted = Color.pikaAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
+    static let actionAccent = Color.pikaAdaptive(light: 0x7B61FF, dark: 0xB2A7FF)
+    static let actionAccentMuted = Color.pikaAdaptive(light: 0x7B61FF, lightOpacity: 0.10, dark: 0xB2A7FF, darkOpacity: 0.14)
 
     static let success = Color.pikaAdaptive(light: 0x2F8F5A, dark: 0x7AC79A)
     static let successMuted = Color.pikaAdaptive(light: 0x2F8F5A, lightOpacity: 0.08, dark: 0x7AC79A, darkOpacity: 0.12)

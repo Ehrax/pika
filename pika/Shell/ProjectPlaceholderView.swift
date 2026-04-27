@@ -16,7 +16,7 @@ struct ProjectPlaceholderView: View {
     @State private var actionFailure: WorkflowActionFailure?
     @State private var showsCreateBucket = false
     @State private var showsFixedCostSheet = false
-    @State private var showsArchiveConfirmation = false
+    @State private var showsArchiveBucketConfirmation = false
     @State private var showsEditProject = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
@@ -61,6 +61,7 @@ struct ProjectPlaceholderView: View {
                         projection: projection,
                         draftDate: currentDate,
                         invoiceRow: invoiceRow(for: projection, in: project),
+                        canMarkReady: canMarkSelectedBucketReady,
                         onAddEntry: { draft in
                             addTimeEntry(
                                 projectID: project.id,
@@ -69,6 +70,7 @@ struct ProjectPlaceholderView: View {
                             )
                         },
                         onAddFixedCost: { showsFixedCostSheet = true },
+                        onMarkReady: markSelectedBucketReady,
                         onCreateInvoice: {
                             prepareInvoiceDraft(
                                 projectID: project.id,
@@ -78,10 +80,7 @@ struct ProjectPlaceholderView: View {
                             )
                         },
                         onOpenInvoicePDF: openInvoicePDF,
-                        onExportInvoicePDF: exportInvoicePDF,
-                        onMarkInvoiceSent: markInvoiceSent,
-                        onMarkInvoicePaid: markInvoicePaid,
-                        onCancelInvoice: cancelInvoice
+                        onExportInvoicePDF: exportInvoicePDF
                     )
                 }
                 .background(PikaColor.background)
@@ -106,62 +105,20 @@ struct ProjectPlaceholderView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .navigationTitle(project?.name ?? "Project")
         .toolbar {
-            Button {
-                showsCreateBucket = true
-            } label: {
-                Label("New Bucket", systemImage: "plus")
-            }
-            .disabled(project == nil || project?.isArchived == true)
-            .help("Create a bucket")
-
-            Button {
-                markSelectedBucketReady()
-            } label: {
-                Label("Mark Ready", systemImage: "checkmark.circle")
-            }
-            .disabled(!canMarkSelectedBucketReady)
-            .help("Mark the selected bucket ready for invoicing")
-
-            Menu {
-                Button {
-                    showsEditProject = true
-                } label: {
-                    Label("Edit Project", systemImage: "pencil")
-                }
-                .disabled(project == nil)
-
-                Divider()
-
-                Button {
-                    if project?.isArchived == true {
-                        restoreProject()
-                    } else {
-                        showsArchiveConfirmation = true
-                    }
-                } label: {
-                    Label(
-                        project?.isArchived == true ? "Restore Project" : "Archive Project",
-                        systemImage: project?.isArchived == true ? "arrow.uturn.backward" : "archivebox"
-                    )
-                }
-                .disabled(project == nil)
-            } label: {
-                Label("Project Actions", systemImage: "ellipsis.circle")
-            }
-            .help("Project actions")
+            projectToolbar
         }
         .confirmationDialog(
-            "Archive this project?",
-            isPresented: $showsArchiveConfirmation,
+            "Archive this bucket?",
+            isPresented: $showsArchiveBucketConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Archive Project", role: .destructive) {
-                archiveProject()
+            Button("Archive Bucket", role: .destructive) {
+                archiveSelectedBucket()
             }
 
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Archived projects are hidden from the active project list, but invoices and history stay available.")
+            Text("Archived buckets stay in the project history, but are locked for new entries.")
         }
         .sheet(item: $invoiceDraft) { presentation in
             CreateInvoiceConfirmationSheet(
@@ -205,10 +162,104 @@ struct ProjectPlaceholderView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var projectToolbar: some ToolbarContent {
+        ToolbarItemGroup {
+            bucketActionsMenu
+            ControlGroup {
+                editProjectButton
+                markReadyButton
+            }
+        }
+    }
+
+    private var editProjectButton: some View {
+        Button {
+            showsEditProject = true
+        } label: {
+            Label("Edit Project", systemImage: "pencil")
+        }
+        .disabled(project == nil)
+        .help("Edit project")
+        .tint(PikaColor.textPrimary)
+    }
+
+    private var markReadyButton: some View {
+        Button {
+            markSelectedBucketReady()
+        } label: {
+            Label("Mark Ready", systemImage: "checkmark.circle")
+        }
+        .disabled(!canMarkSelectedBucketReady)
+        .help("Mark the selected bucket ready for invoicing")
+        .tint(PikaColor.textPrimary)
+    }
+
+    private var bucketActionsMenu: some View {
+        Menu {
+            if let invoiceRow = selectedInvoiceRow {
+                Button {
+                    markInvoiceSent(invoiceRow)
+                } label: {
+                    Label("Mark Sent", systemImage: "paperplane")
+                }
+                .disabled(!invoiceRow.canMarkSent)
+
+                Button {
+                    markInvoicePaid(invoiceRow)
+                } label: {
+                    Label("Mark Paid", systemImage: "checkmark.seal")
+                }
+                .disabled(!invoiceRow.canMarkPaid)
+
+                Button(role: .destructive) {
+                    cancelInvoice(invoiceRow)
+                } label: {
+                    Label("Cancel Invoice", systemImage: "xmark.circle")
+                }
+                .disabled(!invoiceRow.canCancel)
+
+                Divider()
+            }
+
+            Button {
+                if selectedBucket?.status == .archived {
+                    restoreSelectedBucket()
+                } else {
+                    showsArchiveBucketConfirmation = true
+                }
+            } label: {
+                Label(
+                    selectedBucket?.status == .archived ? "Restore Bucket" : "Archive Bucket",
+                    systemImage: selectedBucket?.status == .archived ? "arrow.uturn.backward" : "archivebox"
+                )
+            }
+            .disabled(!canArchiveOrRestoreSelectedBucket)
+        } label: {
+            Label("Bucket Actions", systemImage: "ellipsis.circle")
+        }
+        .help("Bucket actions")
+        .tint(PikaColor.textPrimary)
+    }
+
     private var selectedBucket: WorkspaceBucket? {
         guard let project else { return nil }
         let bucketID = project.normalizedBucketID(selectedBucketID)
         return project.buckets.first { $0.id == bucketID }
+    }
+
+    private var selectedInvoiceRow: WorkspaceInvoiceRowProjection? {
+        guard
+            let project,
+            let projection = project.detailProjection(
+                selectedBucketID: selectedBucketID,
+                formatter: formatter
+            )
+        else {
+            return nil
+        }
+
+        return invoiceRow(for: projection, in: project)
     }
 
     private func invoiceRow(
@@ -247,6 +298,11 @@ struct ProjectPlaceholderView: View {
         return selectedBucket.status == .open && selectedBucket.effectiveTotalMinorUnits > 0
     }
 
+    private var canArchiveOrRestoreSelectedBucket: Bool {
+        guard project?.isArchived == false, let selectedBucket else { return false }
+        return selectedBucket.status == .archived || !selectedBucket.status.isInvoiceLocked
+    }
+
     private func markSelectedBucketReady() {
         guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
 
@@ -273,6 +329,26 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.archiveProject(projectID: project.id)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func archiveSelectedBucket() {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
+
+        do {
+            try workspaceStore.archiveBucket(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func restoreSelectedBucket() {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
+
+        do {
+            try workspaceStore.restoreBucket(projectID: project.id, bucketID: bucketID)
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
@@ -461,6 +537,20 @@ struct ProjectPlaceholderView: View {
         let url = directory.appendingPathComponent(rendered.metadata.suggestedFilename)
         try rendered.data.write(to: url, options: .atomic)
         return url
+    }
+}
+
+private extension WorkspaceInvoiceRowProjection {
+    var canMarkSent: Bool {
+        status == .finalized
+    }
+
+    var canMarkPaid: Bool {
+        status == .finalized || status == .sent
+    }
+
+    var canCancel: Bool {
+        status == .finalized || status == .sent
     }
 }
 

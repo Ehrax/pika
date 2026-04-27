@@ -106,9 +106,9 @@ private struct ClientListColumn: View {
                 Button {
                     onCreateClient()
                 } label: {
-                    Image(systemName: "plus")
+                    Label("Create a client", systemImage: "plus")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(PikaColumnHeaderIconButtonStyle())
                 .help("Create a client")
             }
             .padding(PikaSpacing.md)
@@ -131,14 +131,9 @@ private struct ClientListColumn: View {
                 .padding(.bottom, PikaSpacing.md)
             }
         }
-        .frame(minWidth: 240, idealWidth: 300, maxWidth: 520)
+        .frame(maxWidth: .infinity)
         .frame(maxHeight: .infinity)
         .background(PikaColor.surface)
-        .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(PikaColor.border)
-                .frame(width: 1)
-        }
     }
 }
 
@@ -346,7 +341,7 @@ private struct ClientDetailSurface: View {
                                 in: 1...120
                             ) {
                                 Text("\(draft.defaultTermsDays) days")
-                                    .font(.body.monospacedDigit())
+                                    .font(PikaTypography.body.monospacedDigit())
                             }
                         }
 
@@ -433,7 +428,7 @@ private struct ClientInfoTile: View {
                 .foregroundStyle(PikaColor.textMuted)
                 .textCase(.uppercase)
             Text(value)
-                .font(.body.monospacedDigit().weight(.medium))
+                .font(PikaTypography.body.monospacedDigit().weight(.medium))
                 .foregroundStyle(PikaColor.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

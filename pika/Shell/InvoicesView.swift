@@ -355,14 +355,9 @@ private struct InvoiceListColumn: View {
                 }
             }
         }
-        .frame(minWidth: 300, idealWidth: 360, maxWidth: 560)
+        .frame(maxWidth: .infinity)
         .frame(maxHeight: .infinity)
         .background(PikaColor.surface)
-        .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(PikaColor.border)
-                .frame(width: 1)
-        }
     }
 
     private var header: some View {
@@ -434,7 +429,7 @@ private struct InvoiceRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.number)
-                    .font(.body.monospacedDigit().weight(isSelected ? .semibold : .medium))
+                    .font(PikaTypography.body.monospacedDigit().weight(isSelected ? .semibold : .medium))
                     .foregroundStyle(PikaColor.textPrimary)
                     .lineLimit(1)
                 Text(row.clientName)
@@ -545,7 +540,7 @@ private struct PDFPreviewPlaceholder: View {
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(Color(white: 0.35))
                             Text(row.clientName)
-                                .font(.body.weight(.medium))
+                                .font(PikaTypography.body.weight(.medium))
                             Text(row.billingAddress)
                                 .font(.caption)
                                 .foregroundStyle(Color(white: 0.35))

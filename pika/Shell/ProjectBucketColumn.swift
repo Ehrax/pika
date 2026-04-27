@@ -28,14 +28,9 @@ struct ProjectBucketColumn: View {
                 .padding(.bottom, PikaSpacing.md)
             }
         }
-        .frame(minWidth: 220, idealWidth: 280, maxWidth: 520)
+        .frame(maxWidth: .infinity)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(PikaColor.surface)
-        .overlay(alignment: .trailing) {
-            Rectangle()
-                .fill(PikaColor.border)
-                .frame(width: 1)
-        }
+        .background(PikaColor.surface.ignoresSafeArea(.container, edges: .top))
     }
 
     private var header: some View {
@@ -56,13 +51,33 @@ struct ProjectBucketColumn: View {
             Button {
                 onCreateBucket()
             } label: {
-                Image(systemName: "plus")
+                Label("Create a bucket", systemImage: "plus")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(PikaColumnHeaderIconButtonStyle())
             .help("Create a bucket")
         }
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, PikaSpacing.md)
+    }
+}
+
+struct PikaColumnHeaderIconButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .labelStyle(.iconOnly)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(PikaColor.textPrimary.opacity(isEnabled ? 1 : 0.38))
+            .frame(width: 28, height: 28)
+            .glassEffect(
+                .regular
+                    .tint(PikaColor.textPrimary.opacity(0.06))
+                    .interactive(),
+                in: Circle()
+            )
+            .contentShape(Circle())
+            .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
 

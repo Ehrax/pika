@@ -17,7 +17,7 @@ struct WorkspaceSnapshotTests {
             "Happ.ines launch sprint ready to invoice",
         ])
         #expect(summary.needsAttention.map(\.target).count == 3)
-        #expect(summary.needsAttention.first?.target == .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000003")!))
+        #expect(summary.needsAttention.first?.target == .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000002")!))
     }
 
     @Test func dashboardRevenueHistoryMatchesTwelveMonthDesignWindow() {
@@ -292,6 +292,60 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == ["Client portal project created"])
     }
 
+    @Test func workspaceStoreNormalizesMissingRatesForExistingActiveBuckets() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000852")!
+        let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000852")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Rate repair",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: UUID(uuidString: "30000000-0000-0000-0000-000000000851")!,
+                            name: "Known rate",
+                            status: .ready,
+                            totalMinorUnits: 60_000,
+                            billableMinutes: 180,
+                            fixedCostMinorUnits: 0
+                        ),
+                        WorkspaceBucket(
+                            id: openBucketID,
+                            name: "Imported active work",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                                    startTime: "10:00",
+                                    endTime: "12:00",
+                                    durationMinutes: 120,
+                                    description: "Recovered billable work",
+                                    hourlyRateMinorUnits: 0
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        let project = try #require(store.workspace.projects.first)
+        let bucket = try #require(project.buckets.first { $0.id == openBucketID })
+        #expect(bucket.hourlyRateMinorUnits == 20_000)
+        #expect(bucket.timeEntries.first?.hourlyRateMinorUnits == 20_000)
+        #expect(bucket.effectiveTotalMinorUnits == 40_000)
+    }
+
     @Test func inMemoryWorkspaceStoreArchivesAndRestoresProjects() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000851")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
@@ -325,6 +379,52 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == [
             "Lifecycle project archived",
             "Lifecycle project restored",
+        ])
+        #expect(store.workspace.activity.map(\.occurredAt) == [
+            archiveDate,
+            restoreDate,
+        ])
+    }
+
+    @Test func inMemoryWorkspaceStoreArchivesAndRestoresBuckets() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000852")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000852")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Lifecycle project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Lifecycle bucket",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let archiveDate = Date.pikaDate(year: 2026, month: 4, day: 27)
+        let restoreDate = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        try store.archiveBucket(projectID: projectID, bucketID: bucketID, occurredAt: archiveDate)
+        #expect(store.workspace.projects.first?.buckets.first?.status == .archived)
+
+        try store.restoreBucket(projectID: projectID, bucketID: bucketID, occurredAt: restoreDate)
+        #expect(store.workspace.projects.first?.buckets.first?.status == .open)
+        #expect(store.workspace.activity.map(\.message) == [
+            "Lifecycle bucket archived",
+            "Lifecycle bucket restored",
         ])
         #expect(store.workspace.activity.map(\.occurredAt) == [
             archiveDate,

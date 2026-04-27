@@ -134,6 +134,7 @@ final class WorkspaceStore {
     init(seed: WorkspaceSnapshot = .sample, persistenceURL: URL? = nil) {
         self.persistenceURL = persistenceURL
         workspace = persistenceURL.flatMap(Self.loadWorkspace(from:)) ?? seed
+        workspace.normalizeMissingHourlyRates()
     }
 
     static func defaultPersistenceURL() -> URL? {
@@ -271,6 +272,34 @@ final class WorkspaceStore {
 
     func restoreProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
         try setProjectArchived(projectID: projectID, isArchived: false, occurredAt: occurredAt)
+    }
+
+    func archiveBucket(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        occurredAt: Date = .now
+    ) throws {
+        try updateBucketStatus(
+            projectID: projectID,
+            bucketID: bucketID,
+            to: .archived,
+            activityVerb: "archived",
+            occurredAt: occurredAt
+        )
+    }
+
+    func restoreBucket(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        occurredAt: Date = .now
+    ) throws {
+        try updateBucketStatus(
+            projectID: projectID,
+            bucketID: bucketID,
+            to: .open,
+            activityVerb: "restored",
+            occurredAt: occurredAt
+        )
     }
 
     @discardableResult
@@ -468,7 +497,7 @@ final class WorkspaceStore {
             durationMinutes: durationMinutes,
             description: description,
             isBillable: draft.isBillable,
-            hourlyRateMinorUnits: bucket.hourlyRateMinorUnits ?? 0
+            hourlyRateMinorUnits: bucket.hourlyRateMinorUnits ?? workspace.projects[projectIndex].defaultHourlyRateMinorUnits ?? 0
         ))
         if bucket.status == .ready {
             bucket.status = .open
@@ -690,6 +719,46 @@ final class WorkspaceStore {
             AppTelemetry.projectArchived(projectName: project.name)
         } else {
             AppTelemetry.projectRestored(projectName: project.name)
+        }
+
+        try persistWorkspace()
+    }
+
+    private func updateBucketStatus(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        to status: BucketStatus,
+        activityVerb: String,
+        occurredAt: Date
+    ) throws {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        switch status {
+        case .archived:
+            guard !bucket.status.isInvoiceLocked else {
+                throw WorkspaceStoreError.bucketLocked(bucket.status)
+            }
+        case .open:
+            guard bucket.status == .archived else {
+                throw WorkspaceStoreError.bucketLocked(bucket.status)
+            }
+        case .ready, .finalized:
+            throw WorkspaceStoreError.bucketStatusNotReady(bucket.status)
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex].status = status
+        appendActivity(
+            message: "\(bucket.name) \(activityVerb)",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+
+        if status == .archived {
+            AppTelemetry.bucketArchived(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        } else {
+            AppTelemetry.bucketRestored(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
         }
 
         try persistWorkspace()

@@ -6,6 +6,6 @@ name = "pika"
 script = ""
 
 [[actions]]
-name = "Run"
-icon = "run"
+name = "Play"
+icon = "play"
 command = "./script/build_and_run.sh --verify"
