@@ -43,6 +43,12 @@ struct WorkspaceProjectDraft: Equatable {
     var hourlyRateMinorUnits: Int
 }
 
+struct WorkspaceProjectUpdateDraft: Equatable {
+    var name: String
+    var clientName: String
+    var currencyCode: String
+}
+
 struct WorkspaceBucketDraft: Equatable {
     var name: String
     var hourlyRateMinorUnits: Int
@@ -265,6 +271,36 @@ final class WorkspaceStore {
 
     func restoreProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
         try setProjectArchived(projectID: projectID, isArchived: false, occurredAt: occurredAt)
+    }
+
+    @discardableResult
+    func updateProject(
+        projectID: WorkspaceProject.ID,
+        _ draft: WorkspaceProjectUpdateDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceProject {
+        let index = try projectIndex(projectID)
+        let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !projectName.isEmpty, !clientName.isEmpty, !currencyCode.isEmpty else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        workspace.projects[index].name = projectName
+        workspace.projects[index].clientName = clientName
+        workspace.projects[index].currencyCode = currencyCode.uppercased()
+        let project = workspace.projects[index]
+
+        appendActivity(
+            message: "\(project.name) project updated",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectUpdated(projectName: project.name, clientName: project.clientName)
+        try persistWorkspace()
+        return project
     }
 
     @discardableResult

@@ -16,6 +16,7 @@ struct ProjectPlaceholderView: View {
     @State private var showsCreateBucket = false
     @State private var showsFixedCostSheet = false
     @State private var showsArchiveConfirmation = false
+    @State private var showsEditProject = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -104,6 +105,15 @@ struct ProjectPlaceholderView: View {
 
             Menu {
                 Button {
+                    showsEditProject = true
+                } label: {
+                    Label("Edit Project", systemImage: "pencil")
+                }
+                .disabled(project == nil)
+
+                Divider()
+
+                Button {
                     if project?.isArchived == true {
                         restoreProject()
                     } else {
@@ -142,6 +152,16 @@ struct ProjectPlaceholderView: View {
                     finalizeInvoice(presentation: presentation, draft: draft)
                 }
             )
+        }
+        .sheet(isPresented: $showsEditProject) {
+            if let project {
+                ProjectEditorSheet(
+                    project: project,
+                    clients: workspaceStore.workspace.clients,
+                    onCancel: { showsEditProject = false },
+                    onSave: updateProject
+                )
+            }
         }
         .sheet(isPresented: $showsCreateBucket) {
             CreateBucketSheet(
@@ -213,6 +233,17 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func updateProject(_ draft: WorkspaceProjectUpdateDraft) {
+        guard let project else { return }
+
+        do {
+            try workspaceStore.updateProject(projectID: project.id, draft)
+            showsEditProject = false
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }

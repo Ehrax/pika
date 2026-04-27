@@ -330,6 +330,70 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func inMemoryWorkspaceStoreUpdatesProjectMetadataWithoutRewritingHistory() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000861")!
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000861")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000861")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Original project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Existing bucket",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: [
+                        WorkspaceInvoice(
+                            id: invoiceID,
+                            number: "EHX-2026-861",
+                            clientName: "Happ.ines",
+                            projectName: "Original project",
+                            bucketName: "Existing bucket",
+                            issueDate: Date.pikaDate(year: 2026, month: 4, day: 1),
+                            dueDate: Date.pikaDate(year: 2026, month: 4, day: 15),
+                            status: .finalized,
+                            totalMinorUnits: 12_000
+                        ),
+                    ]
+                ),
+            ],
+            activity: []
+        ))
+        let occurredAt = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let project = try store.updateProject(
+            projectID: projectID,
+            WorkspaceProjectUpdateDraft(
+                name: "  Retainer work  ",
+                clientName: "  Northstar Labs  ",
+                currencyCode: " usd "
+            ),
+            occurredAt: occurredAt
+        )
+
+        #expect(project.id == projectID)
+        #expect(project.name == "Retainer work")
+        #expect(project.clientName == "Northstar Labs")
+        #expect(project.currencyCode == "USD")
+        #expect(project.buckets.map(\.id) == [bucketID])
+        #expect(project.invoices.map(\.projectName) == ["Original project"])
+        #expect(store.workspace.projects.first == project)
+        #expect(store.workspace.activity.map(\.message) == ["Retainer work project updated"])
+        #expect(store.workspace.activity.first?.occurredAt == occurredAt)
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesClientAndRecordsActivity() throws {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: WorkspaceSnapshot.sample.businessProfile,

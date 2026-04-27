@@ -36,6 +36,10 @@ enum AppTelemetry {
         projectLogger.info("project.created project=\(projectName, privacy: .private) client=\(clientName, privacy: .private)")
     }
 
+    static func projectUpdated(projectName: String, clientName: String) {
+        projectLogger.info("project.updated project=\(projectName, privacy: .private) client=\(clientName, privacy: .private)")
+    }
+
     static func projectArchived(projectName: String) {
         projectLogger.info("project.archived project=\(projectName, privacy: .private)")
     }
