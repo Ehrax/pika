@@ -3,10 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-if ! command -v carp >/dev/null 2>&1; then
-  echo "Carp is the chosen metrics command for the ambiguous 'crab/Carp' request, but 'carp' is not installed." >&2
+if ! command -v lizard >/dev/null 2>&1; then
+  echo "Lizard is the chosen Swift metrics command, but 'lizard' is not installed." >&2
+  echo "Install with: python3 -m pip install lizard" >&2
   exit 2
 fi
 
-carp --version
-carp --path "$ROOT_DIR/pika" --format plain
+lizard --version
+lizard -l swift "$ROOT_DIR/pika"

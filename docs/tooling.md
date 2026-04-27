@@ -83,16 +83,20 @@ Change the destination id or destination spec as needed for the local simulator 
 
 ## Metrics
 
-The ambiguous "crab/Carp" metrics request is resolved to Carp. Run metrics with:
+The ambiguous "crab/Carp" metrics request is resolved to Lizard because it is a small, common complexity tool with Swift support. Run metrics with:
 
 ```bash
 ./script/metrics.sh
 ```
 
-The script runs `carp --version` and then:
+The script runs `lizard --version` and then:
 
 ```bash
-carp --path pika --format plain
+lizard -l swift pika
 ```
 
-If the command exits with code 2, Carp is the chosen metrics command but is unavailable on the machine.
+If the command exits with code 2, Lizard is the chosen metrics command but is unavailable on the machine. Install it with:
+
+```bash
+python3 -m pip install lizard
+```
