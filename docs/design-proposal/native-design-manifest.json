@@ -1,0 +1,1393 @@
+{
+  "metadata": {
+    "name": "Pika Native Design Manifest",
+    "generatedDate": "2026-04-27",
+    "generatedBy": "Codex design-translation subagent",
+    "designIntent": "Translate the React and web hi-fi proposal into native SwiftUI decisions for a calm, dense, professional freelance invoicing app. Preserve the proposal's information hierarchy and dark, focused working surface, but use native Apple structure, controls, materials, accessibility, and platform conventions instead of recreating web chrome.",
+    "macFirstPriority": true,
+    "priorityStatement": "macOS is the primary product surface and must become usable end to end before iOS or iPadOS polish consumes meaningful implementation time.",
+    "writeScope": [
+      "docs/design-proposal/native-design-manifest.json"
+    ],
+    "readOnlySourceFiles": [
+      "AGENTS.md",
+      "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+      "docs/design-proposal/hifi-mac.jsx",
+      "docs/design-proposal/hifi-iphone.jsx",
+      "docs/design-proposal/hifi-atoms.jsx",
+      "docs/design-proposal/hifi-tokens.jsx",
+      "docs/design-proposal/storyboard-mac-a.jsx",
+      "docs/design-proposal/storyboard-mac-b.jsx",
+      "docs/design-proposal/storyboard-phone.jsx",
+      "docs/design-proposal/Pika Hi-Fi.html",
+      "docs/design-proposal/Pika Wireframes.html",
+      "docs/design-proposal/Pika Wireframes-print.html",
+      "docs/design-proposal/screenshots/"
+    ],
+    "sourceScreenshotInventory": {
+      "macOS": [
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.36.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.42.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.46.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.48.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.54.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.58.png",
+        "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.59.01.png"
+      ],
+      "iOS": [
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.33.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.37.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.40.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.43.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.46.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.49.png",
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.53.png"
+      ]
+    },
+    "sourceTokenIntent": {
+      "appearance": "Support dark and light appearances, with dark as the proposal's primary verification target.",
+      "type": "Use native system typography by default. Use monospaced digits for money, durations, dates, invoice numbers, and table numeric columns.",
+      "density": "Keep desktop rows compact and scannable. Keep phone rows touch-friendly while retaining numeric clarity.",
+      "color": "Preserve semantic accents for ready, finalized, sent, overdue, paid, danger, success, and primary actions, but route final colors through native semantic roles and accessibility contrast checks."
+    }
+  },
+  "platformPrinciples": {
+    "macOS": {
+      "priority": "primary",
+      "navigation": "Use NavigationSplitView with a native sidebar for workspace areas and projects. Use a second column for project buckets where the selected destination benefits from a three-pane workflow.",
+      "windowing": "Use the real macOS window and toolbar. Do not recreate HFWindow or fake traffic-light-less web chrome. The app content should fill the window with native titlebar and toolbar placement.",
+      "layout": "Favor dense tables, lists, inspectors, and split views. Use fixed minimum column widths for sidebar and bucket list, with the detail pane taking remaining width.",
+      "controls": "Use Button, Menu, Picker, Toggle, TextField, DatePicker, Table, Form, sheet, popover, inspector, toolbar items, and keyboard shortcuts rather than custom clickable divs.",
+      "workflow": "Optimize for keyboard-first capture, quick command/search, inline row creation, and low-modal friction.",
+      "liquidGlass": "Use glass only for app chrome, toolbar-adjacent controls, floating command/search affordances, transient sheets, and selected navigation surfaces where it improves hierarchy without hurting legibility."
+    },
+    "iOS": {
+      "priority": "companion after Mac loop is usable",
+      "navigation": "Use NavigationStack with large titles for top-level companion screens and compact navigation bars for pushed details.",
+      "layout": "Use List, ScrollView, sections, safe areas, native sheets, and touch targets. Do not force desktop three-pane density onto iPhone.",
+      "controls": "Use native add sheets, DatePicker or time input controls, Toggle for billable state, confirmation actions, and bottom toolbars where appropriate.",
+      "workflow": "Focus on triage, quick logging, project and bucket review, ready-to-invoice confirmation, invoice viewing, and basic invoice status actions.",
+      "liquidGlass": "Use glass sparingly for bottom sheets, floating add/action buttons, and navigation bars. Keep entry rows, totals, and PDF previews plain."
+    },
+    "iPadOS": {
+      "priority": "adaptive companion after Mac",
+      "navigation": "Adapt iPhone NavigationStack flows into NavigationSplitView when horizontal size class is regular, with Projects or Today in the sidebar and bucket or invoice detail beside it.",
+      "layout": "Use larger touch-friendly rows than Mac but allow side-by-side review of bucket lists and details.",
+      "controls": "Prefer native split views, sheets, popovers, keyboard shortcuts, and drag-safe layout. Reuse Mac information architecture where it fits, not the web screenshots.",
+      "liquidGlass": "Mirror iOS glass choices for chrome and transient controls; keep business data and document surfaces legible."
+    }
+  },
+  "screens": [
+    {
+      "proposalId": "hifi-mac-a1",
+      "proposalName": "A1 - Projects - choose one",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-a.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "ProjectsView",
+      "nativeStructure": "NavigationSplitView sidebar plus main content. Main pane uses a toolbar title, segmented Picker for active versus archived projects, LazyVGrid or Table-adjacent card rows depending window width, and recent activity below.",
+      "primaryControls": [
+        "Sidebar selection for Dashboard, Projects, Invoices, Clients, Settings",
+        "Toolbar search command",
+        "New Project button",
+        "Active/Archived segmented control",
+        "Project row/card navigation"
+      ],
+      "dataConcepts": [
+        "Project",
+        "Client",
+        "Bucket counts",
+        "Open amount",
+        "Ready amount",
+        "Overdue invoice amount",
+        "ActivityEvent"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.36.png",
+          "verifies": "Primary Projects landing hierarchy, sidebar, toolbar actions, project totals, ready and overdue attention states."
+        },
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.42.png",
+          "verifies": "Projects landing with lower recent activity content visible."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Replace card-heavy grid with native adaptive grid or table/list behavior when the window is narrow.",
+        "Use SF Symbols instead of geometric text glyphs.",
+        "Use the native window toolbar instead of an in-content web top bar where possible."
+      ]
+    },
+    {
+      "proposalId": "wire-mac-a1-empty",
+      "proposalName": "A1 wireframe - open empty day",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-mac-a.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "BucketDetailView empty state",
+      "nativeStructure": "Three-pane NavigationSplitView state with selected project, selected bucket, and an empty entries section in the detail pane.",
+      "primaryControls": [
+        "New bucket button",
+        "Inline add affordance",
+        "Keyboard shortcut to begin entry capture"
+      ],
+      "dataConcepts": [
+        "Project",
+        "Bucket",
+        "TimeEntry draft defaults"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P2",
+      "knownDeviations": [
+        "Use a native ContentUnavailableView-style empty state or a small inline prompt instead of sketch placeholder styling."
+      ]
+    },
+    {
+      "proposalId": "hifi-mac-a2",
+      "proposalName": "A2 - Bucket detail",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-a.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "BucketDetailView",
+      "nativeStructure": "NavigationSplitView with sidebar, bucket list column, and detail pane. Detail pane uses header totals plus a native Table for entries, with plain rows for billable and non-billable states.",
+      "primaryControls": [
+        "Bucket list selection",
+        "Mark Ready toolbar button",
+        "Add entry inline command",
+        "Entry row selection/editing",
+        "Bucket status pill"
+      ],
+      "dataConcepts": [
+        "Bucket",
+        "Project",
+        "Client",
+        "TimeEntry",
+        "FixedCostEntry",
+        "Billable duration",
+        "Non-billable duration",
+        "Rate snapshot"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.46.png",
+          "verifies": "Three-pane bucket detail, table density, billable and non-billable rows, totals, mark-ready affordance."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Use native Table columns on macOS instead of CSS grid.",
+        "Keep table and row backgrounds plain, not glass.",
+        "Use disclosure or inspector patterns for deeper row editing if inline editing becomes crowded."
+      ]
+    },
+    {
+      "proposalId": "hifi-mac-a3",
+      "proposalName": "A3 - Inline add",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-a.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "InlineEntryEditor within BucketDetailView",
+      "nativeStructure": "Editable draft row embedded in the entries Table or directly below the table header. Use focus state, keyboard shortcuts, validation, and save-add-another behavior.",
+      "primaryControls": [
+        "Focused time range field",
+        "Description TextField",
+        "Billable toggle or keyboard modifier",
+        "Return to save",
+        "Tab to next field",
+        "Escape to cancel"
+      ],
+      "dataConcepts": [
+        "TimeEntry draft",
+        "Duration parser",
+        "Billable flag",
+        "Bucket rate",
+        "Computed amount"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.48.png",
+          "verifies": "Active draft row, focus ring, calculated duration and amount, keyboard helper line."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Use native focus rings and validation affordances instead of custom accent borders.",
+        "Keep helper text minimal or place it in a status area so it does not compete with the table."
+      ]
+    },
+    {
+      "proposalId": "wire-mac-a4",
+      "proposalName": "A4 - change rate 80 to 90",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-mac-a.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "BucketRateEditor",
+      "nativeStructure": "Small inline edit or popover from the bucket header rate label, with confirmation that unlocked entries re-total while finalized invoice snapshots remain unchanged.",
+      "primaryControls": [
+        "Rate field",
+        "Apply button",
+        "Cancel button",
+        "Warning text for unlocked entries"
+      ],
+      "dataConcepts": [
+        "Bucket rate",
+        "TimeEntry rate snapshot",
+        "Invoice line snapshot",
+        "Unlocked entries"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P3",
+      "knownDeviations": [
+        "Avoid hand-drawn annotation. Use concise native help text or a confirmation sheet when rate changes affect existing unlocked entries."
+      ]
+    },
+    {
+      "proposalId": "wire-mac-a5",
+      "proposalName": "A5 - mark ready",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-mac-a.jsx",
+        "docs/design-proposal/hifi-iphone.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "ReadyBucketSummary within BucketDetailView",
+      "nativeStructure": "A plain summary section above or below the entries table showing ready status, billable hours, fixed costs, total, and Create Invoice action.",
+      "primaryControls": [
+        "Edit bucket button",
+        "Create Invoice button",
+        "Ready status pill"
+      ],
+      "dataConcepts": [
+        "Bucket status",
+        "Ready total",
+        "Billable entries",
+        "Fixed costs"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Keep the ready summary as a solid, high-contrast surface rather than translucent glass."
+      ]
+    },
+    {
+      "proposalId": "hifi-mac-b1",
+      "proposalName": "B1 - Dashboard",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-b.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "DashboardView",
+      "nativeStructure": "NavigationSplitView main dashboard with KPI summary, needs-attention table/list, and revenue chart. Use Charts for revenue history when available.",
+      "primaryControls": [
+        "Toolbar search command",
+        "New invoice or quick action menu",
+        "Needs-attention row actions",
+        "Revenue period picker"
+      ],
+      "dataConcepts": [
+        "DashboardSummary",
+        "Invoice status",
+        "Ready buckets",
+        "Overdue invoices",
+        "Revenue history",
+        "ActivityEvent"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.54.png",
+          "verifies": "Dashboard KPIs, needs-attention actions, revenue chart, sidebar selection, new-invoice action."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Use native Chart instead of SVG sparkline.",
+        "Use list/table rows for needs-attention actions instead of web card rows if it improves keyboard navigation."
+      ]
+    },
+    {
+      "proposalId": "wire-mac-b2",
+      "proposalName": "B2 - open ready bucket",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-mac-b.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "DashboardView -> BucketDetailView",
+      "nativeStructure": "Dashboard needs-attention row navigates to the bucket detail with ready summary visible and selected bucket highlighted.",
+      "primaryControls": [
+        "Create invoice row action",
+        "Navigation selection sync"
+      ],
+      "dataConcepts": [
+        "Ready bucket",
+        "Dashboard attention item",
+        "Navigation selection"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P2",
+      "knownDeviations": [
+        "Do not create a separate ready-bucket screen if the normal bucket detail can express the state clearly."
+      ]
+    },
+    {
+      "proposalId": "hifi-mac-b3",
+      "proposalName": "B3 - Confirm sheet",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-b.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "CreateInvoiceConfirmationSheet",
+      "nativeStructure": "Native modal sheet from Dashboard or BucketDetail. Content uses Form-like fields for recipient, invoice number, issue date, due date, currency, note, and a plain totals summary.",
+      "primaryControls": [
+        "Recipient field or picker",
+        "Invoice number field",
+        "Issue DatePicker",
+        "Due DatePicker",
+        "Currency picker",
+        "Invoice note field",
+        "Save as finalized",
+        "Finalize and open PDF",
+        "Cancel"
+      ],
+      "dataConcepts": [
+        "Invoice draft",
+        "Invoice number sequence",
+        "Client snapshot",
+        "Bucket snapshots",
+        "Line item snapshots",
+        "Business profile",
+        "PDF render request"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.58.png",
+          "verifies": "Confirm sheet proportions, fields, totals, modal backdrop, finalize actions."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Use native sheet sizing and accessibility rather than absolute positioned modal.",
+        "Keep the totals strip plain for legibility, not glass.",
+        "Use native DatePicker and Picker even if their visual shape differs from HFField."
+      ]
+    },
+    {
+      "proposalId": "hifi-mac-b4",
+      "proposalName": "B4 - Finalized - PDF",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-mac-b.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "InvoiceDetailView",
+      "nativeStructure": "NavigationSplitView invoice destination with metadata inspector column and PDF preview document surface. Toolbar exposes share/open, export PDF, mark sent, and later mark paid.",
+      "primaryControls": [
+        "Open or share PDF",
+        "Export PDF",
+        "Mark sent",
+        "Mark paid when sent",
+        "Invoice metadata list",
+        "Activity timeline"
+      ],
+      "dataConcepts": [
+        "Invoice",
+        "Invoice status",
+        "PDF render record",
+        "Client snapshot",
+        "Business profile snapshot",
+        "ActivityEvent"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.59.01.png",
+          "verifies": "Invoice detail metadata column, status, activity, white PDF preview, export/open actions."
+        }
+      ],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Render the PDF preview as a real generated document preview if possible, not a SwiftUI recreation.",
+        "Keep PDF paper white and opaque in all appearances.",
+        "Use platform sharing/export affordances instead of custom web buttons where appropriate."
+      ]
+    },
+    {
+      "proposalId": "native-mac-clients",
+      "proposalName": "Clients",
+      "sourceFiles": [
+        "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+        "docs/design-proposal/hifi-atoms.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "ClientsView and ClientDetailView",
+      "nativeStructure": "Sidebar destination with a searchable Table or List of clients and a detail form or inspector for billing address, email, payment terms, and archive state.",
+      "primaryControls": [
+        "New client",
+        "Search clients",
+        "Edit client fields",
+        "Archive client"
+      ],
+      "dataConcepts": [
+        "Client",
+        "Billing address",
+        "Email",
+        "Default payment terms",
+        "Archive state"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P2",
+      "knownDeviations": [
+        "No hi-fi screenshot exists; derive visual treatment from Projects and Settings surfaces."
+      ]
+    },
+    {
+      "proposalId": "native-mac-settings",
+      "proposalName": "Settings",
+      "sourceFiles": [
+        "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+        "docs/design-proposal/hifi-atoms.jsx"
+      ],
+      "platform": "macOS",
+      "swiftuiDestination": "SettingsScene or SettingsView",
+      "nativeStructure": "Native macOS Settings scene where possible. Sections cover business profile, invoice numbering, payment details, default currency, and default tax/VAT note.",
+      "primaryControls": [
+        "Business profile form",
+        "Invoice prefix and next number fields",
+        "Payment details fields",
+        "Currency picker",
+        "Tax/VAT note text editor"
+      ],
+      "dataConcepts": [
+        "BusinessProfile",
+        "InvoiceNumberingSettings",
+        "PaymentDetails",
+        "Currency",
+        "TaxNote"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "Mac P1",
+      "knownDeviations": [
+        "Use native Settings layout instead of embedding settings as another web-style content card."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-d1",
+      "proposalName": "D1 - Projects",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "ProjectsStackView",
+      "nativeStructure": "NavigationStack root or tab destination with large title and List rows for projects.",
+      "primaryControls": [
+        "New project action",
+        "Project row navigation"
+      ],
+      "dataConcepts": [
+        "Project",
+        "Bucket counts",
+        "Ready status",
+        "Overdue status",
+        "Project amount"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.33.png",
+          "verifies": "Phone projects list, large title, status pills, touch row hierarchy."
+        }
+      ],
+      "implementationPriority": "iOS P2 after Mac",
+      "knownDeviations": [
+        "Use native NavigationStack large title instead of manual top padding for Dynamic Island.",
+        "Rows should support dynamic type and standard swipe/context actions where useful."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-d2",
+      "proposalName": "D2 - Buckets",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "BucketsStackView",
+      "nativeStructure": "Pushed NavigationStack destination with project subtitle and List rows for buckets.",
+      "primaryControls": [
+        "Back to projects",
+        "New bucket",
+        "Bucket row navigation"
+      ],
+      "dataConcepts": [
+        "Project",
+        "Bucket",
+        "Bucket status",
+        "Fixed cost bucket",
+        "Finalized invoice link"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.37.png",
+          "verifies": "Phone buckets list, back navigation, ready/finalized status display."
+        }
+      ],
+      "implementationPriority": "iOS P2 after Mac",
+      "knownDeviations": [
+        "Use native back button and toolbar item placement.",
+        "Avoid custom chevron text; use NavigationLink row affordance."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-d3",
+      "proposalName": "D3 - Bucket detail",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "BucketDetailStackView",
+      "nativeStructure": "Pushed NavigationStack destination with compact top total, mark-ready action, sectioned entries by date, and floating or toolbar add action.",
+      "primaryControls": [
+        "Back to buckets",
+        "More menu",
+        "Mark ready",
+        "Add entry",
+        "Entry row navigation"
+      ],
+      "dataConcepts": [
+        "Bucket",
+        "TimeEntry",
+        "FixedCostEntry",
+        "Billable total",
+        "Non-billable duration",
+        "Rate"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.40.png",
+          "verifies": "Phone bucket detail total, date grouping, row density, floating add action."
+        }
+      ],
+      "implementationPriority": "iOS P2 after Mac",
+      "knownDeviations": [
+        "Prefer toolbar add button if floating button conflicts with scroll content or accessibility.",
+        "Use native section headers, not uppercase CSS-styled divs."
+      ]
+    },
+    {
+      "proposalId": "wire-phone-d3b",
+      "proposalName": "D3b - Entry detail",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "EntryDetailView",
+      "nativeStructure": "Pushed detail screen for an entry with date, time range, duration, billable state, title/note, edit, and delete actions.",
+      "primaryControls": [
+        "Edit times",
+        "Billable toggle",
+        "Delete",
+        "More menu"
+      ],
+      "dataConcepts": [
+        "TimeEntry",
+        "Entry note",
+        "Billable flag",
+        "Rate snapshot"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "iOS P3",
+      "knownDeviations": [
+        "Use a native Form or grouped List layout instead of sketch-only typography."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-d4",
+      "proposalName": "D4 - Add sheet",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "EntryEditorSheet",
+      "nativeStructure": "Bottom sheet using native presentation detents, with fields for date, from time, to time, description, computed total, billable toggle, cancel, and save.",
+      "primaryControls": [
+        "Cancel",
+        "Save",
+        "Date picker",
+        "From time field",
+        "To time field",
+        "Description field",
+        "Billable toggle"
+      ],
+      "dataConcepts": [
+        "TimeEntry draft",
+        "Duration parser",
+        "Computed amount",
+        "Billable flag",
+        "Bucket rate"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.43.png",
+          "verifies": "Phone bottom sheet, focused time field, computed amount, dimmed backdrop."
+        }
+      ],
+      "implementationPriority": "iOS P2 after Mac",
+      "knownDeviations": [
+        "Use native sheet drag indicator and detents.",
+        "Use Toggle for non-billable/billable state rather than a custom pill button if clearer."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-d5",
+      "proposalName": "D5 - Ready to invoice",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "ReadyBucketView",
+      "nativeStructure": "Bucket detail state with ready summary at top, editable entries list below, and Create Invoice action.",
+      "primaryControls": [
+        "Edit bucket",
+        "Create invoice",
+        "More menu"
+      ],
+      "dataConcepts": [
+        "Ready bucket",
+        "Bucket total",
+        "Time entries",
+        "Fixed costs",
+        "Invoice draft seed"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.46.png",
+          "verifies": "Ready state summary, create-invoice action, editable entries list."
+        }
+      ],
+      "implementationPriority": "iOS P2 after Mac",
+      "knownDeviations": [
+        "Use a solid success-tinted surface with accessible contrast; do not make totals translucent."
+      ]
+    },
+    {
+      "proposalId": "screenshot-phone-invoice-confirm",
+      "proposalName": "Phone create invoice sheet",
+      "sourceFiles": [
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.49.png",
+        "docs/design-proposal/hifi-mac.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "CreateInvoiceConfirmationSheet",
+      "nativeStructure": "iPhone bottom sheet version of the Mac confirmation form, using vertical fields and a full-width primary finalize action.",
+      "primaryControls": [
+        "Recipient field",
+        "Invoice number field",
+        "Issue date",
+        "Due date",
+        "Finalize and open PDF",
+        "Save as finalized",
+        "Cancel"
+      ],
+      "dataConcepts": [
+        "Invoice draft",
+        "Invoice number sequence",
+        "Client snapshot",
+        "Bucket snapshot",
+        "PDF render request"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.49.png",
+          "verifies": "iPhone invoice confirmation sheet and primary finalize action."
+        }
+      ],
+      "implementationPriority": "iOS P3 after Mac invoice flow",
+      "knownDeviations": [
+        "Use native DatePicker presentation if direct text date editing is error-prone on phone."
+      ]
+    },
+    {
+      "proposalId": "screenshot-phone-invoice-detail",
+      "proposalName": "Phone invoice detail",
+      "sourceFiles": [
+        "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.53.png",
+        "docs/design-proposal/hifi-mac.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "InvoiceDetailStackView",
+      "nativeStructure": "Pushed invoice detail with status, amount, metadata summary, PDF preview, and bottom action bar or toolbar actions.",
+      "primaryControls": [
+        "Open PDF",
+        "Share",
+        "Export PDF",
+        "Mark sent",
+        "Mark paid when applicable"
+      ],
+      "dataConcepts": [
+        "Invoice",
+        "Invoice status",
+        "PDF render record",
+        "Client snapshot",
+        "Payment details"
+      ],
+      "screenshotVerificationTargets": [
+        {
+          "path": "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.53.png",
+          "verifies": "iPhone invoice metadata, PDF preview, and status actions."
+        }
+      ],
+      "implementationPriority": "iOS P3 after Mac invoice flow",
+      "knownDeviations": [
+        "Use Quick Look or native document preview where practical instead of a bitmap-like SwiftUI approximation.",
+        "Keep the PDF preview white and opaque."
+      ]
+    },
+    {
+      "proposalId": "hifi-phone-e1",
+      "proposalName": "E1 - Today",
+      "sourceFiles": [
+        "docs/design-proposal/hifi-iphone.jsx",
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "TodayView",
+      "nativeStructure": "NavigationStack root or tab destination focused on companion triage: outstanding amount, overdue amount, ready buckets, month summary, needs-attention rows, and quick-log affordance.",
+      "primaryControls": [
+        "Quick add",
+        "Needs-attention row navigation",
+        "Inline quick log save"
+      ],
+      "dataConcepts": [
+        "DashboardSummary",
+        "Ready buckets",
+        "Overdue invoices",
+        "QuickLog draft",
+        "ActivityEvent"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "iOS P2 after Mac dashboard",
+      "knownDeviations": [
+        "No current screenshot in inventory; verify after iOS companion work begins.",
+        "Prefer native list/section styling over dashboard card overload on small screens."
+      ]
+    },
+    {
+      "proposalId": "wire-phone-e2",
+      "proposalName": "E2 - Quick add any bucket",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "QuickAddEntrySheet",
+      "nativeStructure": "Bottom sheet from Today with bucket picker, recent bucket chips or menu, time fields, computed amount, and save-add-another action.",
+      "primaryControls": [
+        "Bucket picker",
+        "Recent bucket chips",
+        "From time",
+        "To time",
+        "Save and add another"
+      ],
+      "dataConcepts": [
+        "Project",
+        "Bucket",
+        "TimeEntry draft",
+        "Duration parser",
+        "Rate defaults"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "iOS P3",
+      "knownDeviations": [
+        "Use Picker/Menu for bucket selection when chips become too many."
+      ]
+    },
+    {
+      "proposalId": "wire-phone-e3",
+      "proposalName": "E3 - Overdue invoice action",
+      "sourceFiles": [
+        "docs/design-proposal/storyboard-phone.jsx"
+      ],
+      "platform": "iOS",
+      "swiftuiDestination": "InvoiceActionView",
+      "nativeStructure": "Invoice detail state for overdue invoices with prominent amount, line snapshots, note, and status actions.",
+      "primaryControls": [
+        "Mark paid",
+        "Send reminder",
+        "Open PDF"
+      ],
+      "dataConcepts": [
+        "Invoice",
+        "Invoice status",
+        "Overdue derived state",
+        "Snapshot line items",
+        "PDF render record"
+      ],
+      "screenshotVerificationTargets": [],
+      "implementationPriority": "iOS P3",
+      "knownDeviations": [
+        "Reminder/email automation can be deferred; keep a Mail handoff or disabled future affordance only if the app can support it honestly."
+      ]
+    }
+  ],
+  "atomsAndComponents": {
+    "HFWindow": {
+      "webRole": "Fake app window with rounded border, custom surface, no traffic lights.",
+      "nativeSwiftUIReplacement": "Use the real app WindowGroup content and native macOS window/titlebar. Configure toolbar and content background; do not build custom window chrome.",
+      "platformNotes": "On iOS, this maps to the normal screen safe-area container. On iPadOS, it maps to the app scene and split view."
+    },
+    "HFSidebar": {
+      "webRole": "Narrow workspace and project navigation column.",
+      "nativeSwiftUIReplacement": "NavigationSplitView sidebar containing a List with sections for Workspace and Projects. Use Label with SF Symbols and badges/counts.",
+      "platformNotes": "On iPhone this becomes top-level NavigationStack roots or tabs, not a persistent sidebar. On iPad regular width it becomes a native sidebar."
+    },
+    "HFNavLabel": {
+      "webRole": "Uppercase sidebar section label.",
+      "nativeSwiftUIReplacement": "List Section headers or small secondary Text using system section styling.",
+      "platformNotes": "Avoid manual uppercase where native Section header style already communicates grouping."
+    },
+    "HFNavItem": {
+      "webRole": "Clickable sidebar row with active state, icon/dot, optional count.",
+      "nativeSwiftUIReplacement": "NavigationLink row with Label, Badge, selected state from NavigationSplitView selection, and optional colored project dot.",
+      "platformNotes": "Use SF Symbols for workspace areas and small color circles for project identity."
+    },
+    "HFPill": {
+      "webRole": "Small status indicator with dot, tint, and label.",
+      "nativeSwiftUIReplacement": "Reusable StatusBadge SwiftUI view using Text plus small Circle, semantic colors, accessibility label, and fixed compact padding.",
+      "platformNotes": "Do not use glass. Keep solid tinted backgrounds for ready, finalized, sent, overdue, paid, accent, and neutral states."
+    },
+    "HFButton": {
+      "webRole": "Custom web button variants: primary, ghost, danger, sizes, icon.",
+      "nativeSwiftUIReplacement": "Native Button with appropriate buttonStyle: borderedProminent for primary, bordered/plain for secondary, destructive role for danger, toolbar placement for chrome actions.",
+      "platformNotes": "Use SF Symbols in labels. Preserve keyboard shortcuts for Mac actions such as search, add, save, cancel, and mark ready."
+    },
+    "HFCard": {
+      "webRole": "Flat bordered content surface.",
+      "nativeSwiftUIReplacement": "Use GroupBox, Form sections, List/Table containers, or a small local bordered Surface view only when a native container is not suitable.",
+      "platformNotes": "Avoid nested cards. Keep dense business data plain and high contrast."
+    },
+    "HFNum_HFMoney_fmtMoney": {
+      "webRole": "Monospaced/tabular numeric text and Swiss-style currency formatting.",
+      "nativeSwiftUIReplacement": "Text with monospacedDigit(), numeric text style, and a shared currency formatter or FormatStyle. Preserve stable width for money, durations, dates, invoice numbers, and table numbers.",
+      "platformNotes": "Use locale-aware formatting where appropriate, but the first product pass may preserve EUR display and invoice-specific formatting from settings."
+    },
+    "HFField": {
+      "webRole": "Static-looking input block with label, prefix/suffix, focus ring, and optional monospace.",
+      "nativeSwiftUIReplacement": "TextField, TextEditor, SecureField if ever needed, DatePicker, Picker, or custom field row only when native controls cannot express the required compact layout.",
+      "platformNotes": "Use native focus rings and validation. For time ranges, consider a focused parser field on Mac and DatePicker/time controls on iOS."
+    },
+    "HFSectionLabel": {
+      "webRole": "Uppercase section heading with optional action.",
+      "nativeSwiftUIReplacement": "Section header, Table header, or small secondary Text with trailing toolbar/action only when the section needs an inline command.",
+      "platformNotes": "Use native capitalization where it reads better with Dynamic Type."
+    },
+    "HFDivider": {
+      "webRole": "One-pixel border line.",
+      "nativeSwiftUIReplacement": "Divider() or native section/list separators.",
+      "platformNotes": "Let List/Table separators handle row boundaries unless a custom layout needs explicit division."
+    },
+    "HFTopBar": {
+      "webRole": "In-content top bar with title, breadcrumbs, and right actions.",
+      "nativeSwiftUIReplacement": "Native toolbar and navigation title. Use ToolbarItem placement, NavigationSplitView title, breadcrumbs in content only when they aid orientation.",
+      "platformNotes": "On Mac, prefer actual window toolbar. On iOS, use navigationBarTitleDisplayMode and toolbar items."
+    },
+    "PhoneCanvas": {
+      "webRole": "Manual iPhone content surface with hard-coded Dynamic Island and home indicator padding.",
+      "nativeSwiftUIReplacement": "NavigationStack or screen root respecting safeAreaInset and native system bars.",
+      "platformNotes": "Do not hard-code device padding in app code."
+    },
+    "PhoneLargeTitle": {
+      "webRole": "Manual large title and optional back/right action.",
+      "nativeSwiftUIReplacement": "navigationTitle with large display mode plus toolbar items.",
+      "platformNotes": "Use native back button behavior, Dynamic Type, and swipe-back gesture."
+    },
+    "PhoneNav": {
+      "webRole": "Manual centered title nav row with back/right slots.",
+      "nativeSwiftUIReplacement": "NavigationStack toolbar with inline title display mode.",
+      "platformNotes": "Use Menu for ellipsis actions."
+    },
+    "PhoneFAB": {
+      "webRole": "Floating plus button.",
+      "nativeSwiftUIReplacement": "Toolbar add button, bottom safe-area action, or floating Button with glass/tint only when it does not obscure scroll content.",
+      "platformNotes": "On iOS, verify with Dynamic Type and scrolling so the action never covers critical rows."
+    }
+  },
+  "liquidGlassDecisions": {
+    "candidates": [
+      {
+        "element": "macOS window toolbar and command/search affordance",
+        "decision": "candidate",
+        "rationale": "Chrome-level controls benefit from system material separation and can feel native without reducing data legibility."
+      },
+      {
+        "element": "macOS sidebar selected navigation surface",
+        "decision": "candidate",
+        "rationale": "A subtle glass or material treatment can distinguish the active workspace while keeping the sidebar native."
+      },
+      {
+        "element": "macOS invoice confirmation sheet",
+        "decision": "candidate for sheet container only",
+        "rationale": "Transient modal chrome can use material to float over the dashboard. Form fields and totals inside should remain opaque."
+      },
+      {
+        "element": "iOS bottom sheets for entry and invoice confirmation",
+        "decision": "candidate for sheet background/chrome only",
+        "rationale": "Native sheet material and drag indicator match platform expectations. Editable controls and totals need solid backgrounds."
+      },
+      {
+        "element": "iOS floating add action",
+        "decision": "candidate",
+        "rationale": "A small floating action may use glass or prominent tint if it remains readable and does not cover business data."
+      },
+      {
+        "element": "popover or command palette for search",
+        "decision": "candidate",
+        "rationale": "Transient search surfaces are chrome, not dense data, and can use glass to communicate temporary focus."
+      }
+    ],
+    "nonGlass": [
+      {
+        "element": "dense entry tables and row lists",
+        "decision": "plain",
+        "rationale": "Rows contain dates, time ranges, descriptions, durations, and amounts that must remain crisp and stable."
+      },
+      {
+        "element": "invoice PDF preview and rendered PDF paper",
+        "decision": "plain white document",
+        "rationale": "Invoices are documents. Preview must represent export output faithfully and remain legible in dark and light app appearances."
+      },
+      {
+        "element": "editable form rows and text fields",
+        "decision": "plain",
+        "rationale": "Translucency makes focus, validation, and typed values harder to read, especially on Mac where forms are dense."
+      },
+      {
+        "element": "totals rows and money summaries",
+        "decision": "plain",
+        "rationale": "Totals are high-value financial data and should not sit on variable backgrounds."
+      },
+      {
+        "element": "status pills",
+        "decision": "solid tint",
+        "rationale": "Status should be instantly scannable and accessible. Glass would reduce semantic color clarity."
+      },
+      {
+        "element": "charts",
+        "decision": "plain plot surface",
+        "rationale": "Revenue trends need clear axes, marks, and contrast; use native Charts styling instead of decorative translucency."
+      },
+      {
+        "element": "long invoice, client, settings, and profile forms",
+        "decision": "plain Form/List sections",
+        "rationale": "Long text and repeated labels need predictable contrast and native editing behavior."
+      }
+    ]
+  },
+  "nativeReplacements": {
+    "flatWebCards": "Prefer native List, Table, Form, GroupBox, Grid, and section containers. Use a small local Surface view only for KPI cards and summary panels where no native container fits.",
+    "sidebars": "Use NavigationSplitView with List sections, NavigationLink selection, Label, Badge, and SF Symbols.",
+    "sheets": "Use SwiftUI sheet. On macOS, prefer centered or document-modal sheets sized by content. On iOS, use presentationDetents and native drag indicator.",
+    "buttons": "Use Button with roles, keyboard shortcuts, toolbar placement, Menu, and confirmation dialogs for destructive or state-changing actions.",
+    "fields": "Use TextField, TextEditor, DatePicker, Picker, Toggle, and FocusState. Custom field wrappers should be narrow and reusable only after repeated need appears.",
+    "tables": "Use Table on macOS for entries, invoices, clients, and possibly projects. Use sectioned List/LazyVStack rows on iOS.",
+    "pdfPreviewSurfaces": "Use real PDF generation output shown through PDFKit/QuickLook or a native document preview surface. Always keep preview paper white and opaque.",
+    "statusPills": "Use StatusBadge with semantic tint, small dot, text, accessibility label, and no glass.",
+    "charts": "Use Swift Charts for revenue history and dashboard trends. Keep chart marks subtle and readable.",
+    "commandSearchAffordance": "Use .searchable, Commands, keyboard shortcut Cmd+K, or a command palette popover/sheet. Search should route to projects, buckets, invoices, and clients.",
+    "icons": "Replace proposal glyphs with SF Symbols: dashboard, folder/project, doc.text, person.2, gearshape, plus, magnifyingglass, square.and.arrow.up, arrow.down.doc, checkmark, clock, exclamationmark.triangle.",
+    "moneyAndDates": "Centralize formatting for currency, durations, dates, invoice numbers, and monospaced digits. Avoid scattering string formatting in views."
+  },
+  "screenshotVerificationPlan": {
+    "macOSFirst": {
+      "goal": "After each Mac increment, build and launch the real macOS app, capture screenshots, and compare native output against the manifest and current Mac proposal screenshots.",
+      "targets": [
+        {
+          "screen": "ProjectsView",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.36.png",
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.42.png"
+          ],
+          "verify": [
+            "Native sidebar structure",
+            "Project totals and status pills",
+            "Active/archived control",
+            "Recent activity",
+            "No fake window chrome"
+          ]
+        },
+        {
+          "screen": "BucketDetailView",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.46.png"
+          ],
+          "verify": [
+            "Three-pane flow",
+            "Bucket list selection",
+            "Dense entry table",
+            "Non-billable row treatment",
+            "Mark-ready action"
+          ]
+        },
+        {
+          "screen": "InlineEntryEditor",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.48.png"
+          ],
+          "verify": [
+            "Focused draft row",
+            "Duration and amount calculation",
+            "Keyboard behavior",
+            "Plain table legibility"
+          ]
+        },
+        {
+          "screen": "DashboardView",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.54.png"
+          ],
+          "verify": [
+            "KPI hierarchy",
+            "Needs-attention rows",
+            "Revenue chart",
+            "Command/search and new invoice actions"
+          ]
+        },
+        {
+          "screen": "CreateInvoiceConfirmationSheet",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.58.58.png"
+          ],
+          "verify": [
+            "Native sheet presentation",
+            "Invoice fields",
+            "Totals readability",
+            "Finalize and PDF actions",
+            "Glass only on allowed sheet chrome if used"
+          ]
+        },
+        {
+          "screen": "InvoiceDetailView",
+          "paths": [
+            "docs/design-proposal/screenshots/macos/Screenshot 2026-04-27 at 13.59.01.png"
+          ],
+          "verify": [
+            "Invoice metadata column",
+            "Activity timeline",
+            "PDF preview fidelity",
+            "Export/share/mark-sent actions",
+            "White opaque document preview"
+          ]
+        }
+      ]
+    },
+    "iOSLater": {
+      "goal": "Only after the Mac loop is usable, build and run on a booted iOS simulator, capture screenshots, and compare companion flows against the iPhone targets.",
+      "targets": [
+        {
+          "screen": "ProjectsStackView",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.33.png"
+          ],
+          "verify": [
+            "Large title",
+            "Project rows",
+            "Status pills",
+            "Safe areas"
+          ]
+        },
+        {
+          "screen": "BucketsStackView",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.37.png"
+          ],
+          "verify": [
+            "Back navigation",
+            "Project subtitle",
+            "Bucket rows",
+            "Ready/finalized states"
+          ]
+        },
+        {
+          "screen": "BucketDetailStackView",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.40.png"
+          ],
+          "verify": [
+            "Total header",
+            "Date grouping",
+            "Entry row density",
+            "Add action placement"
+          ]
+        },
+        {
+          "screen": "EntryEditorSheet",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.43.png"
+          ],
+          "verify": [
+            "Bottom sheet detent",
+            "Focused time field",
+            "Computed amount",
+            "Save/cancel controls"
+          ]
+        },
+        {
+          "screen": "ReadyBucketView",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.46.png"
+          ],
+          "verify": [
+            "Ready summary",
+            "Create invoice action",
+            "Entries still editable messaging"
+          ]
+        },
+        {
+          "screen": "CreateInvoiceConfirmationSheet iOS",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.49.png"
+          ],
+          "verify": [
+            "Invoice confirmation fields",
+            "Full-width primary action",
+            "Totals readability"
+          ]
+        },
+        {
+          "screen": "InvoiceDetailStackView",
+          "paths": [
+            "docs/design-proposal/screenshots/ios/Screenshot 2026-04-27 at 13.59.53.png"
+          ],
+          "verify": [
+            "Invoice status and amount",
+            "Metadata summary",
+            "PDF preview",
+            "PDF/share/mark-sent actions"
+          ]
+        }
+      ],
+      "missingCurrentScreenshots": [
+        "TodayView / hifi-phone-e1",
+        "QuickAddEntrySheet / wire-phone-e2",
+        "Overdue invoice action / wire-phone-e3",
+        "EntryDetailView / wire-phone-d3b"
+      ]
+    }
+  },
+  "deviations": [
+    {
+      "area": "Window chrome",
+      "decision": "Use real macOS window and toolbar instead of HFWindow.",
+      "why": "Native windowing, resizing, titlebar behavior, accessibility, and toolbar commands matter more than matching fake web chrome."
+    },
+    {
+      "area": "Navigation",
+      "decision": "Use NavigationSplitView and NavigationStack rather than custom flex columns and manual back buttons.",
+      "why": "Native navigation gives platform gestures, selection behavior, keyboard support, restoration, and iPad adaptation."
+    },
+    {
+      "area": "Cards",
+      "decision": "Reduce card-heavy web layout where native lists/tables/forms express the data better.",
+      "why": "The app is operational software. Dense repeated data should scan like native business UI, not like a marketing dashboard."
+    },
+    {
+      "area": "Typography",
+      "decision": "Use system fonts and monospaced digits rather than web fonts Geist and Fira Code.",
+      "why": "System typography handles Dynamic Type, platform metrics, and accessibility. Monospaced digits preserve numeric stability."
+    },
+    {
+      "area": "Icons",
+      "decision": "Replace decorative glyph icons with SF Symbols and accessible labels.",
+      "why": "Symbols are localizable, consistent, and better supported by Apple platforms."
+    },
+    {
+      "area": "Forms",
+      "decision": "Use native controls for dates, currency, toggles, text, menus, and pickers.",
+      "why": "Native controls provide validation, keyboard/focus behavior, accessibility, and platform input affordances."
+    },
+    {
+      "area": "Liquid Glass",
+      "decision": "Apply glass to chrome and transient containers only, not financial data surfaces.",
+      "why": "Legibility and trust are more important than visual novelty for invoices, entries, totals, and forms."
+    },
+    {
+      "area": "PDF preview",
+      "decision": "Show the actual generated PDF or a faithful native PDF preview, always on opaque white paper.",
+      "why": "Users must inspect the document they will send. The preview should not inherit app theme glass or dark surfaces."
+    },
+    {
+      "area": "Phone floating add",
+      "decision": "Allow toolbar or bottom safe-area alternatives to the screenshot FAB.",
+      "why": "A floating button can obscure content at large Dynamic Type or small screens; native placement should win if needed."
+    },
+    {
+      "area": "Storyboards",
+      "decision": "Treat sketch storyboards as behavioral states, not visual style targets.",
+      "why": "They capture flows like rate change, empty state, and entry detail, while hi-fi files and screenshots define the stronger visual language."
+    }
+  ],
+  "implementationTaskHints": [
+    {
+      "order": 1,
+      "title": "Establish native app shell",
+      "platform": "macOS",
+      "scope": "NavigationSplitView sidebar, workspace destinations, toolbar/search placeholder, project selection state, native window behavior.",
+      "references": [
+        "hifi-mac-a1",
+        "hifi-mac-b1"
+      ],
+      "verification": "Mac app launches with real window chrome and sidebar; screenshot compared to Projects and Dashboard targets."
+    },
+    {
+      "order": 2,
+      "title": "Model and render core dashboard/project data",
+      "platform": "macOS",
+      "scope": "Dashboard KPIs, project list, bucket counts, status badges, recent activity using seed or persistent data.",
+      "references": [
+        "hifi-mac-a1",
+        "hifi-mac-b1"
+      ],
+      "verification": "Focused tests for totals/status derivation plus Mac screenshot of Projects and Dashboard."
+    },
+    {
+      "order": 3,
+      "title": "Build bucket detail and entry table",
+      "platform": "macOS",
+      "scope": "Project bucket list, bucket header, time entry table, fixed cost support, non-billable display, totals.",
+      "references": [
+        "hifi-mac-a2",
+        "wire-mac-a1-empty"
+      ],
+      "verification": "Tests for billable/non-billable totals and screenshot against Bucket Detail."
+    },
+    {
+      "order": 4,
+      "title": "Add keyboard-first inline entry capture",
+      "platform": "macOS",
+      "scope": "Draft row, time parser, focus movement, save, save-and-add-another, cancel, telemetry for create entry.",
+      "references": [
+        "hifi-mac-a3"
+      ],
+      "verification": "Tests for duration parsing and entry creation; simulator/app run with logs proving save path."
+    },
+    {
+      "order": 5,
+      "title": "Implement ready bucket state",
+      "platform": "macOS",
+      "scope": "Mark-ready action, ready summary, edit path, create-invoice seed data.",
+      "references": [
+        "wire-mac-a5",
+        "wire-mac-b2"
+      ],
+      "verification": "Tests for bucket status transitions and screenshot of ready state once visible."
+    },
+    {
+      "order": 6,
+      "title": "Create invoice confirmation flow",
+      "platform": "macOS",
+      "scope": "Confirmation sheet, invoice number, recipient snapshot, dates, currency, note, totals, finalize action, telemetry.",
+      "references": [
+        "hifi-mac-b3"
+      ],
+      "verification": "Tests for invoice snapshot finalization and screenshot against confirm sheet."
+    },
+    {
+      "order": 7,
+      "title": "Generate and preview PDF invoice",
+      "platform": "macOS",
+      "scope": "Simple replaceable invoice template, PDF render/open/export, invoice detail view, activity events.",
+      "references": [
+        "hifi-mac-b4"
+      ],
+      "verification": "Tests for PDF output data and screenshot against finalized PDF target; logs prove render/open/export actions."
+    },
+    {
+      "order": 8,
+      "title": "Add clients and settings needed for real invoicing",
+      "platform": "macOS",
+      "scope": "Client CRUD, business profile, invoice numbering, currency, payment details, tax/VAT note.",
+      "references": [
+        "native-mac-clients",
+        "native-mac-settings"
+      ],
+      "verification": "Focused persistence/domain tests and manual Mac app run through client/profile editing."
+    },
+    {
+      "order": 9,
+      "title": "Polish Mac native structure and Liquid Glass decisions",
+      "platform": "macOS",
+      "scope": "Audit chrome versus data surfaces, apply glass only to approved candidates, ensure tables/forms/PDF stay plain.",
+      "references": [
+        "liquidGlassDecisions"
+      ],
+      "verification": "Mac screenshots explicitly checked against glass and non-glass decisions."
+    },
+    {
+      "order": 10,
+      "title": "Begin iOS companion projects/buckets/bucket detail",
+      "platform": "iOS",
+      "scope": "NavigationStack Projects, Buckets, Bucket Detail, Add Entry sheet, Ready Bucket state.",
+      "references": [
+        "hifi-phone-d1",
+        "hifi-phone-d2",
+        "hifi-phone-d3",
+        "hifi-phone-d4",
+        "hifi-phone-d5"
+      ],
+      "verification": "Only after Mac is usable: build/run on booted iOS simulator and compare screenshots to iOS targets."
+    },
+    {
+      "order": 11,
+      "title": "Add iOS invoice confirmation and invoice detail",
+      "platform": "iOS",
+      "scope": "Phone invoice confirmation sheet, finalized invoice detail, PDF preview, PDF/share/status actions.",
+      "references": [
+        "screenshot-phone-invoice-confirm",
+        "screenshot-phone-invoice-detail",
+        "wire-phone-e3"
+      ],
+      "verification": "iOS screenshots compared to invoice confirm/detail targets."
+    },
+    {
+      "order": 12,
+      "title": "Add Today and quick-add companion flows",
+      "platform": "iOS",
+      "scope": "Today dashboard triage, quick add any bucket, overdue invoice action path.",
+      "references": [
+        "hifi-phone-e1",
+        "wire-phone-e2",
+        "wire-phone-e3"
+      ],
+      "verification": "New screenshots captured because current inventory lacks Today, Quick Add, and overdue action targets."
+    },
+    {
+      "order": 13,
+      "title": "Adapt iPad layouts",
+      "platform": "iPadOS",
+      "scope": "Regular-width split view adaptation for Projects/Buckets/Bucket Detail and invoice review.",
+      "references": [
+        "platformPrinciples.iPadOS",
+        "hifi-phone-d1",
+        "hifi-mac-a2"
+      ],
+      "verification": "Run on iPad simulator after iOS work begins; verify split layout does not simply stretch iPhone cards."
+    }
+  ],
+  "assumptionsAndLimitations": [
+    "This manifest is a design translation artifact only and intentionally does not modify app source, tests, UI tests, or Xcode project files.",
+    "Current screenshot inventory contains Mac hi-fi targets and several iPhone targets, but does not include screenshots for Today, Quick Add, Entry Detail, rate-change, empty bucket, Clients, or Settings.",
+    "The iPhone screenshot inventory includes invoice confirmation and invoice detail states that are not exported as named HiFi_Phone functions in hifi-iphone.jsx; they are still included because they are present in the provided screenshots and match the Mac invoice flow.",
+    "The manifest names SwiftUI destinations as implementation guidance. Later agents should adapt exact type names to the existing app structure.",
+    "No Liquid Glass code decision here should override legibility, accessibility, or platform availability checks during implementation."
+  ]
+}
