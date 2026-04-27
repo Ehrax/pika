@@ -404,10 +404,10 @@ private struct FlowingInvoiceFilters: View {
                             .lineLimit(1)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(filter == option ? PikaColor.textPrimary : PikaColor.textSecondary)
+                    .foregroundStyle(filter == option ? Color.white : PikaColor.textSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(filter == option ? PikaColor.accentMuted : PikaColor.surfaceAlt)
+                    .background(filter == option ? PikaColor.accent : PikaColor.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: PikaRadius.pill))
                     .overlay {
                         RoundedRectangle(cornerRadius: PikaRadius.pill)
