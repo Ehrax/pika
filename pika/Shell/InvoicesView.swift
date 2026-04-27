@@ -1,9 +1,16 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
+import UniformTypeIdentifiers
 
 struct InvoicesView: View {
+    @Environment(\.invoicePDFService) private var invoicePDFService
+
     let workspace: WorkspaceSnapshot
     let currentDate: Date
     @State private var selectedInvoiceID: WorkspaceInvoice.ID?
+    @State private var pdfActionFailure: PDFActionFailure?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
     private let dateStyle = Date.FormatStyle(date: .abbreviated, time: .omitted)
@@ -49,18 +56,20 @@ struct InvoicesView: View {
         .navigationTitle("Invoices")
         .toolbar {
             Button {
+                openSelectedPDF()
             } label: {
-                Label("Share", systemImage: "square.and.arrow.up")
+                Label("Open PDF", systemImage: "doc.text.magnifyingglass")
             }
-            .disabled(true)
-            .help("Sharing lands with generated PDFs")
+            .disabled(projection == nil)
+            .help("Open the selected invoice PDF")
 
             Button {
+                exportSelectedPDF()
             } label: {
-                Label("PDF", systemImage: "arrow.down.doc")
+                Label("Export PDF", systemImage: "arrow.down.doc")
             }
-            .disabled(true)
-            .help("PDF export lands in the invoice workflow")
+            .disabled(projection == nil)
+            .help("Export the selected invoice PDF")
 
             Button {
             } label: {
@@ -69,7 +78,105 @@ struct InvoicesView: View {
             .disabled(true)
             .help("Invoice status actions land in the invoice workflow")
         }
+        .alert(item: $pdfActionFailure) { failure in
+            Alert(
+                title: Text("PDF Action Failed"),
+                message: Text(failure.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .accessibilityIdentifier("InvoicesView")
+    }
+
+    private func openSelectedPDF() {
+        performPDFAction("open") {
+            let rendered = try renderSelectedInvoice()
+            let url = try writeTemporaryPDF(rendered)
+
+            #if os(macOS)
+            guard NSWorkspace.shared.open(url) else {
+                throw PDFActionError.openFailed
+            }
+            AppTelemetry.invoicePDFOpened(invoiceNumber: rendered.metadata.invoiceNumber)
+            #else
+            throw PDFActionError.unsupportedPlatform
+            #endif
+        }
+    }
+
+    private func exportSelectedPDF() {
+        performPDFAction("export") {
+            let rendered = try renderSelectedInvoice()
+
+            #if os(macOS)
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.pdf]
+            panel.canCreateDirectories = true
+            panel.isExtensionHidden = false
+            panel.nameFieldStringValue = rendered.metadata.suggestedFilename
+
+            guard panel.runModal() == .OK, let url = panel.url else {
+                return
+            }
+
+            try rendered.data.write(to: url, options: .atomic)
+            AppTelemetry.invoicePDFExported(invoiceNumber: rendered.metadata.invoiceNumber)
+            #else
+            throw PDFActionError.unsupportedPlatform
+            #endif
+        }
+    }
+
+    private func performPDFAction(_ action: String, operation: () throws -> Void) {
+        do {
+            try operation()
+        } catch {
+            let message = error.localizedDescription
+            pdfActionFailure = PDFActionFailure(message: message)
+            AppTelemetry.invoicePDFActionFailed(action: action, message: message)
+        }
+    }
+
+    private func renderSelectedInvoice() throws -> InvoicePDFService.RenderedInvoice {
+        guard let row = projection?.selectedRow else {
+            throw PDFActionError.noSelectedInvoice
+        }
+
+        return try invoicePDFService.renderInvoice(
+            profile: workspace.businessProfile,
+            row: row
+        )
+    }
+
+    private func writeTemporaryPDF(_ rendered: InvoicePDFService.RenderedInvoice) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Pika", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let url = directory.appendingPathComponent(rendered.metadata.suggestedFilename)
+        try rendered.data.write(to: url, options: .atomic)
+        return url
+    }
+}
+
+private struct PDFActionFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private enum PDFActionError: LocalizedError {
+    case noSelectedInvoice
+    case openFailed
+    case unsupportedPlatform
+
+    var errorDescription: String? {
+        switch self {
+        case .noSelectedInvoice:
+            return "Select an invoice before opening or exporting a PDF."
+        case .openFailed:
+            return "The selected PDF could not be opened."
+        case .unsupportedPlatform:
+            return "This PDF action is only available on Mac."
+        }
     }
 }
 

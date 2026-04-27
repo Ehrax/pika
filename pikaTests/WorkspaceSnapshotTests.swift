@@ -262,6 +262,63 @@ struct WorkspaceSnapshotTests {
         #expect(projection.rows[1].billingAddress == "5 Market Street, Dublin")
     }
 
+    @Test func invoicePreviewProjectionIncludesInvoiceSnapshotContextForPDFs() throws {
+        let workspace = WorkspaceSnapshot.sample
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+
+        #expect(projection.rows[0].projectName == "Mobile QA")
+        #expect(projection.rows[0].bucketName == "Regression pass")
+        #expect(projection.rows[0].lineItems.map(\.description) == [
+            "Regression pass QA",
+        ])
+        #expect(projection.rows[0].lineItems.map(\.quantityLabel) == [
+            "8h",
+        ])
+        #expect(projection.rows[0].lineItems.map(\.amountLabel) == [
+            "EUR 1,200.00",
+        ])
+    }
+
+    @Test func invoicePreviewProjectionUsesStableFallbackLineItemForLegacyInvoices() throws {
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000301")!
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: UUID(uuidString: "20000000-0000-0000-0000-000000000301")!,
+                    name: "Legacy invoice",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: [
+                        WorkspaceInvoice(
+                            id: invoiceID,
+                            number: "EHX-2026-301",
+                            clientName: "Happ.ines",
+                            issueDate: Date(timeIntervalSince1970: 0),
+                            dueDate: Date(timeIntervalSince1970: 86_400),
+                            status: .finalized,
+                            totalMinorUnits: 42_000
+                        ),
+                    ]
+                ),
+            ],
+            activity: []
+        )
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let first = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+        let second = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+
+        #expect(first.rows[0].lineItems.first?.id == second.rows[0].lineItems.first?.id)
+        #expect(first.rows[0].lineItems.first?.id == invoiceID)
+        #expect(first.rows[0].lineItems.first?.description == "Services rendered")
+        #expect(first.rows[0].lineItems.first?.amountLabel == "EUR 420.00")
+    }
+
     @Test func projectOverviewSummaryTotalsActiveProjects() {
         let workspace = WorkspaceSnapshot.sample
         let summary = workspace.projectOverviewSummary(

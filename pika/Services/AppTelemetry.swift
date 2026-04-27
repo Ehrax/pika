@@ -35,6 +35,18 @@ enum AppTelemetry {
         invoiceLogger.info("invoices.loaded count=\(invoiceCount, privacy: .public)")
     }
 
+    static func invoicePDFOpened(invoiceNumber: String) {
+        invoiceLogger.info("invoice.pdf_opened number=\(invoiceNumber, privacy: .public)")
+    }
+
+    static func invoicePDFExported(invoiceNumber: String) {
+        invoiceLogger.info("invoice.pdf_exported number=\(invoiceNumber, privacy: .public)")
+    }
+
+    static func invoicePDFActionFailed(action: String, message: String) {
+        invoiceLogger.error("invoice.pdf_action_failed action=\(action, privacy: .public) error=\(message, privacy: .private)")
+    }
+
     static func clientsLoaded(clientCount: Int) {
         clientLogger.info("clients.loaded count=\(clientCount, privacy: .public)")
     }

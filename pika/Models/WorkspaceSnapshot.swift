@@ -125,10 +125,19 @@ struct WorkspaceSnapshot: Equatable {
                         id: UUID(uuidString: "40000000-0000-0000-0000-000000000001")!,
                         number: "EHX-2026-004",
                         clientName: "Northstar Labs",
+                        projectName: "Mobile QA",
+                        bucketName: "Regression pass",
                         issueDate: Date.pikaDate(year: 2026, month: 4, day: 20),
                         dueDate: Date.pikaDate(year: 2026, month: 5, day: 4),
                         status: .finalized,
-                        totalMinorUnits: 120_000
+                        totalMinorUnits: 120_000,
+                        lineItems: [
+                            WorkspaceInvoiceLineItemSnapshot(
+                                description: "Regression pass QA",
+                                quantityLabel: "8h",
+                                amountMinorUnits: 120_000
+                            ),
+                        ]
                     ),
                 ]
             ),
@@ -153,10 +162,24 @@ struct WorkspaceSnapshot: Equatable {
                         id: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!,
                         number: "EHX-2026-003",
                         clientName: "Acme Studio",
+                        projectName: "Brand refresh",
+                        bucketName: "Visual language",
                         issueDate: Date.pikaDate(year: 2026, month: 3, day: 16),
                         dueDate: Date.pikaDate(year: 2026, month: 4, day: 10),
                         status: .sent,
-                        totalMinorUnits: 125_000
+                        totalMinorUnits: 125_000,
+                        lineItems: [
+                            WorkspaceInvoiceLineItemSnapshot(
+                                description: "Billable design time",
+                                quantityLabel: "10h",
+                                amountMinorUnits: 100_000
+                            ),
+                            WorkspaceInvoiceLineItemSnapshot(
+                                description: "Fixed costs",
+                                quantityLabel: "1 item",
+                                amountMinorUnits: 25_000
+                            ),
+                        ]
                     ),
                 ]
             ),
@@ -383,10 +406,13 @@ struct WorkspaceInvoice: Equatable, Identifiable {
     let id: UUID
     var number: String
     var clientName: String
+    var projectName: String = ""
+    var bucketName: String = ""
     var issueDate: Date
     var dueDate: Date
     var status: InvoiceStatus
     var totalMinorUnits: Int
+    var lineItems: [WorkspaceInvoiceLineItemSnapshot] = []
 }
 
 struct WorkspaceActivity: Equatable, Identifiable {
@@ -400,6 +426,25 @@ struct WorkspaceActivity: Equatable, Identifiable {
         self.message = message
         self.detail = detail
         self.occurredAt = occurredAt
+    }
+}
+
+struct WorkspaceInvoiceLineItemSnapshot: Equatable, Identifiable {
+    let id: UUID
+    var description: String
+    var quantityLabel: String
+    var amountMinorUnits: Int
+
+    init(
+        id: UUID = UUID(),
+        description: String,
+        quantityLabel: String,
+        amountMinorUnits: Int
+    ) {
+        self.id = id
+        self.description = description
+        self.quantityLabel = quantityLabel
+        self.amountMinorUnits = amountMinorUnits
     }
 }
 
@@ -549,6 +594,8 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let id: WorkspaceInvoice.ID
     let number: String
     let clientName: String
+    let projectName: String
+    let bucketName: String
     let issueDate: Date
     let dueDate: Date
     let status: InvoiceStatus
@@ -556,10 +603,12 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let isOverdue: Bool
     let totalLabel: String
     let billingAddress: String
+    let lineItems: [WorkspaceInvoiceLineItemProjection]
     let invoice: WorkspaceInvoice
 
     init(
         invoice: WorkspaceInvoice,
+        projectName: String,
         billingAddress: String,
         on date: Date,
         formatter: MoneyFormatting
@@ -567,6 +616,8 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         id = invoice.id
         number = invoice.number
         clientName = invoice.clientName
+        self.projectName = invoice.projectName.isEmpty ? projectName : invoice.projectName
+        bucketName = invoice.bucketName.isEmpty ? "Project services" : invoice.bucketName
         issueDate = invoice.issueDate
         dueDate = invoice.dueDate
         status = invoice.status
@@ -574,8 +625,41 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         statusTitle = isOverdue ? "Overdue" : invoice.status.rawValue.capitalized
         totalLabel = formatter.string(fromMinorUnits: invoice.totalMinorUnits)
         self.billingAddress = billingAddress
+        lineItems = Self.lineItems(for: invoice, formatter: formatter)
         self.invoice = invoice
     }
+
+    private static func lineItems(
+        for invoice: WorkspaceInvoice,
+        formatter: MoneyFormatting
+    ) -> [WorkspaceInvoiceLineItemProjection] {
+        let snapshots = invoice.lineItems.isEmpty
+            ? [
+                WorkspaceInvoiceLineItemSnapshot(
+                    id: invoice.id,
+                    description: "Services rendered",
+                    quantityLabel: "1 item",
+                    amountMinorUnits: invoice.totalMinorUnits
+                ),
+            ]
+            : invoice.lineItems
+
+        return snapshots.map { item in
+            WorkspaceInvoiceLineItemProjection(
+                id: item.id,
+                description: item.description,
+                quantityLabel: item.quantityLabel,
+                amountLabel: formatter.string(fromMinorUnits: item.amountMinorUnits)
+            )
+        }
+    }
+}
+
+struct WorkspaceInvoiceLineItemProjection: Equatable, Identifiable {
+    let id: UUID
+    let description: String
+    let quantityLabel: String
+    let amountLabel: String
 }
 
 extension WorkspaceSnapshot {
@@ -585,17 +669,22 @@ extension WorkspaceSnapshot {
         formatter: MoneyFormatting
     ) -> WorkspaceInvoicePreviewProjection? {
         let rows = projects
-            .flatMap(\.invoices)
+            .flatMap { project in
+                project.invoices.map { invoice in
+                    (projectName: project.name, invoice: invoice)
+                }
+            }
             .sorted { left, right in
-                if left.issueDate == right.issueDate {
-                    return left.number > right.number
+                if left.invoice.issueDate == right.invoice.issueDate {
+                    return left.invoice.number > right.invoice.number
                 }
 
-                return left.issueDate > right.issueDate
+                return left.invoice.issueDate > right.invoice.issueDate
             }
-            .map { invoice in
+            .map { projectName, invoice in
                 WorkspaceInvoiceRowProjection(
                     invoice: invoice,
+                    projectName: projectName,
                     billingAddress: clients.first { $0.name == invoice.clientName }?.billingAddress ?? "",
                     on: date,
                     formatter: formatter
