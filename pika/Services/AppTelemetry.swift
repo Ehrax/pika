@@ -8,6 +8,7 @@ enum AppTelemetry {
     private static let projectLogger = Logger(subsystem: subsystem, category: "projects")
     private static let invoiceLogger = Logger(subsystem: subsystem, category: "invoices")
     private static let clientLogger = Logger(subsystem: subsystem, category: "clients")
+    private static let settingsLogger = Logger(subsystem: subsystem, category: "settings")
 
     static func shellSelectionChanged(_ selection: String) {
         shellLogger.info("shell.selection_changed destination=\(selection, privacy: .public)")
@@ -97,5 +98,9 @@ enum AppTelemetry {
 
     static func clientCreated(clientName: String) {
         clientLogger.info("client.created client=\(clientName, privacy: .private)")
+    }
+
+    static func settingsSaved() {
+        settingsLogger.info("settings.saved")
     }
 }

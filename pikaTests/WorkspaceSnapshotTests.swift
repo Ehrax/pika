@@ -382,6 +382,133 @@ struct WorkspaceSnapshotTests {
         #expect(relaunchedStore.workspace.activity.map(\.message) == ["Persistent Client client created"])
     }
 
+    @Test func persistentWorkspaceStoreUpdatesBusinessProfileAndInvoiceDefaults() throws {
+        let persistenceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.json")
+        defer {
+            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+        }
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000901")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000901")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 4)
+        let store = WorkspaceStore(
+            seed: WorkspaceSnapshot(
+                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                clients: [],
+                projects: [
+                    WorkspaceProject(
+                        id: projectID,
+                        name: "Settings defaults",
+                        clientName: "Unmatched Client",
+                        currencyCode: "EUR",
+                        isArchived: false,
+                        buckets: [
+                            WorkspaceBucket(
+                                id: bucketID,
+                                name: "Ready defaults",
+                                status: .ready,
+                                totalMinorUnits: 20_000,
+                                billableMinutes: 120,
+                                fixedCostMinorUnits: 0
+                            ),
+                        ],
+                        invoices: []
+                    ),
+                ],
+                activity: []
+            ),
+            persistenceURL: persistenceURL
+        )
+
+        try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
+            businessName: "  North Coast Studio  ",
+            email: "  invoices@north.example  ",
+            address: "  9 Harbour Road  ",
+            invoicePrefix: "  NCS  ",
+            nextInvoiceNumber: 42,
+            currencyCode: "  usd  ",
+            paymentDetails: "  ACH 123456  ",
+            taxNote: "  VAT not applicable.  ",
+            defaultTermsDays: 21
+        ))
+
+        let draft = try store.defaultInvoiceDraft(
+            projectID: projectID,
+            bucketID: bucketID,
+            issueDate: issueDate
+        )
+        let relaunchedStore = WorkspaceStore(seed: .sample, persistenceURL: persistenceURL)
+
+        #expect(store.workspace.businessProfile.businessName == "North Coast Studio")
+        #expect(store.workspace.businessProfile.email == "invoices@north.example")
+        #expect(store.workspace.businessProfile.address == "9 Harbour Road")
+        #expect(store.workspace.businessProfile.invoicePrefix == "NCS")
+        #expect(store.workspace.businessProfile.nextInvoiceNumber == 42)
+        #expect(store.workspace.businessProfile.currencyCode == "USD")
+        #expect(store.workspace.businessProfile.paymentDetails == "ACH 123456")
+        #expect(store.workspace.businessProfile.taxNote == "VAT not applicable.")
+        #expect(store.workspace.businessProfile.defaultTermsDays == 21)
+        #expect(draft.invoiceNumber == "NCS-2026-042")
+        #expect(draft.dueDate == Date.pikaDate(year: 2026, month: 5, day: 25))
+        #expect(draft.note == "VAT not applicable.")
+        #expect(relaunchedStore.workspace.businessProfile == store.workspace.businessProfile)
+    }
+
+    @Test func inMemoryWorkspaceStoreRejectsInvalidBusinessProfileDrafts() {
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: [],
+            projects: [],
+            activity: []
+        ))
+        let originalProfile = store.workspace.businessProfile
+
+        #expect(throws: WorkspaceStoreError.invalidBusinessProfile) {
+            try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
+                businessName: "",
+                email: "billing@example.com",
+                address: "1 Main Street",
+                invoicePrefix: "INV",
+                nextInvoiceNumber: 1,
+                currencyCode: "EUR",
+                paymentDetails: "Bank transfer",
+                taxNote: "VAT reverse charge.",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidBusinessProfile) {
+            try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
+                businessName: "Studio",
+                email: "billing@example.com",
+                address: "1 Main Street",
+                invoicePrefix: "INV",
+                nextInvoiceNumber: 0,
+                currencyCode: "EUR",
+                paymentDetails: "Bank transfer",
+                taxNote: "VAT reverse charge.",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidBusinessProfile) {
+            try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
+                businessName: "Studio",
+                email: "billing@example.com",
+                address: "1 Main Street",
+                invoicePrefix: "INV",
+                nextInvoiceNumber: 1,
+                currencyCode: "EUR",
+                paymentDetails: "Bank transfer",
+                taxNote: "VAT reverse charge.",
+                defaultTermsDays: 0
+            ))
+        }
+
+        #expect(store.workspace.businessProfile == originalProfile)
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
         let store = WorkspaceStore()
         let project = try #require(store.workspace.project(named: "Launch sprint"))

@@ -55,11 +55,60 @@ struct WorkspaceClientDraft: Equatable {
     var defaultTermsDays: Int
 }
 
+struct WorkspaceBusinessProfileDraft: Equatable {
+    var businessName: String
+    var email: String
+    var address: String
+    var invoicePrefix: String
+    var nextInvoiceNumber: Int
+    var currencyCode: String
+    var paymentDetails: String
+    var taxNote: String
+    var defaultTermsDays: Int
+
+    init(
+        businessName: String,
+        email: String,
+        address: String,
+        invoicePrefix: String,
+        nextInvoiceNumber: Int,
+        currencyCode: String,
+        paymentDetails: String,
+        taxNote: String,
+        defaultTermsDays: Int
+    ) {
+        self.businessName = businessName
+        self.email = email
+        self.address = address
+        self.invoicePrefix = invoicePrefix
+        self.nextInvoiceNumber = nextInvoiceNumber
+        self.currencyCode = currencyCode
+        self.paymentDetails = paymentDetails
+        self.taxNote = taxNote
+        self.defaultTermsDays = defaultTermsDays
+    }
+
+    init(profile: BusinessProfileProjection) {
+        self.init(
+            businessName: profile.businessName,
+            email: profile.email,
+            address: profile.address,
+            invoicePrefix: profile.invoicePrefix,
+            nextInvoiceNumber: profile.nextInvoiceNumber,
+            currencyCode: profile.currencyCode,
+            paymentDetails: profile.paymentDetails,
+            taxNote: profile.taxNote,
+            defaultTermsDays: profile.defaultTermsDays
+        )
+    }
+}
+
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
     case invoiceNotFound
     case persistenceFailed
+    case invalidBusinessProfile
     case invalidClient
     case invalidProject
     case invalidBucket
@@ -124,6 +173,43 @@ final class WorkspaceStore {
         AppTelemetry.clientCreated(clientName: client.name)
         try persistWorkspace()
         return client
+    }
+
+    func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
+        let businessName = draft.businessName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
+        let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !businessName.isEmpty,
+              !email.isEmpty,
+              !address.isEmpty,
+              !invoicePrefix.isEmpty,
+              !currencyCode.isEmpty,
+              !paymentDetails.isEmpty,
+              !taxNote.isEmpty,
+              draft.nextInvoiceNumber > 0,
+              draft.defaultTermsDays > 0
+        else {
+            throw WorkspaceStoreError.invalidBusinessProfile
+        }
+
+        workspace.businessProfile = BusinessProfileProjection(
+            businessName: businessName,
+            email: email,
+            address: address,
+            invoicePrefix: invoicePrefix.uppercased(),
+            nextInvoiceNumber: draft.nextInvoiceNumber,
+            currencyCode: currencyCode.uppercased(),
+            paymentDetails: paymentDetails,
+            taxNote: taxNote,
+            defaultTermsDays: draft.defaultTermsDays
+        )
+        AppTelemetry.settingsSaved()
+        try persistWorkspace()
     }
 
     @discardableResult
