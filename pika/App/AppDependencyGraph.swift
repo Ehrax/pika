@@ -18,12 +18,6 @@ extension View {
     }
 }
 
-extension Scene {
-    func pikaDependencies() -> some Scene {
-        self
-    }
-}
-
 private struct AppRouterKey: EnvironmentKey {
     static let defaultValue = AppRouter()
 }

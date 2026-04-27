@@ -16,9 +16,9 @@ struct PikaApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .pikaDependencies()
         }
         .modelContainer(sharedModelContainer)
-        .pikaDependencies()
     }
 
     static func makeModelContainer(inMemory: Bool) throws -> ModelContainer {
