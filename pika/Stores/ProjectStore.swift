@@ -48,10 +48,18 @@ struct WorkspaceBucketDraft: Equatable {
     var hourlyRateMinorUnits: Int
 }
 
+struct WorkspaceClientDraft: Equatable {
+    var name: String
+    var email: String
+    var billingAddress: String
+    var defaultTermsDays: Int
+}
+
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
     case invoiceNotFound
+    case invalidClient
     case invalidProject
     case invalidBucket
     case bucketNotInvoiceable
@@ -68,6 +76,41 @@ final class WorkspaceStore {
 
     init(seed: WorkspaceSnapshot = .sample) {
         workspace = seed
+    }
+
+    @discardableResult
+    func createClient(
+        _ draft: WorkspaceClientDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceClient {
+        let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let billingAddress = draft.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !name.isEmpty,
+              !email.isEmpty,
+              !billingAddress.isEmpty,
+              draft.defaultTermsDays > 0
+        else {
+            throw WorkspaceStoreError.invalidClient
+        }
+
+        let client = WorkspaceClient(
+            id: UUID(),
+            name: name,
+            email: email,
+            billingAddress: billingAddress,
+            defaultTermsDays: draft.defaultTermsDays
+        )
+
+        workspace.clients.append(client)
+        appendActivity(
+            message: "\(client.name) client created",
+            detail: client.email,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.clientCreated(clientName: client.name)
+        return client
     }
 
     @discardableResult

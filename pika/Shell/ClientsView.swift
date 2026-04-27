@@ -10,7 +10,10 @@ struct ClientRowHitTargetPolicy: Equatable {
 
 struct ClientsView: View {
     let workspace: WorkspaceSnapshot
+    @Environment(\.workspaceStore) private var workspaceStore
     @State private var selectedClientID: WorkspaceClient.ID?
+    @State private var showsCreateClient = false
+    @State private var creationFailure: ClientCreationFailure?
 
     private var selectedClient: WorkspaceClient? {
         workspace.clients.first { $0.id == selectedClientID } ?? workspace.clients.first
@@ -21,7 +24,8 @@ struct ClientsView: View {
             ClientListColumn(
                 clients: workspace.clients,
                 selectedClientID: selectedClientID ?? workspace.clients.first?.id,
-                onSelect: { selectedClientID = $0 }
+                onSelect: { selectedClientID = $0 },
+                onCreateClient: { showsCreateClient = true }
             )
 
             if let selectedClient {
@@ -40,11 +44,25 @@ struct ClientsView: View {
         .navigationTitle("Clients")
         .toolbar {
             Button {
+                showsCreateClient = true
             } label: {
                 Label("New Client", systemImage: "plus")
             }
-            .disabled(true)
-            .help("Client creation lands in a later task")
+            .help("Create a client")
+        }
+        .sheet(isPresented: $showsCreateClient) {
+            CreateClientSheet(
+                defaultTermsDays: workspace.businessProfile.defaultTermsDays,
+                onCancel: { showsCreateClient = false },
+                onSave: createClient
+            )
+        }
+        .alert(item: $creationFailure) { failure in
+            Alert(
+                title: Text("Client Creation Failed"),
+                message: Text(failure.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
         .onAppear {
             selectedClientID = selectedClientID ?? workspace.clients.first?.id
@@ -52,12 +70,23 @@ struct ClientsView: View {
         }
         .accessibilityIdentifier("ClientsView")
     }
+
+    private func createClient(_ draft: WorkspaceClientDraft) {
+        do {
+            let client = try workspaceStore.createClient(draft)
+            selectedClientID = client.id
+            showsCreateClient = false
+        } catch {
+            creationFailure = ClientCreationFailure(message: error.localizedDescription)
+        }
+    }
 }
 
 private struct ClientListColumn: View {
     let clients: [WorkspaceClient]
     let selectedClientID: WorkspaceClient.ID?
     let onSelect: (WorkspaceClient.ID) -> Void
+    let onCreateClient: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -75,12 +104,12 @@ private struct ClientListColumn: View {
                 Spacer()
 
                 Button {
+                    onCreateClient()
                 } label: {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.borderless)
-                .disabled(true)
-                .help("Client creation lands in a later task")
+                .help("Create a client")
             }
             .padding(PikaSpacing.md)
 
@@ -110,6 +139,87 @@ private struct ClientListColumn: View {
                 .fill(PikaColor.border)
                 .frame(width: 1)
         }
+    }
+}
+
+private struct ClientCreationFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct CreateClientSheet: View {
+    let onCancel: () -> Void
+    let onSave: (WorkspaceClientDraft) -> Void
+
+    @State private var name = ""
+    @State private var email = ""
+    @State private var billingAddress = ""
+    @State private var defaultTermsDaysValue: Int
+
+    init(
+        defaultTermsDays: Int,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (WorkspaceClientDraft) -> Void
+    ) {
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _defaultTermsDaysValue = State(initialValue: defaultTermsDays)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Client") {
+                    TextField("Name", text: $name)
+                    TextField("Billing email", text: $email)
+                    TextField("Billing address", text: $billingAddress, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+
+                Section("Invoice defaults") {
+                    Stepper(
+                        value: $defaultTermsDaysValue,
+                        in: 1...120
+                    ) {
+                        LabeledContent("Payment terms", value: "\(defaultTermsDaysValue) days")
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    onSave(WorkspaceClientDraft(
+                        name: name,
+                        email: email,
+                        billingAddress: billingAddress,
+                        defaultTermsDays: defaultTermsDaysValue
+                    ))
+                } label: {
+                    Label("Create Client", systemImage: "person.crop.circle.badge.plus")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canSave)
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 460, idealWidth: 500, minHeight: 360)
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !billingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && defaultTermsDaysValue > 0
     }
 }
 

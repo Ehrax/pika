@@ -94,4 +94,8 @@ enum AppTelemetry {
     static func clientsLoaded(clientCount: Int) {
         clientLogger.info("clients.loaded count=\(clientCount, privacy: .public)")
     }
+
+    static func clientCreated(clientName: String) {
+        clientLogger.info("client.created client=\(clientName, privacy: .private)")
+    }
 }

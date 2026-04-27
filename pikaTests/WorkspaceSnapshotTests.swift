@@ -290,6 +290,63 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == ["Client portal project created"])
     }
 
+    @Test func inMemoryWorkspaceStoreCreatesClientAndRecordsActivity() throws {
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: [],
+            projects: [],
+            activity: []
+        ))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let client = try store.createClient(
+            WorkspaceClientDraft(
+                name: "  Studio North  ",
+                email: "  billing@studionorth.example  ",
+                billingAddress: "  12 Example Street  ",
+                defaultTermsDays: 30
+            ),
+            occurredAt: date
+        )
+
+        #expect(client.name == "Studio North")
+        #expect(client.email == "billing@studionorth.example")
+        #expect(client.billingAddress == "12 Example Street")
+        #expect(client.defaultTermsDays == 30)
+        #expect(store.workspace.clients.map(\.id) == [client.id])
+        #expect(store.workspace.activity.map(\.message) == ["Studio North client created"])
+    }
+
+    @Test func inMemoryWorkspaceStoreRejectsInvalidClientDrafts() {
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: [],
+            projects: [],
+            activity: []
+        ))
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.createClient(WorkspaceClientDraft(
+                name: "",
+                email: "billing@example.com",
+                billingAddress: "1 Main Street",
+                defaultTermsDays: 14
+            ))
+        }
+
+        #expect(throws: WorkspaceStoreError.invalidClient) {
+            try store.createClient(WorkspaceClientDraft(
+                name: "Client",
+                email: "billing@example.com",
+                billingAddress: "1 Main Street",
+                defaultTermsDays: 0
+            ))
+        }
+
+        #expect(store.workspace.clients.isEmpty)
+        #expect(store.workspace.activity.isEmpty)
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
         let store = WorkspaceStore()
         let project = try #require(store.workspace.project(named: "Launch sprint"))
