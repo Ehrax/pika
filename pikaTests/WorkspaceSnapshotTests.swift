@@ -16,6 +16,8 @@ struct WorkspaceSnapshotTests {
             "Northstar Labs mobile qa ready to invoice",
             "Happ.ines launch sprint ready to invoice",
         ])
+        #expect(summary.needsAttention.map(\.target).count == 3)
+        #expect(summary.needsAttention.first?.target == .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000003")!))
     }
 
     @Test func dashboardRevenueHistoryMatchesTwelveMonthDesignWindow() {
@@ -1048,6 +1050,11 @@ struct WorkspaceSnapshotTests {
         #expect(ids == secondSummary.needsAttention.map(\.id))
         #expect(ids.contains("ready-bucket-\(bucketID.uuidString)"))
         #expect(ids.contains("overdue-invoice-\(invoiceID.uuidString)"))
+        #expect(firstSummary.needsAttention.map(\.target).contains(.bucket(
+            projectID: UUID(uuidString: "20000000-0000-0000-0000-000000000011")!,
+            bucketID: bucketID
+        )))
+        #expect(firstSummary.needsAttention.map(\.target).contains(.invoice(invoiceID)))
     }
 
     @Test func projectOverdueCountsUseTheSuppliedDate() throws {

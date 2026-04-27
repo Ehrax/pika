@@ -22,6 +22,10 @@ enum AppTelemetry {
         )
     }
 
+    static func dashboardAttentionSelected(itemID: String) {
+        dashboardLogger.info("dashboard.attention_selected item=\(itemID, privacy: .public)")
+    }
+
     static func projectDetailLoaded(projectName: String, bucketCount: Int) {
         projectLogger.info(
             "project.detail_loaded project=\(projectName, privacy: .private) buckets=\(bucketCount, privacy: .public)"

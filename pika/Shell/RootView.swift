@@ -4,6 +4,8 @@ struct RootView: View {
     @Environment(\.workspaceStore) private var workspaceStore
     let currentDate: Date
     @State private var selection: PikaShellDestination = .dashboard
+    @State private var dashboardSelectedInvoiceID: WorkspaceInvoice.ID?
+    @State private var dashboardSelectedBucketID: WorkspaceBucket.ID?
 
     init(currentDate: Date = .now) {
         self.currentDate = currentDate
@@ -36,7 +38,11 @@ struct RootView: View {
     ) -> some View {
         switch selection {
         case .dashboard:
-            DashboardView(workspace: workspace, currentDate: currentDate)
+            DashboardView(
+                workspace: workspace,
+                currentDate: currentDate,
+                onSelectAttentionItem: handleDashboardAttentionSelection
+            )
         case .projects:
             ProjectsView(
                 workspace: workspace,
@@ -44,18 +50,50 @@ struct RootView: View {
                 onSelectProject: { self.selection = $0 }
             )
         case .invoices:
-            InvoicesView(workspace: workspace, workspaceStore: workspaceStore, currentDate: currentDate)
+            InvoicesView(
+                workspace: workspace,
+                workspaceStore: workspaceStore,
+                currentDate: currentDate,
+                initialSelectedInvoiceID: dashboardSelectedInvoiceID
+            )
         case .clients:
             ClientsView(workspace: workspace)
         case .settings:
             SettingsView(profile: workspace.businessProfile)
         case .project(let id):
+            let project = workspace.projects.first { $0.id == id }
             ProjectPlaceholderView(
-                project: workspace.projects.first { $0.id == id },
+                project: project,
                 workspaceStore: workspaceStore,
-                currentDate: currentDate
+                currentDate: currentDate,
+                initialSelectedBucketID: initialBucketID(in: project)
             )
         }
+    }
+
+    private func handleDashboardAttentionSelection(_ item: DashboardAttentionItem) {
+        AppTelemetry.dashboardAttentionSelected(itemID: item.id)
+
+        switch item.target {
+        case .invoice(let invoiceID):
+            dashboardSelectedInvoiceID = invoiceID
+            selection = .invoices
+        case .bucket(let projectID, let bucketID):
+            dashboardSelectedBucketID = bucketID
+            selection = .project(projectID)
+        }
+    }
+
+    private func initialBucketID(in project: WorkspaceProject?) -> WorkspaceBucket.ID? {
+        guard
+            let dashboardSelectedBucketID,
+            let project,
+            project.buckets.contains(where: { $0.id == dashboardSelectedBucketID })
+        else {
+            return nil
+        }
+
+        return dashboardSelectedBucketID
     }
 }
 

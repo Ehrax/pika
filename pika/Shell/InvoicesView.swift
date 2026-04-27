@@ -10,6 +10,7 @@ struct InvoicesView: View {
     let workspace: WorkspaceSnapshot
     let workspaceStore: WorkspaceStore
     let currentDate: Date
+    let initialSelectedInvoiceID: WorkspaceInvoice.ID?
     @State private var selectedInvoiceID: WorkspaceInvoice.ID?
     @State private var invoiceFilter = InvoiceListFilter.all
     @State private var pdfActionFailure: PDFActionFailure?
@@ -31,6 +32,19 @@ struct InvoicesView: View {
 
     private var selectedRow: WorkspaceInvoiceRowProjection? {
         filteredRows.first { $0.id == selectedInvoiceID } ?? filteredRows.first
+    }
+
+    init(
+        workspace: WorkspaceSnapshot,
+        workspaceStore: WorkspaceStore,
+        currentDate: Date,
+        initialSelectedInvoiceID: WorkspaceInvoice.ID? = nil
+    ) {
+        self.workspace = workspace
+        self.workspaceStore = workspaceStore
+        self.currentDate = currentDate
+        self.initialSelectedInvoiceID = initialSelectedInvoiceID
+        _selectedInvoiceID = State(initialValue: initialSelectedInvoiceID)
     }
 
     var body: some View {
@@ -67,6 +81,12 @@ struct InvoicesView: View {
                 }
                 .onChange(of: invoiceFilter) { _, _ in
                     selectedInvoiceID = filteredRows.first?.id
+                }
+                .onChange(of: initialSelectedInvoiceID) { _, newValue in
+                    if let newValue {
+                        invoiceFilter = .all
+                        selectedInvoiceID = newValue
+                    }
                 }
             } else {
                 ContentUnavailableView(

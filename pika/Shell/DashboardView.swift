@@ -18,8 +18,19 @@ struct DashboardPanelLayoutPolicy: Equatable {
 struct DashboardView: View {
     let workspace: WorkspaceSnapshot
     let currentDate: Date
+    let onSelectAttentionItem: (DashboardAttentionItem) -> Void
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+    init(
+        workspace: WorkspaceSnapshot,
+        currentDate: Date,
+        onSelectAttentionItem: @escaping (DashboardAttentionItem) -> Void = { _ in }
+    ) {
+        self.workspace = workspace
+        self.currentDate = currentDate
+        self.onSelectAttentionItem = onSelectAttentionItem
+    }
 
     var body: some View {
         let summary = workspace.dashboardSummary(on: currentDate)
@@ -93,7 +104,15 @@ struct DashboardView: View {
 
             VStack(spacing: 0) {
                 ForEach(summary.needsAttention) { item in
-                    AttentionRow(item: item, amount: money(item.amountMinorUnits))
+                    Button {
+                        onSelectAttentionItem(item)
+                    } label: {
+                        AttentionRow(item: item, amount: money(item.amountMinorUnits))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(attentionAccessibilityHint(for: item))
 
                     if item.id != summary.needsAttention.last?.id {
                         Divider()
@@ -135,6 +154,15 @@ struct DashboardView: View {
 
     private func money(_ minorUnits: Int) -> String {
         formatter.string(fromMinorUnits: minorUnits)
+    }
+
+    private func attentionAccessibilityHint(for item: DashboardAttentionItem) -> String {
+        switch item.target {
+        case .invoice:
+            "Open this invoice"
+        case .bucket:
+            "Open this bucket"
+        }
     }
 }
 

@@ -10,6 +10,7 @@ struct ProjectPlaceholderView: View {
     let project: WorkspaceProject?
     let workspaceStore: WorkspaceStore
     let currentDate: Date
+    let initialSelectedBucketID: WorkspaceBucket.ID?
     @State private var selectedBucketID: WorkspaceBucket.ID?
     @State private var invoiceDraft: InvoiceDraftPresentation?
     @State private var actionFailure: WorkflowActionFailure?
@@ -19,6 +20,19 @@ struct ProjectPlaceholderView: View {
     @State private var showsEditProject = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+    init(
+        project: WorkspaceProject?,
+        workspaceStore: WorkspaceStore,
+        currentDate: Date,
+        initialSelectedBucketID: WorkspaceBucket.ID? = nil
+    ) {
+        self.project = project
+        self.workspaceStore = workspaceStore
+        self.currentDate = currentDate
+        self.initialSelectedBucketID = initialSelectedBucketID
+        _selectedBucketID = State(initialValue: initialSelectedBucketID)
+    }
 
     var body: some View {
         Group {
@@ -77,6 +91,11 @@ struct ProjectPlaceholderView: View {
                 }
                 .onChange(of: project.id) { _, _ in
                     selectedBucketID = nil
+                }
+                .onChange(of: initialSelectedBucketID) { _, newValue in
+                    if let newValue {
+                        selectedBucketID = newValue
+                    }
                 }
             } else {
                 ContentUnavailableView("Project not found", systemImage: "folder.badge.questionmark")

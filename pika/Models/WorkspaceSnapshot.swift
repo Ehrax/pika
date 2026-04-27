@@ -43,6 +43,7 @@ struct WorkspaceSnapshot: Codable, Equatable {
                 .map { invoice in
                     DashboardAttentionItem(
                         id: "overdue-invoice-\(invoice.id.uuidString)",
+                        target: .invoice(invoice.id),
                         title: "\(invoice.clientName) invoice overdue",
                         detail: "\(invoice.number) due \(invoice.dueDate.formatted(date: .abbreviated, time: .omitted))",
                         amountMinorUnits: invoice.totalMinorUnits,
@@ -62,6 +63,7 @@ struct WorkspaceSnapshot: Codable, Equatable {
             .map { project, bucket in
                 DashboardAttentionItem(
                     id: "ready-bucket-\(bucket.id.uuidString)",
+                    target: .bucket(projectID: project.id, bucketID: bucket.id),
                     title: readyAttentionTitle(for: project),
                     detail: "\(bucket.name) has \(bucket.billableHoursLabel) billable",
                     amountMinorUnits: bucket.effectiveTotalMinorUnits,
@@ -426,8 +428,14 @@ struct ProjectOverviewSummary: Equatable {
     var overdueMinorUnits: Int
 }
 
+enum DashboardAttentionTarget: Equatable {
+    case invoice(WorkspaceInvoice.ID)
+    case bucket(projectID: WorkspaceProject.ID, bucketID: WorkspaceBucket.ID)
+}
+
 struct DashboardAttentionItem: Equatable, Identifiable {
     var id: String
+    var target: DashboardAttentionTarget
     var title: String
     var detail: String
     var amountMinorUnits: Int
@@ -435,12 +443,14 @@ struct DashboardAttentionItem: Equatable, Identifiable {
 
     init(
         id: String,
+        target: DashboardAttentionTarget,
         title: String,
         detail: String,
         amountMinorUnits: Int,
         tone: PikaStatusTone
     ) {
         self.id = id
+        self.target = target
         self.title = title
         self.detail = detail
         self.amountMinorUnits = amountMinorUnits
