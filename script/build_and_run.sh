@@ -9,8 +9,28 @@ SCHEME="pika"
 DESTINATION="platform=macOS"
 
 kill_running_app() {
-  pkill -x "Pika" >/dev/null 2>&1 || true
-  pkill -x "pika" >/dev/null 2>&1 || true
+  local pids
+  pids="$(
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/Debug/pika.app/Contents/MacOS/pika"
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/Debug/Pika.app/Contents/MacOS/pika"
+  )"
+  if [[ -n "$pids" ]]; then
+    kill $pids >/dev/null 2>&1 || true
+  fi
+}
+
+process_ids_for_executable() {
+  local executable_path="$1"
+  ps -axo pid=,command= |
+    awk -v executable_path="$executable_path" '
+      {
+        pid = $1
+        sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", $0)
+        if (index($0, executable_path) == 1) {
+          print pid
+        }
+      }
+    '
 }
 
 build_app() {
@@ -44,12 +64,14 @@ launch_app() {
 }
 
 verify_launch() {
+  local app_bundle="$1"
+  local executable_path="$app_bundle/Contents/MacOS/pika"
   sleep 2
-  if pgrep -x "pika" >/dev/null 2>&1 || pgrep -x "Pika" >/dev/null 2>&1; then
+  if [[ -n "$(process_ids_for_executable "$executable_path")" ]]; then
     return 0
   fi
 
-  echo "error: expected Pika process to be running after launch" >&2
+  echo "error: expected launched app process to be running from $app_bundle" >&2
   return 1
 }
 
@@ -65,7 +87,7 @@ case "$MODE" in
 
     launch_app "$APP_BUNDLE"
     if [[ "$MODE" == "--verify" || "$MODE" == "verify" ]]; then
-      verify_launch
+      verify_launch "$APP_BUNDLE"
     fi
     ;;
   *)

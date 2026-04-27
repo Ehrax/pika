@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Coverage"
 RESULT_BUNDLE="$ROOT_DIR/.build/coverage/PikaCoverage.xcresult"
+COVERAGE_REPORT="$ROOT_DIR/.build/coverage/xccov-report.json"
 THRESHOLD="90.0"
 
 rm -rf "$RESULT_BUNDLE"
@@ -19,13 +20,15 @@ xcodebuild test \
   -enableCodeCoverage YES \
   CODE_SIGNING_ALLOWED=NO
 
-COVERAGE_JSON="$(xcrun xccov view --report --json "$RESULT_BUNDLE")"
+xcrun xccov view --report --json "$RESULT_BUNDLE" > "$COVERAGE_REPORT"
 
-read -r RAW_LINE_COVERAGE_PERCENT GATED_LINE_COVERAGE_PERCENT < <(COVERAGE_JSON="$COVERAGE_JSON" ROOT_DIR="$ROOT_DIR" /usr/bin/python3 - <<'PY'
+read -r RAW_LINE_COVERAGE_PERCENT GATED_LINE_COVERAGE_PERCENT < <(ROOT_DIR="$ROOT_DIR" /usr/bin/python3 - "$COVERAGE_REPORT" <<'PY'
 import json
 import os
+import sys
 
-report = json.loads(os.environ["COVERAGE_JSON"])
+with open(sys.argv[1], "r", encoding="utf-8") as report_file:
+    report = json.load(report_file)
 root = os.environ["ROOT_DIR"]
 raw_coverage = report.get("lineCoverage")
 if raw_coverage is None:

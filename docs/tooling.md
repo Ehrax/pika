@@ -1,6 +1,6 @@
 # Tooling
 
-Pika uses project-local scripts for repeatable build, test, coverage, and metrics commands. The scripts keep Xcode output under `.build/` where practical so repeated runs do not depend on global DerivedData state.
+Pika uses project-local scripts for repeatable build, test, and coverage commands. The scripts keep Xcode output under `.build/` where practical so repeated runs do not depend on global DerivedData state.
 
 ## macOS Build And Run
 
@@ -10,7 +10,7 @@ Run the macOS app with:
 ./script/build_and_run.sh
 ```
 
-The script stops any running `Pika` or `pika` process, builds the `pika` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika.app` or `Pika.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
+The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `pika` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika.app` or `Pika.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
 
 The Codex Run action calls:
 
@@ -18,7 +18,7 @@ The Codex Run action calls:
 ./script/build_and_run.sh --verify
 ```
 
-`--verify` waits briefly after launch and fails if neither a `pika` nor `Pika` process is running.
+`--verify` waits briefly after launch and fails if the expected executable from the built app bundle is not running.
 
 ## Unit Tests
 
@@ -34,7 +34,7 @@ This runs unit tests only, with code coverage enabled:
 xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
 ```
 
-The baseline generated UI test target is not part of the scaffold coverage gate because it may be flaky or noisy at this stage.
+The baseline generated UI test target is not part of the scaffold coverage gate because SwiftUI lifecycle tests are noisy at this stage. UI confidence should come from later end-to-end tests around real product flows.
 
 ## Coverage
 
@@ -67,36 +67,32 @@ The script enforces a 90% minimum line coverage threshold on testable production
 
 ## iOS Simulator Build And Test
 
-The project is multiplatform, so simulator destinations can be used for iOS and iPadOS checks. One previously verified iPhone 17 simulator id was:
+The project is multiplatform, so simulator destinations can be used for iOS and iPadOS checks.
 
-```text
-03DD3B20-7426-40A9-AB86-6697C1C26639
-```
-
-Example iOS simulator unit test command:
+Run iOS simulator unit tests with:
 
 ```bash
-xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=iOS Simulator,id=03DD3B20-7426-40A9-AB86-6697C1C26639' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
+./script/test_ios.sh
 ```
 
-Change the destination id or destination spec as needed for the local simulator you want to use.
+By default the script picks the first available iPhone 17 simulator, falling back to the first available iPhone simulator. Change the destination id or destination spec as needed for the local simulator you want to use:
+
+```bash
+IOS_DESTINATION='platform=iOS Simulator,id=03DD3B20-7426-40A9-AB86-6697C1C26639' ./script/test_ios.sh
+```
+
+The script runs:
+
+```bash
+xcodebuild test -project pika.xcodeproj -scheme pika -destination "$IOS_DESTINATION" -only-testing:pikaTests CODE_SIGNING_ALLOWED=NO
+```
 
 ## Metrics
 
-The ambiguous "crab/Carp" metrics request is resolved to Lizard because it is a small, common complexity tool with Swift support. Run metrics with:
+CRAP-style metrics are intentionally not part of this scaffold branch. They need coverage data plus a useful complexity signal, and that is better added once the app has enough executable logic for the metric to say something real.
 
-```bash
-./script/metrics.sh
-```
+## Scaffold Deferrals
 
-The script runs `lizard --version` and then:
+The scaffold wires a minimal SwiftData `ModelContainer` around `ProjectRecord`, but CloudKit/iCloud entitlements are intentionally not added in this pass. The exact CloudKit container identifier and provisioning setup remain open product decisions, so the scaffold keeps that integration out of the project file until those values are known.
 
-```bash
-lizard -l swift pika
-```
-
-If the command exits with code 2, Lizard is the chosen metrics command but is unavailable on the machine. Install it with:
-
-```bash
-python3 -m pip install lizard
-```
+If a development machine has an incompatible local store left over from the starter SwiftData template, clear the app's local development container once before launching this scaffold. The scaffold does not perform a destructive runtime reset.

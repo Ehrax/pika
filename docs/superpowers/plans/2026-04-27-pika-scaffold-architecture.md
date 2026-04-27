@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the app MV-first with `App/` owning launch and dependency injection, `Shell/` owning a tiny root view, and future behavior reserved behind thin `Navigation/`, `Stores/`, `Services/`, `DesignSystem/`, `Models/`, and `Support/` boundaries. SwiftData is wired with one minimal Pika-named model and no real invoicing/product workflows.
 
-**Tech Stack:** SwiftUI, SwiftData, Swift Testing, Xcode project with file-system-synchronized groups, shell scripts for build/test/coverage/metrics, Xcode `xccov` coverage output.
+**Tech Stack:** SwiftUI, SwiftData, Swift Testing, Xcode project with file-system-synchronized groups, shell scripts for build/test/coverage, Xcode `xccov` coverage output.
 
 ---
 
@@ -25,7 +25,7 @@
 - Create: `pika/Services/AppSettings.swift`, `InvoicePDFService.swift` for environment-accessible service boundaries and explicit unavailable PDF placeholder behavior.
 - Create: `pika/Support/MoneyFormatting.swift`, `PreviewSupport.swift` for small executable helpers.
 - Modify: `pikaTests/pikaTests.swift` into focused scaffold behavior tests.
-- Create: `script/build_and_run.sh`, `script/test.sh`, `script/coverage.sh`, `script/metrics.sh`.
+- Create: `script/build_and_run.sh`, `script/test.sh`, `script/test_ios.sh`, `script/coverage.sh`.
 - Create: `.codex/environments/environment.toml`.
 - Create: `docs/tooling.md`.
 
@@ -170,35 +170,35 @@ Run: `xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platfor
 
 Expected: PASS for all unit tests.
 
-## Task 4: Build, Test, Coverage, Metrics, And Codex Run Tooling
+## Task 4: Build, Test, Coverage, And Codex Run Tooling
 
 **Files:**
 - Create: `script/build_and_run.sh`
 - Create: `script/test.sh`
+- Create: `script/test_ios.sh`
 - Create: `script/coverage.sh`
-- Create: `script/metrics.sh`
 - Create: `.codex/environments/environment.toml`
 - Create: `docs/tooling.md`
 
 - [ ] **Step 1: Add tooling scripts**
 
-`script/build_and_run.sh` should kill any running `Pika`/`pika` process, build the macOS app with `xcodebuild build -project pika.xcodeproj -scheme pika -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`, locate the built `.app`, launch it with `/usr/bin/open -n`, and support `--verify` with `pgrep`.
+`script/build_and_run.sh` should kill only a running copy launched from the project-local DerivedData path, build the macOS app with `xcodebuild build -project pika.xcodeproj -scheme pika -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO`, locate the built `.app`, launch it with `/usr/bin/open -n`, and support `--verify` by checking the built executable path.
 
 `script/test.sh` should run unit tests with coverage enabled: `xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO`.
 
-`script/coverage.sh` should run tests into a deterministic `.build/coverage/PikaCoverage.xcresult`, extract line coverage with `xcrun xccov view --report --json`, print the line coverage percentage, and exit non-zero when whole-codebase line coverage is below `90`.
+`script/test_ios.sh` should run the unit tests against an automatically discovered iPhone simulator destination with an `IOS_DESTINATION` override.
 
-`script/metrics.sh` should resolve the ambiguous "crab/Carp" wording by documenting and using Carp if available: `carp --version` then `carp --path pika --format plain`; if Carp is not installed, print a clear install/availability message and exit with code `2`.
+`script/coverage.sh` should run tests into a deterministic `.build/coverage/PikaCoverage.xcresult`, extract line coverage with `xcrun xccov view --report --json`, print raw Xcode coverage and the testable production logic coverage percentage, and exit non-zero when the testable production logic line coverage is below `90`.
 
 - [ ] **Step 2: Add Codex environment and docs**
 
 Create `.codex/environments/environment.toml` with a Run action that executes `./script/build_and_run.sh --verify`.
 
-Create `docs/tooling.md` documenting macOS build/run, unit tests, coverage threshold, iOS simulator build command, and the Carp metrics decision.
+Create `docs/tooling.md` documenting macOS build/run, unit tests, coverage threshold, iOS simulator test command, and the CRAP metrics deferral.
 
 - [ ] **Step 3: Run script syntax checks**
 
-Run: `bash -n script/build_and_run.sh script/test.sh script/coverage.sh script/metrics.sh`
+Run: `bash -n script/build_and_run.sh script/test.sh script/test_ios.sh script/coverage.sh`
 
 Expected: PASS.
 
@@ -237,11 +237,11 @@ Run: `xcodebuild build -project pika.xcodeproj -scheme pika -destination 'platfo
 
 Expected: build succeeds, or the exact simulator/tooling blocker is reported.
 
-- [ ] **Step 6: Verify metrics command**
+- [ ] **Step 6: Verify metrics deferral**
 
-Run: `./script/metrics.sh`
+Run: `rg -n "Metrics|CRAP" docs/tooling.md`
 
-Expected: Carp metrics run if `carp` is installed; otherwise exits `2` with a documented, non-ambiguous message.
+Expected: docs clearly state that CRAP-style metrics are intentionally deferred until the app has enough executable logic and coverage data for the metric to be meaningful.
 
 - [ ] **Step 7: Run review-swarm on final diff**
 
@@ -251,6 +251,6 @@ Expected: aggregate material findings only, fix any material scaffold issues, an
 
 ## Self-Review
 
-- Spec coverage: app, design system, navigation, model, stores, services, shell, support, scripts, coverage, metrics, and documentation all map to tasks.
+- Spec coverage: app, design system, navigation, model, stores, services, shell, support, scripts, coverage, and documentation all map to tasks.
 - Scope guard: no project, bucket, invoice, dashboard, settings, PDF rendering, App Intents, widgets, Liquid Glass, or real product workflow is planned.
 - TDD guard: executable production logic is covered by RED/GREEN unit test steps; configuration-only and script/doc scaffolding are handled as narrow scaffold exceptions with syntax/verification commands.
