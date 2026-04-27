@@ -1,0 +1,60 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# SwiftPM and Xcode dependency lockfiles are intentionally not ignored:
+# Package.resolved
+# *.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# CocoaPods, Carthage, and other dependency build output
+Pods/
+Carthage/Build/
+
+# Fastlane generated output
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# AppCode and JetBrains
+.idea/
+
+# VS Code
+.vscode/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# XCTest and simulator artifacts
+*.xcresult
+*.xctestrun
+*.simruntime
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace/
+*.playground/xcuserdata/

@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Pika · wireframes — print</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Architects+Daughter&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --display: 'Caveat', 'Marker Felt', cursive;
+    --hand: 'Architects Daughter', 'Bradley Hand', cursive;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --paper: #fbf8f1;
+    --paper-2: #f3eee2;
+    --ink: #1f1d1b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #ddd; color: var(--ink); font-family: var(--hand); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* A4 landscape pages — generous margin so content has air around it. */
+  .page {
+    width: 297mm;
+    height: 210mm;
+    background: var(--paper);
+    margin: 12mm auto;
+    padding: 14mm 16mm 12mm;
+    box-shadow: 0 2px 8px #0002;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  .page-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+    flex: 0 0 auto;
+  }
+  .page-head h2 {
+    font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; margin: 0;
+  }
+  .page-head .sub {
+    font-family: var(--hand); font-size: 12px; color: #4a463f; max-width: 60%; text-align: right;
+  }
+  .page-foot {
+    position: absolute; left: 16mm; right: 16mm; bottom: 8mm;
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 9px; color: #7a7468; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* Artboard grid — set columns/rows per page so Mac mocks (1.53:1) get enough width. */
+  .rail {
+    flex: 1 1 auto;
+    display: grid;
+    gap: 14px;
+    min-height: 0;
+  }
+  .rail.cols-3 { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; }
+  .rail.cols-4 { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; }
+  .rail.cols-5 { grid-template-columns: repeat(5, 1fr); grid-auto-rows: 1fr; }
+  .rail.cols-6 { grid-template-columns: repeat(6, 1fr); grid-auto-rows: 1fr; }
+  .ab {
+    min-width: 0; min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ab-label {
+    font-family: var(--mono); font-size: 9px; color: #7a7468; text-transform: uppercase; letter-spacing: 0.5px;
+    flex: 0 0 auto;
+  }
+  /* The artboard "frame" — preserves component aspect ratio via scaling wrapper. */
+  .ab-frame {
+    flex: 1 1 auto;
+    background: var(--paper);
+    border: 1px solid #1f1d1b22;
+    border-radius: 4px;
+    box-shadow: 0 1px 0 #1f1d1b18;
+    overflow: hidden;
+    position: relative;
+  }
+  /* Inside: a fixed-size component that we scale to fit the frame. */
+  .ab-stage {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform-origin: center center;
+  }
+
+  /* Brief page — single column layout. */
+  .brief-page {
+    display: flex; align-items: center; justify-content: center;
+    flex: 1; gap: 30px;
+  }
+  .brief-card {
+    width: 480px;
+    background: #fff8d6;
+    padding: 22px 26px;
+    box-shadow: 0 2px 0 #1f1d1b22, 4px 8px 18px #1f1d1b18;
+    border-radius: 2px;
+  }
+  .brief-card h1 { font-family: var(--display); font-size: 38px; margin: 0 0 6px; }
+  .brief-card p { font-family: var(--hand); font-size: 14px; line-height: 1.55; margin: 4px 0; }
+  .brief-card ul { padding-left: 18px; margin: 6px 0; }
+  .brief-card li { font-family: var(--hand); font-size: 13px; line-height: 1.5; }
+  .brief-card .meta { font-family: var(--mono); font-size: 10px; color: #7a7468; text-transform: uppercase; }
+  .toc {
+    font-family: var(--hand); font-size: 13px; line-height: 1.7;
+    width: 280px;
+  }
+  .toc h3 { font-family: var(--display); font-size: 22px; margin: 0 0 6px; }
+  .toc div { display: flex; justify-content: space-between; border-bottom: 1px dashed #1f1d1b30; padding: 2px 0; }
+  .toc .num { font-family: var(--mono); font-size: 10px; color: #7a7468; }
+
+  @page { size: A4 landscape; margin: 0; }
+  @media print {
+    html, body { background: white; }
+    .page { margin: 0; box-shadow: none; transform: none !important; }
+    .export-ui { display: none !important; }
+  }
+</style>
+<script>
+  // Scale-to-fit on screen only; print uses real A4 size.
+  (function () {
+    function fit() {
+      if (window.matchMedia('print').matches) return;
+      const pages = document.querySelectorAll('.page');
+      // 297mm at 96dpi = 1123px. Scale down if viewport is narrower.
+      const targetW = 1123;
+      const margin = 24;
+      const s = Math.min(1, (window.innerWidth - margin) / targetW);
+      pages.forEach((p) => {
+        p.style.transform = `scale(${s})`;
+        // Compensate margin so scaled pages don't overlap.
+        p.style.marginBottom = `${(s - 1) * 794 + 24}px`;
+      });
+    }
+    window.addEventListener('load', fit);
+    window.addEventListener('resize', fit);
+    setTimeout(fit, 300); setTimeout(fit, 1000);
+  })();
+</script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/html-to-image@1.11.13/dist/html-to-image.js"></script>
+
+  <!-- Component sources, identical to interactive doc. design-canvas/tweaks-panel are unused here. -->
+  <script type="text/babel" src="sketch-kit.jsx"></script>
+  <script type="text/babel" src="storyboard-mac-a.jsx"></script>
+  <script type="text/babel" src="storyboard-mac-b.jsx"></script>
+  <script type="text/babel" src="storyboard-phone.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    // Each "page" is a landscape A4 with one storyboard's artboards laid out side-by-side.
+    // Components render at their native authored size; we measure the frame and apply a uniform scale.
+
+    function Stage({ width, height, children }) {
+      const frameRef = React.useRef(null);
+      const [scale, setScale] = React.useState(1);
+      React.useLayoutEffect(() => {
+        const fit = () => {
+          const el = frameRef.current;
+          if (!el) return;
+          const fw = el.clientWidth, fh = el.clientHeight;
+          if (fw === 0 || fh === 0) return;
+          const s = Math.min(fw / width, fh / height) * 0.96;
+          setScale(s);
+        };
+        fit();
+        window.addEventListener('resize', fit);
+        // Refit shortly after fonts/JS settle.
+        const t = setTimeout(fit, 250);
+        return () => { window.removeEventListener('resize', fit); clearTimeout(t); };
+      }, [width, height]);
+      return (
+        <div className="ab-frame" ref={frameRef}>
+          <div
+            className="ab-stage"
+            style={{
+              width, height,
+              transform: `translate(-50%, -50%) scale(${scale})`,
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Page({ num, total, title, sub, items, cols }) {
+      const macW = 920, macH = 600;
+      const phoneW = 300, phoneH = 620;
+      return (
+        <div className="page">
+          <div className="page-head">
+            <h2>{title}</h2>
+            <div className="sub">{sub}</div>
+          </div>
+          <div className={`rail cols-${cols || items.length}`}>
+            {items.map((it) => {
+              const w = it.kind === 'phone' ? phoneW : macW;
+              const h = it.kind === 'phone' ? phoneH : macH;
+              return (
+                <div className="ab" key={it.id}>
+                  <div className="ab-label">{it.label}</div>
+                  <Stage width={w} height={h}>{it.node}</Stage>
+                </div>
+              );
+            })}
+          </div>
+          <div className="page-foot">
+            <span>Pika · wireframe explorations · 2026-04-26</span>
+            <span>{num} / {total}</span>
+          </div>
+        </div>
+      );
+    }
+
+    const pages = [
+      // Brief lives on its own page so storyboards each get a full landscape sheet.
+      { kind: 'brief' },
+      {
+        title: 'A · Mac · capture-first',
+        sub: 'open app → find bucket → type 10:00–12:00 → done. inline add, live totals, rate change re-totals.',
+        cols: 3,
+        items: [
+          { id: 'a1', kind: 'mac', label: '1. open · empty day', node: <MacA1_Sidebar /> },
+          { id: 'a2', kind: 'mac', label: '2. bucket detail · filled', node: <MacA2_BucketDetail /> },
+          { id: 'a3', kind: 'mac', label: '3. inline add (press +)', node: <MacA3_InlineAdd /> },
+          { id: 'a4', kind: 'mac', label: '4. change rate 80 → 90', node: <MacA4_RateChange /> },
+          { id: 'a5', kind: 'mac', label: '5. mark ready', node: <MacA5_ReadyToInvoice /> },
+        ],
+      },
+      {
+        title: 'B · Mac · dashboard-first → invoice',
+        sub: 'land on revenue + attention. open ready bucket → confirm → finalized.',
+        cols: 2,
+        items: [
+          { id: 'b1', kind: 'mac', label: '1. dashboard', node: <MacB1_Dashboard /> },
+          { id: 'b2', kind: 'mac', label: '2. open ready bucket', node: <MacB2_ReadyBucket /> },
+          { id: 'b3', kind: 'mac', label: '3. confirm sheet', node: <MacB3_Confirm /> },
+          { id: 'b4', kind: 'mac', label: '4. finalized · PDF', node: <MacB4_Finalized /> },
+        ],
+      },
+      {
+        title: 'D · iPhone · stacked capture',
+        sub: 'projects → buckets → detail → add sheet → ready.',
+        cols: 6,
+        items: [
+          { id: 'd1', kind: 'phone', label: '1. projects', node: <PhoneD1_Projects /> },
+          { id: 'd2', kind: 'phone', label: '2. buckets', node: <PhoneD2_Buckets /> },
+          { id: 'd3', kind: 'phone', label: '3. bucket detail', node: <PhoneD3_BucketDetail /> },
+          { id: 'd3b', kind: 'phone', label: '3b. entry detail', node: <PhoneD3b_EntryDetail /> },
+          { id: 'd4', kind: 'phone', label: '4. add sheet', node: <PhoneD4_AddSheet /> },
+          { id: 'd5', kind: 'phone', label: '5. ready to invoice', node: <PhoneD5_Ready /> },
+        ],
+      },
+      {
+        title: 'E · iPhone · dashboard-first',
+        sub: 'today screen with KPIs, quick-add any bucket, tap overdue to act.',
+        cols: 3,
+        items: [
+          { id: 'e1', kind: 'phone', label: '1. today', node: <PhoneE1_Today /> },
+          { id: 'e2', kind: 'phone', label: '2. quick add', node: <PhoneE2_QuickAdd /> },
+          { id: 'e3', kind: 'phone', label: '3. overdue · act', node: <PhoneE3_InvoiceTap /> },
+        ],
+      },
+    ];
+
+    function BriefPage({ num, total, storyboards }) {
+      return (
+        <div className="page">
+          <div className="page-head">
+            <h2>Pika.</h2>
+            <div className="sub">wireframe explorations · low-fi · 2026-04-26</div>
+          </div>
+          <div className="brief-page">
+            <div className="brief-card">
+              <div className="meta">brief · low-fi wireframes</div>
+              <h1>Pika.</h1>
+              <p><b>Goal.</b> A private, note-like billing app for ehrax.dev — capture little while working, automate paperwork later. Mac (3-pane) and iPhone (stacked).</p>
+              <p><b>Four storyboards, each follows one task end-to-end.</b></p>
+              <ul>
+                <li><b>A · Mac · capture-first.</b> Sidebar/list/detail with inline add. Press <code style={{fontFamily:'var(--mono)'}}>+</code>, type two times, done.</li>
+                <li><b>B · Mac · dashboard-first.</b> Open to revenue + attention; ready bucket → confirm sheet → finalized invoice in one move.</li>
+                <li><b>D · iPhone · stacked capture.</b> Projects → Buckets → Detail → Add sheet → Ready.</li>
+                <li><b>E · iPhone · dashboard-first.</b> Today screen with KPIs; quick-add from any bucket; tap an overdue invoice to act.</li>
+              </ul>
+              <p className="meta" style={{marginTop:10}}>note. window chrome and phone bezel are intentionally generic — not branded UI.</p>
+            </div>
+            <div className="toc">
+              <h3>contents</h3>
+              {storyboards.map((s, i) => (
+                <div key={s.title}><span>{s.title}</span><span className="num">{i + 2}</span></div>
+              ))}
+            </div>
+          </div>
+          <div className="page-foot">
+            <span>Pika · wireframe explorations · 2026-04-26</span>
+            <span>{num} / {total}</span>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const total = pages.length;
+      const storyboards = pages.filter((p) => !p.kind);
+      return (
+        <>
+          <SketchFilters />
+          <BriefPage num={1} total={total} storyboards={storyboards} />
+          {storyboards.map((p, i) => (
+            <Page key={p.title} num={i + 2} total={total} title={p.title} sub={p.sub} items={p.items} cols={p.cols} />
+          ))}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+    // ── JPG export ────────────────────────────────────────────────────────
+    // Floating button that rasterizes each .page at native A4 resolution and
+    // downloads them as individual JPGs. Hidden in print and during capture.
+    function ExportButton() {
+      const [busy, setBusy] = React.useState(false);
+      const [msg, setMsg] = React.useState('');
+      async function run() {
+        setBusy(true); setMsg('');
+        try {
+          const pages = [...document.querySelectorAll('.page')];
+          // Save current transforms, reset to native size for capture.
+          const originals = pages.map((p) => p.style.transform);
+          pages.forEach((p) => { p.style.transform = 'none'; });
+          await new Promise((r) => setTimeout(r, 400));
+          const names = ['00-brief', '01-mac-a-capture-first', '02-mac-b-dashboard', '03-iphone-d-stacked', '04-iphone-e-dashboard'];
+          for (let i = 0; i < pages.length; i++) {
+            setMsg(`exporting ${i + 1} / ${pages.length}…`);
+            const dataUrl = await window.htmlToImage.toJpeg(pages[i], {
+              quality: 0.92,
+              backgroundColor: '#fbf8f1',
+              pixelRatio: 1.5,
+            });
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `pika-wireframes-${names[i] || ('page-' + (i + 1))}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            await new Promise((r) => setTimeout(r, 150));
+          }
+          // Restore transforms.
+          pages.forEach((p, i) => { p.style.transform = originals[i]; });
+          setMsg('done · check your downloads folder');
+          setTimeout(() => setMsg(''), 3000);
+        } catch (e) {
+          setMsg('error: ' + e.message);
+        }
+        setBusy(false);
+      }
+      return (
+        <div style={{
+          position: 'fixed', right: 16, bottom: 16, zIndex: 9999,
+          fontFamily: 'var(--mono)', fontSize: 11,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }} className="export-ui">
+          {msg ? <span style={{ background: '#fff8d6', padding: '6px 10px', borderRadius: 4, boxShadow: '0 2px 8px #0002' }}>{msg}</span> : null}
+          <button onClick={run} disabled={busy} style={{
+            fontFamily: 'var(--hand)', fontSize: 14,
+            padding: '10px 16px', background: '#1f1d1b', color: '#fbf8f1',
+            border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer',
+            boxShadow: '0 4px 12px #0003',
+          }}>{busy ? 'exporting…' : 'download as JPG ↓'}</button>
+        </div>
+      );
+    }
+    ReactDOM.createRoot(Object.assign(document.createElement('div'), { id: 'export-root' })).render(<ExportButton />);
+    document.body.appendChild(document.getElementById('export-root'));
+  </script>
+</body>
+</html>
