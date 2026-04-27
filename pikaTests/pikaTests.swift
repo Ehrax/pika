@@ -4,6 +4,18 @@ import Testing
 @testable import pika
 
 struct PikaScaffoldTests {
+    @Test func designTokensExposeExpectedScaffoldValues() {
+        #expect(PikaSpacing.md == 16)
+        #expect(PikaRadius.lg == 8)
+        #expect(PikaStatusTone.success.accessibilityLabel == "Success")
+    }
+
+    @Test func moneyFormattingFormatsEuroMinorUnits() {
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        #expect(formatter.string(fromMinorUnits: 12345) == "EUR 123.45")
+    }
+
     @Test func projectRecordDefaultsArePikaSpecificAndFlexible() {
         let createdAt = Date(timeIntervalSince1970: 1_776_000_000)
         let project = ProjectRecord(title: "Client work", createdAt: createdAt)
