@@ -263,6 +263,106 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func inMemoryWorkspaceStoreAddsTimeEntryToOpenBucket() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000801")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000801")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Entry capture",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Open workbench",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceTimeEntryDraft(
+                date: date,
+                timeInput: "10:00-12:00",
+                description: "Polish bucket table",
+                isBillable: true
+            ),
+            occurredAt: date
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        let entry = try #require(bucket.timeEntries.first)
+        #expect(entry.date == date)
+        #expect(entry.timeRangeLabel == "10:00-12:00")
+        #expect(entry.durationMinutes == 120)
+        #expect(entry.description == "Polish bucket table")
+        #expect(bucket.effectiveBillableMinutes == 120)
+        #expect(store.workspace.activity.map(\.message) == ["Open workbench entry added"])
+    }
+
+    @Test func addingTimeEntryToReadyBucketReopensItForReview() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000802")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000802")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Ready edits",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready workbench",
+                            status: .ready,
+                            totalMinorUnits: 20_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceTimeEntryDraft(
+                date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                timeInput: "1h",
+                description: "Late polish",
+                isBillable: true
+            )
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.status == .open)
+        #expect(bucket.timeEntries.map(\.description) == [
+            "Billable time",
+            "Late polish",
+        ])
+    }
+
     @Test func sampleWorkspaceExposesRecentActivityNewestFirst() {
         var workspace = WorkspaceSnapshot.sample
         workspace.activity = [
@@ -388,7 +488,7 @@ struct WorkspaceSnapshotTests {
             "Discovery notes",
             "Internal planning",
         ])
-        #expect(projection.bucketRows[0].meta == "20h · EUR 2,500.00 · EUR 500.00 fixed")
+        #expect(projection.bucketRows[0].meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
         #expect(projection.bucketRows[0].statusTitle == "Ready")
         #expect(projection.bucketRows[1].statusTitle == nil)
     }
@@ -411,14 +511,96 @@ struct WorkspaceSnapshotTests {
         #expect(projection.projectName == "Launch sprint")
         #expect(projection.clientName == "Happ.ines")
         #expect(projection.totalLabel == "EUR 2,500.00")
-        #expect(projection.billableSummary == "20h billable")
-        #expect(projection.nonBillableSummary == "0h non-billable")
+        #expect(projection.billableSummary == "10h billable")
+        #expect(projection.nonBillableSummary == "0.5h non-billable")
         #expect(projection.fixedCostLabel == "EUR 500.00 fixed")
         #expect(projection.lineItems.map(\.description) == [
             "Billable time",
             "Fixed costs",
-            "Non-billable time",
         ])
+    }
+
+    @Test func bucketDetailProjectionUsesRowLevelEntriesWhenPresent() throws {
+        let project = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let projection = try #require(project.detailProjection(formatter: formatter))
+
+        #expect(projection.entryRows.map(\.description) == [
+            "API spec and auth token rotation",
+            "Bookings list endpoint",
+            "Review session with Adi",
+            "Map tiles and clustering",
+            "Standup and handoff notes",
+            "Prototype hosting",
+        ])
+        #expect(projection.entryRows.map(\.dateLabel) == [
+            "Apr 23",
+            "Apr 23",
+            "Apr 24",
+            "Apr 24",
+            "Apr 26",
+            "Apr 26",
+        ])
+        #expect(projection.entryRows.map(\.timeLabel) == [
+            "09:00-12:30",
+            "13:30-17:00",
+            "10:00-12:00",
+            "14:00-15:00",
+            "14:30-15:00",
+            "Fixed cost",
+        ])
+        #expect(projection.entryRows.map(\.hoursLabel) == [
+            "3.50",
+            "3.50",
+            "2.00",
+            "1.00",
+            "0.50",
+            "-",
+        ])
+        #expect(projection.entryRows.map(\.amountLabel) == [
+            "EUR 700.00",
+            "EUR 700.00",
+            "EUR 400.00",
+            "EUR 200.00",
+            "n/b",
+            "EUR 500.00",
+        ])
+        #expect(projection.entryRows[4].isBillable == false)
+        #expect(projection.entryRows[5].kind == .fixedCost)
+    }
+
+    @Test func inlineEntryDurationParserAcceptsRangesAndDurations() throws {
+        #expect(WorkspaceEntryDurationParser.minutes(from: "10:00-12:30") == 150)
+        #expect(WorkspaceEntryDurationParser.minutes(from: "10-12") == 120)
+        #expect(WorkspaceEntryDurationParser.minutes(from: "2h") == 120)
+        #expect(WorkspaceEntryDurationParser.minutes(from: "1.5h") == 90)
+        #expect(WorkspaceEntryDurationParser.minutes(from: "90m") == 90)
+        #expect(WorkspaceEntryDurationParser.minutes(from: "bad input") == nil)
+    }
+
+    @Test func inlineEntryDraftProjectionComputesDurationAndAmount() throws {
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let projection = WorkspaceInlineEntryDraftProjection(
+            timeInput: "10:00-12:00",
+            description: "Polish invoice handoff",
+            isBillable: true,
+            hourlyRateMinorUnits: 20_000,
+            formatter: formatter
+        )
+
+        #expect(projection.durationMinutes == 120)
+        #expect(projection.hoursLabel == "2.00")
+        #expect(projection.amountLabel == "EUR 400.00")
+
+        let nonBillableProjection = WorkspaceInlineEntryDraftProjection(
+            timeInput: "30m",
+            description: "Internal planning",
+            isBillable: false,
+            hourlyRateMinorUnits: 20_000,
+            formatter: formatter
+        )
+        #expect(nonBillableProjection.amountLabel == "n/b")
     }
 
     @Test func invoicePreviewProjectionSelectsNewestInvoiceAndMarksOverdueRows() throws {

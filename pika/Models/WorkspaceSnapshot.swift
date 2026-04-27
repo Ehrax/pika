@@ -26,171 +26,6 @@ struct WorkspaceSnapshot: Equatable {
         }
     }
 
-    static let sample = WorkspaceSnapshot(
-        businessProfile: BusinessProfileProjection(
-            businessName: "Ehrax Studio",
-            email: "hello@ehrax.dev",
-            address: "Lisbon, Portugal",
-            invoicePrefix: "EHX",
-            nextInvoiceNumber: 5,
-            currencyCode: "EUR",
-            paymentDetails: "IBAN PT50 0000 0000 0000 0000 0000 0",
-            taxNote: "VAT reverse charge where applicable.",
-            defaultTermsDays: 14
-        ),
-        clients: [
-            WorkspaceClient(
-                id: UUID(uuidString: "10000000-0000-0000-0000-000000000001")!,
-                name: "Happ.ines",
-                email: "billing@happines.example",
-                billingAddress: "Rua da Alegria 42, Porto",
-                defaultTermsDays: 14
-            ),
-            WorkspaceClient(
-                id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!,
-                name: "Northstar Labs",
-                email: "accounts@northstar.example",
-                billingAddress: "12 Polaris Yard, Berlin",
-                defaultTermsDays: 14
-            ),
-            WorkspaceClient(
-                id: UUID(uuidString: "10000000-0000-0000-0000-000000000003")!,
-                name: "Acme Studio",
-                email: "finance@acme.example",
-                billingAddress: "5 Market Street, Dublin",
-                defaultTermsDays: 30
-            ),
-        ],
-        projects: [
-            WorkspaceProject(
-                id: UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
-                name: "Launch sprint",
-                clientName: "Happ.ines",
-                currencyCode: "EUR",
-                isArchived: false,
-                buckets: [
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000001")!,
-                        name: "April sprint",
-                        status: .ready,
-                        totalMinorUnits: 250_000,
-                        billableMinutes: 1_200,
-                        fixedCostMinorUnits: 50_000
-                    ),
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000002")!,
-                        name: "Discovery notes",
-                        status: .open,
-                        totalMinorUnits: 65_000,
-                        billableMinutes: 390,
-                        fixedCostMinorUnits: 0
-                    ),
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000003")!,
-                        name: "Internal planning",
-                        status: .open,
-                        totalMinorUnits: 0,
-                        billableMinutes: 0,
-                        fixedCostMinorUnits: 0
-                    ),
-                ],
-                invoices: []
-            ),
-            WorkspaceProject(
-                id: UUID(uuidString: "20000000-0000-0000-0000-000000000002")!,
-                name: "Mobile QA",
-                clientName: "Northstar Labs",
-                currencyCode: "EUR",
-                isArchived: false,
-                buckets: [
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000004")!,
-                        name: "Regression pass",
-                        status: .ready,
-                        totalMinorUnits: 157_500,
-                        billableMinutes: 630,
-                        fixedCostMinorUnits: 0
-                    ),
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000005")!,
-                        name: "Follow-up checks",
-                        status: .open,
-                        totalMinorUnits: 30_000,
-                        billableMinutes: 120,
-                        fixedCostMinorUnits: 0
-                    ),
-                ],
-                invoices: [
-                    WorkspaceInvoice(
-                        id: UUID(uuidString: "40000000-0000-0000-0000-000000000001")!,
-                        number: "EHX-2026-004",
-                        clientName: "Northstar Labs",
-                        projectName: "Mobile QA",
-                        bucketName: "Regression pass",
-                        issueDate: Date.pikaDate(year: 2026, month: 4, day: 20),
-                        dueDate: Date.pikaDate(year: 2026, month: 5, day: 4),
-                        status: .finalized,
-                        totalMinorUnits: 120_000,
-                        lineItems: [
-                            WorkspaceInvoiceLineItemSnapshot(
-                                description: "Regression pass QA",
-                                quantityLabel: "8h",
-                                amountMinorUnits: 120_000
-                            ),
-                        ]
-                    ),
-                ]
-            ),
-            WorkspaceProject(
-                id: UUID(uuidString: "20000000-0000-0000-0000-000000000003")!,
-                name: "Brand refresh",
-                clientName: "Acme Studio",
-                currencyCode: "EUR",
-                isArchived: true,
-                buckets: [
-                    WorkspaceBucket(
-                        id: UUID(uuidString: "30000000-0000-0000-0000-000000000006")!,
-                        name: "Visual language",
-                        status: .finalized,
-                        totalMinorUnits: 125_000,
-                        billableMinutes: 600,
-                        fixedCostMinorUnits: 25_000
-                    ),
-                ],
-                invoices: [
-                    WorkspaceInvoice(
-                        id: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!,
-                        number: "EHX-2026-003",
-                        clientName: "Acme Studio",
-                        projectName: "Brand refresh",
-                        bucketName: "Visual language",
-                        issueDate: Date.pikaDate(year: 2026, month: 3, day: 16),
-                        dueDate: Date.pikaDate(year: 2026, month: 4, day: 10),
-                        status: .sent,
-                        totalMinorUnits: 125_000,
-                        lineItems: [
-                            WorkspaceInvoiceLineItemSnapshot(
-                                description: "Billable design time",
-                                quantityLabel: "10h",
-                                amountMinorUnits: 100_000
-                            ),
-                            WorkspaceInvoiceLineItemSnapshot(
-                                description: "Fixed costs",
-                                quantityLabel: "1 item",
-                                amountMinorUnits: 25_000
-                            ),
-                        ]
-                    ),
-                ]
-            ),
-        ],
-        activity: [
-            WorkspaceActivity(message: "EHX-2026-004 finalized", detail: "Northstar Labs", occurredAt: Date.pikaDate(year: 2026, month: 4, day: 20)),
-            WorkspaceActivity(message: "Regression pass marked ready", detail: "Mobile QA", occurredAt: Date.pikaDate(year: 2026, month: 4, day: 18)),
-            WorkspaceActivity(message: "April sprint marked ready", detail: "Launch sprint", occurredAt: Date.pikaDate(year: 2026, month: 4, day: 17)),
-        ]
-    )
-
     func dashboardSummary(on date: Date = .now) -> DashboardSummary {
         let invoices = projects.flatMap(\.invoices)
         let unpaidInvoices = invoices.filter { $0.status == .finalized || $0.status == .sent }
@@ -229,7 +64,7 @@ struct WorkspaceSnapshot: Equatable {
                     id: "ready-bucket-\(bucket.id.uuidString)",
                     title: readyAttentionTitle(for: project),
                     detail: "\(bucket.name) has \(bucket.billableHoursLabel) billable",
-                    amountMinorUnits: bucket.totalMinorUnits,
+                    amountMinorUnits: bucket.effectiveTotalMinorUnits,
                     tone: .success
                 )
             }
@@ -237,7 +72,7 @@ struct WorkspaceSnapshot: Equatable {
         return DashboardSummary(
             outstandingMinorUnits: unpaidInvoices.map(\.totalMinorUnits).reduce(0, +),
             overdueMinorUnits: overdueInvoices.map(\.amountMinorUnits).reduce(0, +),
-            readyToInvoiceMinorUnits: readyBuckets.map(\.bucket.totalMinorUnits).reduce(0, +),
+            readyToInvoiceMinorUnits: readyBuckets.map(\.bucket.effectiveTotalMinorUnits).reduce(0, +),
             thisMonthMinorUnits: invoices
                 .filter { Calendar.pikaGregorian.isDate($0.issueDate, equalTo: date, toGranularity: .month) }
                 .map(\.totalMinorUnits)
@@ -329,20 +164,20 @@ struct WorkspaceProject: Equatable, Identifiable {
     }
 
     var totalBucketMinorUnits: Int {
-        buckets.map(\.totalMinorUnits).reduce(0, +)
+        buckets.map(\.effectiveTotalMinorUnits).reduce(0, +)
     }
 
     var openBucketMinorUnits: Int {
         buckets
             .filter { $0.status == .open }
-            .map(\.totalMinorUnits)
+            .map(\.effectiveTotalMinorUnits)
             .reduce(0, +)
     }
 
     var readyToInvoiceMinorUnits: Int {
         buckets
             .filter { $0.status == .ready }
-            .map(\.totalMinorUnits)
+            .map(\.effectiveTotalMinorUnits)
             .reduce(0, +)
     }
 
@@ -386,19 +221,135 @@ struct WorkspaceBucket: Equatable, Identifiable {
     var billableMinutes: Int
     var fixedCostMinorUnits: Int
     var nonBillableMinutes: Int = 0
+    var timeEntries: [WorkspaceTimeEntry] = []
+    var fixedCostEntries: [WorkspaceFixedCostEntry] = []
 
     var billableHoursLabel: String {
-        let hours = Double(billableMinutes) / 60
-        return hours.formatted(.number.precision(.fractionLength(0...1))) + "h"
+        Self.hoursLabel(minutes: effectiveBillableMinutes)
     }
 
     var nonBillableHoursLabel: String {
-        let hours = Double(nonBillableMinutes) / 60
-        return hours.formatted(.number.precision(.fractionLength(0...1))) + "h"
+        Self.hoursLabel(minutes: effectiveNonBillableMinutes)
     }
 
     var billableTimeMinorUnits: Int {
-        max(totalMinorUnits - fixedCostMinorUnits, 0)
+        effectiveBillableTimeMinorUnits
+    }
+
+    var effectiveBillableMinutes: Int {
+        guard hasRowLevelEntries else { return billableMinutes }
+        return timeEntries
+            .filter(\.isBillable)
+            .map(\.durationMinutes)
+            .reduce(0, +)
+    }
+
+    var effectiveNonBillableMinutes: Int {
+        guard hasRowLevelEntries else { return nonBillableMinutes }
+        return timeEntries
+            .filter { !$0.isBillable }
+            .map(\.durationMinutes)
+            .reduce(0, +)
+    }
+
+    var effectiveFixedCostMinorUnits: Int {
+        guard hasRowLevelEntries else { return fixedCostMinorUnits }
+        return fixedCostEntries.map(\.amountMinorUnits).reduce(0, +)
+    }
+
+    var effectiveBillableTimeMinorUnits: Int {
+        guard hasRowLevelEntries else {
+            return max(totalMinorUnits - fixedCostMinorUnits, 0)
+        }
+
+        return timeEntries.map(\.billableAmountMinorUnits).reduce(0, +)
+    }
+
+    var effectiveTotalMinorUnits: Int {
+        guard hasRowLevelEntries else { return totalMinorUnits }
+        return effectiveBillableTimeMinorUnits + effectiveFixedCostMinorUnits
+    }
+
+    var hasRowLevelEntries: Bool {
+        !timeEntries.isEmpty || !fixedCostEntries.isEmpty
+    }
+
+    var hourlyRateMinorUnits: Int? {
+        if let rate = timeEntries.first(where: \.isBillable)?.hourlyRateMinorUnits {
+            return rate
+        }
+
+        guard billableMinutes > 0 else { return nil }
+        return billableTimeMinorUnits * 60 / billableMinutes
+    }
+
+    private static func hoursLabel(minutes: Int) -> String {
+        let hours = Double(minutes) / 60
+        if minutes.isMultiple(of: 60) {
+            return "\(Int(hours))h"
+        }
+
+        return String(format: "%.1fh", locale: Locale(identifier: "en_US_POSIX"), hours)
+    }
+}
+
+struct WorkspaceTimeEntry: Equatable, Identifiable {
+    let id: UUID
+    var date: Date
+    var startTime: String
+    var endTime: String
+    var durationMinutes: Int
+    var description: String
+    var isBillable: Bool
+    var hourlyRateMinorUnits: Int
+
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        startTime: String,
+        endTime: String,
+        durationMinutes: Int,
+        description: String,
+        isBillable: Bool = true,
+        hourlyRateMinorUnits: Int
+    ) {
+        self.id = id
+        self.date = date
+        self.startTime = startTime
+        self.endTime = endTime
+        self.durationMinutes = durationMinutes
+        self.description = description
+        self.isBillable = isBillable
+        self.hourlyRateMinorUnits = hourlyRateMinorUnits
+    }
+
+    var timeRangeLabel: String {
+        guard !endTime.isEmpty else { return startTime }
+        return "\(startTime)-\(endTime)"
+    }
+
+    var billableAmountMinorUnits: Int {
+        guard isBillable else { return 0 }
+        return durationMinutes * hourlyRateMinorUnits / 60
+    }
+}
+
+struct WorkspaceFixedCostEntry: Equatable, Identifiable {
+    let id: UUID
+    var date: Date
+    var description: String
+    var amountMinorUnits: Int
+
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        description: String,
+        amountMinorUnits: Int
+    ) {
+        self.id = id
+        self.date = date
+        self.description = description
+        self.amountMinorUnits = amountMinorUnits
     }
 }
 
@@ -513,9 +464,9 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
         name = bucket.name
         status = bucket.status
 
-        let amount = formatter.string(fromMinorUnits: bucket.totalMinorUnits)
-        if bucket.fixedCostMinorUnits > 0 {
-            let fixedCost = formatter.string(fromMinorUnits: bucket.fixedCostMinorUnits)
+        let amount = formatter.string(fromMinorUnits: bucket.effectiveTotalMinorUnits)
+        if bucket.effectiveFixedCostMinorUnits > 0 {
+            let fixedCost = formatter.string(fromMinorUnits: bucket.effectiveFixedCostMinorUnits)
             meta = "\(bucket.billableHoursLabel) · \(amount) · \(fixedCost) fixed"
         } else {
             meta = "\(bucket.billableHoursLabel) · \(amount)"
@@ -536,6 +487,8 @@ struct WorkspaceBucketDetailProjection: Equatable {
     let billableSummary: String
     let nonBillableSummary: String
     let fixedCostLabel: String
+    let rateLabel: String
+    let entryRows: [WorkspaceBucketEntryRowProjection]
     let lineItems: [WorkspaceBucketLineItemProjection]
 
     init(
@@ -550,10 +503,12 @@ struct WorkspaceBucketDetailProjection: Equatable {
         projectName = project.name
         clientName = project.clientName
         currencyCode = project.currencyCode
-        totalLabel = formatter.string(fromMinorUnits: selectedBucket.totalMinorUnits)
+        totalLabel = formatter.string(fromMinorUnits: selectedBucket.effectiveTotalMinorUnits)
         billableSummary = "\(selectedBucket.billableHoursLabel) billable"
         nonBillableSummary = "\(selectedBucket.nonBillableHoursLabel) non-billable"
-        fixedCostLabel = "\(formatter.string(fromMinorUnits: selectedBucket.fixedCostMinorUnits)) fixed"
+        fixedCostLabel = "\(formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits)) fixed"
+        rateLabel = selectedBucket.hourlyRateMinorUnits.map { "\(formatter.string(fromMinorUnits: $0))/h" } ?? "n/b"
+        entryRows = selectedBucket.entryRows(formatter: formatter)
         lineItems = [
             WorkspaceBucketLineItemProjection(
                 description: "Billable time",
@@ -563,17 +518,17 @@ struct WorkspaceBucketDetailProjection: Equatable {
             ),
             WorkspaceBucketLineItemProjection(
                 description: "Fixed costs",
-                quantity: selectedBucket.fixedCostMinorUnits > 0 ? "1 item" : "0 items",
-                amountLabel: formatter.string(fromMinorUnits: selectedBucket.fixedCostMinorUnits),
-                isBillable: selectedBucket.fixedCostMinorUnits > 0
+                quantity: selectedBucket.effectiveFixedCostMinorUnits > 0 ? max(selectedBucket.fixedCostEntries.count, 1).formattedItemCount : "0 items",
+                amountLabel: formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits),
+                isBillable: selectedBucket.effectiveFixedCostMinorUnits > 0
             ),
-            WorkspaceBucketLineItemProjection(
-                description: "Non-billable time",
-                quantity: selectedBucket.nonBillableHoursLabel,
-                amountLabel: "n/b",
-                isBillable: false
-            ),
-        ]
+        ].filter { $0.isBillable }
+    }
+}
+
+private extension Int {
+    var formattedItemCount: String {
+        self == 1 ? "1 item" : "\(self) items"
     }
 }
 
@@ -709,16 +664,10 @@ extension WorkspaceSnapshot {
     }
 }
 
-private extension Calendar {
+extension Calendar {
     static let pikaGregorian: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar
     }()
-}
-
-private extension Date {
-    static func pikaDate(year: Int, month: Int, day: Int) -> Date {
-        Calendar.pikaGregorian.date(from: DateComponents(year: year, month: month, day: day))!
-    }
 }

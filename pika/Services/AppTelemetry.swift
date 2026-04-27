@@ -35,6 +35,10 @@ enum AppTelemetry {
         projectLogger.info("bucket.marked_ready bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }
 
+    static func bucketTimeEntryAdded(bucketName: String, projectName: String) {
+        projectLogger.info("bucket.time_entry_added bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
+    }
+
     static func bucketFinalized(bucketName: String, projectName: String) {
         projectLogger.info("bucket.finalized bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }

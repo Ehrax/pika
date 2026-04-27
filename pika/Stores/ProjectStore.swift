@@ -22,12 +22,21 @@ struct InvoiceFinalizationDraft: Equatable {
     var note: String
 }
 
+struct WorkspaceTimeEntryDraft: Equatable {
+    var date: Date
+    var timeInput: String
+    var description: String
+    var isBillable: Bool
+}
+
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
     case invoiceNotFound
     case bucketNotInvoiceable
     case bucketStatusNotReady(BucketStatus)
+    case bucketLocked(BucketStatus)
+    case invalidTimeEntry
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
 }
 
@@ -75,7 +84,7 @@ final class WorkspaceStore {
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
-        guard bucket.status == .open, bucket.totalMinorUnits > 0 else {
+        guard bucket.status == .open, bucket.effectiveTotalMinorUnits > 0 else {
             throw WorkspaceStoreError.bucketNotInvoiceable
         }
 
@@ -86,6 +95,53 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketMarkedReady(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+    }
+
+    func addTimeEntry(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: WorkspaceTimeEntryDraft,
+        occurredAt: Date = .now
+    ) throws {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard !bucket.status.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucket.status)
+        }
+
+        let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            !description.isEmpty,
+            let durationMinutes = WorkspaceEntryDurationParser.minutes(from: draft.timeInput)
+        else {
+            throw WorkspaceStoreError.invalidTimeEntry
+        }
+
+        bucket.backfillLegacyRowsForEditing(on: draft.date)
+        let labels = WorkspaceEntryDurationParser.timeRangeLabels(from: draft.timeInput)
+        let displayLabel = WorkspaceEntryDurationParser.displayLabel(from: draft.timeInput)
+        bucket.timeEntries.append(WorkspaceTimeEntry(
+            date: draft.date,
+            startTime: labels?.start ?? displayLabel,
+            endTime: labels?.end ?? "",
+            durationMinutes: durationMinutes,
+            description: description,
+            isBillable: draft.isBillable,
+            hourlyRateMinorUnits: bucket.hourlyRateMinorUnits ?? 0
+        ))
+        if bucket.status == .ready {
+            bucket.status = .open
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex] = bucket
+        appendActivity(
+            message: "\(bucket.name) entry added",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.bucketTimeEntryAdded(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
     }
 
     @discardableResult
@@ -124,7 +180,7 @@ final class WorkspaceStore {
             issueDate: draft.issueDate,
             dueDate: draft.dueDate,
             status: .finalized,
-            totalMinorUnits: bucket.totalMinorUnits,
+            totalMinorUnits: bucket.effectiveTotalMinorUnits,
             lineItems: lineItems,
             currencyCode: draft.currencyCode,
             note: draft.note.isEmpty ? nil : draft.note
@@ -263,6 +319,41 @@ final class WorkspaceStore {
 }
 
 private extension WorkspaceBucket {
+    mutating func backfillLegacyRowsForEditing(on date: Date) {
+        guard !hasRowLevelEntries else { return }
+
+        if billableMinutes > 0 {
+            timeEntries.append(WorkspaceTimeEntry(
+                date: date,
+                startTime: "Logged",
+                endTime: "",
+                durationMinutes: billableMinutes,
+                description: "Billable time",
+                hourlyRateMinorUnits: hourlyRateMinorUnits ?? 0
+            ))
+        }
+
+        if nonBillableMinutes > 0 {
+            timeEntries.append(WorkspaceTimeEntry(
+                date: date,
+                startTime: "Logged",
+                endTime: "",
+                durationMinutes: nonBillableMinutes,
+                description: "Non-billable time",
+                isBillable: false,
+                hourlyRateMinorUnits: hourlyRateMinorUnits ?? 0
+            ))
+        }
+
+        if fixedCostMinorUnits > 0 {
+            fixedCostEntries.append(WorkspaceFixedCostEntry(
+                date: date,
+                description: "Fixed costs",
+                amountMinorUnits: fixedCostMinorUnits
+            ))
+        }
+    }
+
     func invoiceLineItemSnapshots() -> [WorkspaceInvoiceLineItemSnapshot] {
         var items: [WorkspaceInvoiceLineItemSnapshot] = []
 
@@ -274,15 +365,21 @@ private extension WorkspaceBucket {
             ))
         }
 
-        if fixedCostMinorUnits > 0 {
+        if effectiveFixedCostMinorUnits > 0 {
             items.append(WorkspaceInvoiceLineItemSnapshot(
                 description: "Fixed costs",
-                quantityLabel: "1 item",
-                amountMinorUnits: fixedCostMinorUnits
+                quantityLabel: fixedCostEntries.isEmpty ? "1 item" : fixedCostEntries.count.formattedItemCount,
+                amountMinorUnits: effectiveFixedCostMinorUnits
             ))
         }
 
         return items
+    }
+}
+
+private extension Int {
+    var formattedItemCount: String {
+        self == 1 ? "1 item" : "\(self) items"
     }
 }
 
