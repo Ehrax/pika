@@ -23,7 +23,7 @@ struct ProjectPlaceholderView: View {
             {
                 let activeBucketID = project.normalizedBucketID(selectedBucketID) ?? projection.selectedBucket.id
 
-                HStack(spacing: 0) {
+                ResizableDetailSplitView {
                     ProjectBucketColumn(
                         project: project,
                         projection: projection,
@@ -34,7 +34,7 @@ struct ProjectPlaceholderView: View {
                         },
                         onCreateBucket: { showsCreateBucket = true }
                     )
-
+                } detail: {
                     BucketDetailWorkbench(
                         projection: projection,
                         draftDate: currentDate,

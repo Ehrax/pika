@@ -28,7 +28,7 @@ struct ProjectBucketColumn: View {
                 .padding(.bottom, PikaSpacing.md)
             }
         }
-        .frame(width: 260)
+        .frame(minWidth: 220, idealWidth: 280, maxWidth: 520)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(PikaColor.surface)
         .overlay(alignment: .trailing) {

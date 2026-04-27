@@ -20,14 +20,14 @@ struct ClientsView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        ResizableDetailSplitView {
             ClientListColumn(
                 clients: workspace.clients,
                 selectedClientID: selectedClientID ?? workspace.clients.first?.id,
                 onSelect: { selectedClientID = $0 },
                 onCreateClient: { showsCreateClient = true }
             )
-
+        } detail: {
             if let selectedClient {
                 ClientDetailSurface(client: selectedClient)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -131,7 +131,7 @@ private struct ClientListColumn: View {
                 .padding(.bottom, PikaSpacing.md)
             }
         }
-        .frame(width: 280)
+        .frame(minWidth: 240, idealWidth: 300, maxWidth: 520)
         .frame(maxHeight: .infinity)
         .background(PikaColor.surface)
         .overlay(alignment: .trailing) {

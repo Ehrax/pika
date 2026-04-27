@@ -36,7 +36,7 @@ struct InvoicesView: View {
     var body: some View {
         Group {
             if let projection {
-                HStack(spacing: 0) {
+                ResizableDetailSplitView {
                     InvoiceListColumn(
                         rows: filteredRows,
                         summary: InvoiceListSummary(rows: projection.rows),
@@ -44,7 +44,7 @@ struct InvoicesView: View {
                         selectedInvoiceID: selectedInvoiceID ?? selectedRow?.id,
                         onSelect: { selectedInvoiceID = $0 }
                     )
-
+                } detail: {
                     if let selectedRow {
                         PDFPreviewPlaceholder(
                             profile: selectedRow.businessProfile ?? workspace.businessProfile,
@@ -335,7 +335,7 @@ private struct InvoiceListColumn: View {
                 }
             }
         }
-        .frame(minWidth: 300, idealWidth: 340, maxWidth: 380)
+        .frame(minWidth: 300, idealWidth: 360, maxWidth: 560)
         .frame(maxHeight: .infinity)
         .background(PikaColor.surface)
         .overlay(alignment: .trailing) {
