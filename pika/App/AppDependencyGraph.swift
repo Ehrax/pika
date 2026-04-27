@@ -8,6 +8,7 @@ private struct PikaDependencyModifier: ViewModifier {
             .environment(\.appRouter, appRouter)
             .environment(\.appSettings, AppSettings())
             .environment(\.projectStore, NoopProjectStore())
+            .environment(\.workspaceStore, SampleWorkspaceStore())
             .environment(\.invoicePDFService, InvoicePDFService.placeholder())
     }
 }
@@ -30,6 +31,10 @@ private struct ProjectStoreKey: EnvironmentKey {
     static let defaultValue: any ProjectStore = NoopProjectStore()
 }
 
+private struct WorkspaceStoreKey: EnvironmentKey {
+    static let defaultValue: any WorkspaceStore = SampleWorkspaceStore()
+}
+
 private struct InvoicePDFServiceKey: EnvironmentKey {
     static let defaultValue = InvoicePDFService.placeholder()
 }
@@ -48,6 +53,11 @@ extension EnvironmentValues {
     var projectStore: any ProjectStore {
         get { self[ProjectStoreKey.self] }
         set { self[ProjectStoreKey.self] = newValue }
+    }
+
+    var workspaceStore: any WorkspaceStore {
+        get { self[WorkspaceStoreKey.self] }
+        set { self[WorkspaceStoreKey.self] = newValue }
     }
 
     var invoicePDFService: InvoicePDFService {

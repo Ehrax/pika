@@ -53,6 +53,7 @@ fastlane/test_output/
 *.xcresult
 *.xctestrun
 *.simruntime
+*.profraw
 
 # Playgrounds
 timeline.xctimeline

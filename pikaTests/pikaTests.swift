@@ -39,6 +39,11 @@ struct PikaScaffoldTests {
         #expect(records.map(\.title) == ["Preview project"])
     }
 
+    @Test func macOSLaunchWindowPolicyStartsWithRoomForSidebarAndContent() {
+        #expect(PikaApp.defaultLaunchWindowSize.width >= 1_200)
+        #expect(PikaApp.defaultLaunchWindowSize.height >= 780)
+    }
+
     @MainActor
     @Test func navigationBoundariesAreHashableValueState() {
         let projectID = UUID()

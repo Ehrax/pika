@@ -1,0 +1,41 @@
+import OSLog
+
+enum AppTelemetry {
+    private static let subsystem = "dev.ehrax.pika"
+
+    private static let shellLogger = Logger(subsystem: subsystem, category: "shell")
+    private static let dashboardLogger = Logger(subsystem: subsystem, category: "dashboard")
+    private static let projectLogger = Logger(subsystem: subsystem, category: "projects")
+    private static let invoiceLogger = Logger(subsystem: subsystem, category: "invoices")
+    private static let clientLogger = Logger(subsystem: subsystem, category: "clients")
+
+    static func shellSelectionChanged(_ selection: String) {
+        shellLogger.info("shell.selection_changed destination=\(selection, privacy: .public)")
+    }
+
+    static func dashboardLoaded(_ summary: DashboardSummary) {
+        dashboardLogger.info(
+            """
+            dashboard.loaded active_projects=\(summary.activeProjectCount, privacy: .public) clients=\(summary.clientCount, privacy: .public) attention_items=\(summary.needsAttention.count, privacy: .public) ready_minor_units=\(summary.readyToInvoiceMinorUnits, privacy: .private) overdue_minor_units=\(summary.overdueMinorUnits, privacy: .private)
+            """
+        )
+    }
+
+    static func projectDetailLoaded(projectName: String, bucketCount: Int) {
+        projectLogger.info(
+            "project.detail_loaded project=\(projectName, privacy: .private) buckets=\(bucketCount, privacy: .public)"
+        )
+    }
+
+    static func projectBucketSelected(projectName: String) {
+        projectLogger.info("project.bucket_selected project=\(projectName, privacy: .private)")
+    }
+
+    static func invoicesLoaded(invoiceCount: Int) {
+        invoiceLogger.info("invoices.loaded count=\(invoiceCount, privacy: .public)")
+    }
+
+    static func clientsLoaded(clientCount: Int) {
+        clientLogger.info("clients.loaded count=\(clientCount, privacy: .public)")
+    }
+}

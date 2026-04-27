@@ -7,3 +7,13 @@ struct NoopProjectStore: ProjectStore {
         []
     }
 }
+
+protocol WorkspaceStore {
+    func workspace() -> WorkspaceSnapshot
+}
+
+struct SampleWorkspaceStore: WorkspaceStore {
+    func workspace() -> WorkspaceSnapshot {
+        .sample
+    }
+}
