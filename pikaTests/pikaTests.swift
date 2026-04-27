@@ -37,4 +37,52 @@ struct PikaScaffoldTests {
         let records = try context.fetch(FetchDescriptor<ProjectRecord>())
         #expect(records.map(\.title) == ["Preview project"])
     }
+
+    @Test func navigationBoundariesAreHashableValueState() {
+        let projectID = UUID()
+        let route = AppRoute.project(id: projectID)
+        let matchingRoute = AppRoute.project(id: projectID)
+        let sheet = SheetDestination.projectEditor(id: projectID)
+        let newProjectSheet = SheetDestination.projectEditor(id: nil)
+
+        #expect(route == matchingRoute)
+        #expect(Set([route, matchingRoute]).count == 1)
+        #expect(sheet == SheetDestination.projectEditor(id: projectID))
+        #expect(sheet.id == "projectEditor-\(projectID.uuidString)")
+        #expect(newProjectSheet.id == "projectEditor-new")
+    }
+
+    @Test func appRouterSheetPresentationDoesNotMutatePath() {
+        let projectID = UUID()
+        let route = AppRoute.project(id: projectID)
+        let sheet = SheetDestination.projectEditor(id: projectID)
+        let router = AppRouter()
+
+        router.push(route)
+        let pathBeforeSheetPresentation = router.path
+
+        router.present(sheet: sheet)
+
+        #expect(router.path == pathBeforeSheetPresentation)
+        #expect(router.sheet == sheet)
+
+        router.dismissSheet()
+
+        #expect(router.path == pathBeforeSheetPresentation)
+        #expect(router.sheet == nil)
+    }
+
+    @Test func appSettingsExposeDefaultPaymentTerms() {
+        let settings = AppSettings()
+
+        #expect(settings.defaultPaymentTermsDays == 14)
+    }
+
+    @Test func placeholderInvoicePDFServiceThrowsNotImplemented() {
+        let service = InvoicePDFService.placeholder()
+
+        #expect(throws: InvoicePDFService.Error.notImplemented) {
+            try service.renderDraftPDF()
+        }
+    }
 }
