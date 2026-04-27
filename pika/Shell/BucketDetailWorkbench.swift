@@ -3,9 +3,15 @@ import SwiftUI
 struct BucketDetailWorkbench: View {
     let projection: WorkspaceBucketDetailProjection
     let draftDate: Date
+    let invoiceRow: WorkspaceInvoiceRowProjection?
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
     let onAddFixedCost: () -> Void
     let onCreateInvoice: () -> Void
+    let onOpenInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
+    let onExportInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
+    let onMarkInvoiceSent: (WorkspaceInvoiceRowProjection) -> Void
+    let onMarkInvoicePaid: (WorkspaceInvoiceRowProjection) -> Void
+    let onCancelInvoice: (WorkspaceInvoiceRowProjection) -> Void
 
     var body: some View {
         ScrollView {
@@ -16,6 +22,16 @@ struct BucketDetailWorkbench: View {
                     ReadyBucketSummary(
                         projection: projection,
                         onCreateInvoice: onCreateInvoice
+                    )
+                } else if let invoiceRow {
+                    InvoiceBucketSummary(
+                        projection: projection,
+                        invoiceRow: invoiceRow,
+                        onOpenPDF: { onOpenInvoicePDF(invoiceRow) },
+                        onExportPDF: { onExportInvoicePDF(invoiceRow) },
+                        onMarkSent: { onMarkInvoiceSent(invoiceRow) },
+                        onMarkPaid: { onMarkInvoicePaid(invoiceRow) },
+                        onCancel: { onCancelInvoice(invoiceRow) }
                     )
                 }
 
@@ -76,6 +92,115 @@ private struct DotSeparator: View {
         Circle()
             .fill(PikaColor.textMuted)
             .frame(width: 3, height: 3)
+    }
+}
+
+private struct InvoiceBucketSummary: View {
+    let projection: WorkspaceBucketDetailProjection
+    let invoiceRow: WorkspaceInvoiceRowProjection
+    let onOpenPDF: () -> Void
+    let onExportPDF: () -> Void
+    let onMarkSent: () -> Void
+    let onMarkPaid: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PikaSpacing.md) {
+            HStack(alignment: .top, spacing: PikaSpacing.lg) {
+                VStack(alignment: .leading, spacing: PikaSpacing.xs) {
+                    HStack(spacing: PikaSpacing.sm) {
+                        Text("Invoice")
+                            .font(PikaTypography.micro)
+                            .foregroundStyle(.white.opacity(0.72))
+                            .textCase(.uppercase)
+
+                        StatusBadge(invoiceRow.statusTone, title: invoiceRow.statusTitle)
+                    }
+
+                    Text(invoiceRow.number)
+                        .font(.title2.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.white)
+
+                    Text("\(projection.totalLabel) · due \(invoiceRow.dueDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(PikaTypography.small)
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: PikaSpacing.sm) {
+                    HStack(spacing: PikaSpacing.xs) {
+                        Button {
+                            onOpenPDF()
+                        } label: {
+                            Label("Open PDF", systemImage: "doc.text.magnifyingglass")
+                        }
+
+                        Button {
+                            onExportPDF()
+                        } label: {
+                            Label("Export", systemImage: "arrow.down.doc")
+                        }
+                    }
+
+                    HStack(spacing: PikaSpacing.xs) {
+                        Button {
+                            onMarkSent()
+                        } label: {
+                            Label("Sent", systemImage: "paperplane")
+                        }
+                        .disabled(!canMarkSent)
+
+                        Button {
+                            onMarkPaid()
+                        } label: {
+                            Label("Paid", systemImage: "checkmark.seal")
+                        }
+                        .disabled(!canMarkPaid)
+
+                        Button(role: .destructive) {
+                            onCancel()
+                        } label: {
+                            Label("Cancel", systemImage: "xmark.circle")
+                        }
+                        .disabled(!canCancel)
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(PikaSpacing.md)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
+    }
+
+    private var canMarkSent: Bool {
+        invoiceRow.status == .finalized
+    }
+
+    private var canMarkPaid: Bool {
+        invoiceRow.status == .finalized || invoiceRow.status == .sent
+    }
+
+    private var canCancel: Bool {
+        invoiceRow.status == .finalized || invoiceRow.status == .sent
+    }
+}
+
+private extension WorkspaceInvoiceRowProjection {
+    var statusTone: PikaStatusTone {
+        if isOverdue { return .danger }
+
+        switch status {
+        case .finalized:
+            return .warning
+        case .sent:
+            return .neutral
+        case .paid:
+            return .success
+        case .cancelled:
+            return .neutral
+        }
     }
 }
 

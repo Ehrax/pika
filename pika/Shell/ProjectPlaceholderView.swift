@@ -1,6 +1,12 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
+import UniformTypeIdentifiers
 
 struct ProjectPlaceholderView: View {
+    @Environment(\.invoicePDFService) private var invoicePDFService
+
     let project: WorkspaceProject?
     let workspaceStore: WorkspaceStore
     let currentDate: Date
@@ -38,6 +44,7 @@ struct ProjectPlaceholderView: View {
                     BucketDetailWorkbench(
                         projection: projection,
                         draftDate: currentDate,
+                        invoiceRow: invoiceRow(for: projection, in: project),
                         onAddEntry: { draft in
                             addTimeEntry(
                                 projectID: project.id,
@@ -53,7 +60,12 @@ struct ProjectPlaceholderView: View {
                                 totalLabel: projection.totalLabel,
                                 lineItems: projection.lineItems
                             )
-                        }
+                        },
+                        onOpenInvoicePDF: openInvoicePDF,
+                        onExportInvoicePDF: exportInvoicePDF,
+                        onMarkInvoiceSent: markInvoiceSent,
+                        onMarkInvoicePaid: markInvoicePaid,
+                        onCancelInvoice: cancelInvoice
                     )
                 }
                 .background(PikaColor.background)
@@ -125,6 +137,37 @@ struct ProjectPlaceholderView: View {
         guard let project else { return nil }
         let bucketID = project.normalizedBucketID(selectedBucketID)
         return project.buckets.first { $0.id == bucketID }
+    }
+
+    private func invoiceRow(
+        for projection: WorkspaceBucketDetailProjection,
+        in project: WorkspaceProject
+    ) -> WorkspaceInvoiceRowProjection? {
+        guard projection.selectedBucket.status == .finalized else { return nil }
+
+        let invoice = project.invoices
+            .filter { invoice in
+                let invoiceProjectName = invoice.projectName.isEmpty ? project.name : invoice.projectName
+                return invoiceProjectName == project.name && invoice.bucketName == projection.selectedBucket.name
+            }
+            .sorted { left, right in
+                if left.issueDate == right.issueDate {
+                    return left.number > right.number
+                }
+
+                return left.issueDate > right.issueDate
+            }
+            .first
+
+        guard let invoice else { return nil }
+
+        return WorkspaceInvoiceRowProjection(
+            invoice: invoice,
+            projectName: project.name,
+            billingAddress: workspaceStore.workspace.clients.first { $0.name == invoice.clientName }?.billingAddress ?? "",
+            on: currentDate,
+            formatter: formatter
+        )
     }
 
     private var canMarkSelectedBucketReady: Bool {
@@ -227,11 +270,114 @@ struct ProjectPlaceholderView: View {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
     }
+
+    private func markInvoiceSent(_ row: WorkspaceInvoiceRowProjection) {
+        do {
+            try workspaceStore.markInvoiceSent(invoiceID: row.id)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func markInvoicePaid(_ row: WorkspaceInvoiceRowProjection) {
+        do {
+            try workspaceStore.markInvoicePaid(invoiceID: row.id)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func cancelInvoice(_ row: WorkspaceInvoiceRowProjection) {
+        do {
+            try workspaceStore.cancelInvoice(invoiceID: row.id)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func openInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
+        performInvoicePDFAction("open") {
+            let rendered = try renderInvoicePDF(row)
+            let url = try writeTemporaryPDF(rendered)
+
+            #if os(macOS)
+            guard NSWorkspace.shared.open(url) else {
+                throw ProjectInvoiceActionError.openFailed
+            }
+            AppTelemetry.invoicePDFOpened(invoiceNumber: rendered.metadata.invoiceNumber)
+            #else
+            throw ProjectInvoiceActionError.unsupportedPlatform
+            #endif
+        }
+    }
+
+    private func exportInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
+        performInvoicePDFAction("export") {
+            let rendered = try renderInvoicePDF(row)
+
+            #if os(macOS)
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.pdf]
+            panel.canCreateDirectories = true
+            panel.isExtensionHidden = false
+            panel.nameFieldStringValue = rendered.metadata.suggestedFilename
+
+            guard panel.runModal() == .OK, let url = panel.url else {
+                return
+            }
+
+            try rendered.data.write(to: url, options: .atomic)
+            AppTelemetry.invoicePDFExported(invoiceNumber: rendered.metadata.invoiceNumber)
+            #else
+            throw ProjectInvoiceActionError.unsupportedPlatform
+            #endif
+        }
+    }
+
+    private func renderInvoicePDF(_ row: WorkspaceInvoiceRowProjection) throws -> InvoicePDFService.RenderedInvoice {
+        try invoicePDFService.renderInvoice(
+            profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
+            row: row
+        )
+    }
+
+    private func performInvoicePDFAction(_ action: String, operation: () throws -> Void) {
+        do {
+            try operation()
+        } catch {
+            let message = error.localizedDescription
+            actionFailure = WorkflowActionFailure(message: message)
+            AppTelemetry.invoicePDFActionFailed(action: action, message: message)
+        }
+    }
+
+    private func writeTemporaryPDF(_ rendered: InvoicePDFService.RenderedInvoice) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Pika", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let url = directory.appendingPathComponent(rendered.metadata.suggestedFilename)
+        try rendered.data.write(to: url, options: .atomic)
+        return url
+    }
 }
 
 private struct WorkflowActionFailure: Identifiable {
     let id = UUID()
     let message: String
+}
+
+private enum ProjectInvoiceActionError: LocalizedError {
+    case openFailed
+    case unsupportedPlatform
+
+    var errorDescription: String? {
+        switch self {
+        case .openFailed:
+            return "The invoice PDF could not be opened."
+        case .unsupportedPlatform:
+            return "This invoice action is only available on Mac."
+        }
+    }
 }
 
 private struct InvoiceDraftPresentation: Identifiable {
