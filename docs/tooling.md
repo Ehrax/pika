@@ -1,0 +1,85 @@
+# Tooling
+
+Pika uses project-local scripts for repeatable build, test, coverage, and metrics commands. The scripts keep Xcode output under `.build/` where practical so repeated runs do not depend on global DerivedData state.
+
+## macOS Build And Run
+
+Run the macOS app with:
+
+```bash
+./script/build_and_run.sh
+```
+
+The script stops any running `Pika` or `pika` process, builds the `pika` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika.app` or `Pika.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
+
+The Codex Run action calls:
+
+```bash
+./script/build_and_run.sh --verify
+```
+
+`--verify` waits briefly after launch and fails if neither a `pika` nor `Pika` process is running.
+
+## Unit Tests
+
+Run the reliable scaffold test gate with:
+
+```bash
+./script/test.sh
+```
+
+This runs unit tests only, with code coverage enabled:
+
+```bash
+xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
+```
+
+The baseline generated UI test target is not part of the scaffold coverage gate because it may be flaky or noisy at this stage.
+
+## Coverage
+
+Run coverage enforcement with:
+
+```bash
+./script/coverage.sh
+```
+
+The coverage script runs `pikaTests` into `.build/coverage/PikaCoverage.xcresult`, extracts Xcode line coverage with:
+
+```bash
+xcrun xccov view --report --json .build/coverage/PikaCoverage.xcresult
+```
+
+It prints whole-codebase line coverage and enforces a 90% minimum line coverage threshold. The script exits nonzero when coverage is below 90%.
+
+## iOS Simulator Build And Test
+
+The project is multiplatform, so simulator destinations can be used for iOS and iPadOS checks. One previously verified iPhone 17 simulator id was:
+
+```text
+03DD3B20-7426-40A9-AB86-6697C1C26639
+```
+
+Example iOS simulator unit test command:
+
+```bash
+xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=iOS Simulator,id=03DD3B20-7426-40A9-AB86-6697C1C26639' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
+```
+
+Change the destination id or destination spec as needed for the local simulator you want to use.
+
+## Metrics
+
+The ambiguous "crab/Carp" metrics request is resolved to Carp. Run metrics with:
+
+```bash
+./script/metrics.sh
+```
+
+The script runs `carp --version` and then:
+
+```bash
+carp --path pika --format plain
+```
+
+If the command exits with code 2, Carp is the chosen metrics command but is unavailable on the machine.
