@@ -50,7 +50,20 @@ The coverage script runs `pikaTests` into `.build/coverage/PikaCoverage.xcresult
 xcrun xccov view --report --json .build/coverage/PikaCoverage.xcresult
 ```
 
-It prints whole-codebase line coverage and enforces a 90% minimum line coverage threshold. The script exits nonzero when coverage is below 90%.
+It prints two numbers:
+
+- Raw Xcode line coverage for the full report.
+- Testable production logic line coverage, which is the enforced gate.
+
+The enforced gate intentionally excludes SwiftUI/design scaffold files and generated test targets that do not provide useful unit-test confidence in this pass:
+
+- `pika/DesignSystem/`
+- `pika/Shell/`
+- `pika/Support/PreviewSupport.swift`
+- `pikaTests/`
+- `pikaUITests/`
+
+The script enforces a 90% minimum line coverage threshold on testable production logic. It exits nonzero when that filtered coverage is below 90%.
 
 ## iOS Simulator Build And Test
 
