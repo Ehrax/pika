@@ -105,6 +105,8 @@ private struct BucketColumn: View {
                             onSelect(row.id)
                         } label: {
                             BucketRow(row: row, isSelected: row.id == selectedBucketID)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -152,6 +154,7 @@ private struct BucketRow: View {
                 StatusBadge(row.status.pikaTone, title: statusTitle)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
         .background(isSelected ? PikaColor.surfaceAlt : Color.clear)

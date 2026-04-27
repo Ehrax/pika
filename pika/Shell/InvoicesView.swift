@@ -20,17 +20,15 @@ struct InvoicesView: View {
         Group {
             if let projection {
                 HStack(spacing: 0) {
-                    InvoiceMetadataColumn(
+                    InvoiceListColumn(
                         projection: projection,
                         selectedInvoiceID: selectedInvoiceID ?? projection.selectedInvoice.id,
-                        dateStyle: dateStyle,
                         onSelect: { selectedInvoiceID = $0 }
                     )
 
                     PDFPreviewPlaceholder(
                         profile: workspace.businessProfile,
-                        invoice: projection.selectedInvoice,
-                        totalLabel: formatter.string(fromMinorUnits: projection.selectedInvoice.totalMinorUnits),
+                        row: projection.selectedRow,
                         dateStyle: dateStyle
                     )
                 }
@@ -75,15 +73,10 @@ struct InvoicesView: View {
     }
 }
 
-private struct InvoiceMetadataColumn: View {
+private struct InvoiceListColumn: View {
     let projection: WorkspaceInvoicePreviewProjection
     let selectedInvoiceID: WorkspaceInvoice.ID
-    let dateStyle: Date.FormatStyle
     let onSelect: (WorkspaceInvoice.ID) -> Void
-
-    private var selectedRow: WorkspaceInvoiceRowProjection {
-        projection.rows.first { $0.id == selectedInvoiceID } ?? projection.rows[0]
-    }
 
     var body: some View {
         ScrollView {
@@ -100,62 +93,17 @@ private struct InvoiceMetadataColumn: View {
                                 onSelect(row.id)
                             } label: {
                                 InvoiceRow(row: row, isSelected: row.id == selectedInvoiceID)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
                     }
                 }
-
-                Divider()
-                    .overlay(PikaColor.border)
-
-                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    Text("Total")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
-                    Text(selectedRow.totalLabel)
-                        .font(.system(size: 30, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(PikaColor.textPrimary)
-                    Text("Due \(selectedRow.dueDate.formatted(dateStyle))")
-                        .font(PikaTypography.small)
-                        .foregroundStyle(PikaColor.textSecondary)
-                }
-
-                MetadataList(rows: [
-                    ("Number", selectedRow.number),
-                    ("Issue date", selectedRow.issueDate.formatted(dateStyle)),
-                    ("Due date", selectedRow.dueDate.formatted(dateStyle)),
-                    ("Currency", "EUR"),
-                    ("Status", selectedRow.statusTitle),
-                ])
-
-                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    Text("Recipient")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
-                    Text(selectedRow.clientName)
-                        .font(PikaTypography.body.weight(.medium))
-                        .foregroundStyle(PikaColor.textPrimary)
-                    Text("Billing address snapshot will appear here once invoice finalization writes PDF-ready records.")
-                        .font(PikaTypography.small)
-                        .foregroundStyle(PikaColor.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    Text("Activity")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
-                    InvoiceActivityRow(text: "\(selectedRow.statusTitle.lowercased()) invoice selected", detail: "PDF render pending")
-                    InvoiceActivityRow(text: "Invoice metadata loaded", detail: selectedRow.number)
-                }
             }
             .padding(PikaSpacing.lg)
         }
-        .frame(width: 380)
+        .frame(minWidth: 300, idealWidth: 340, maxWidth: 380)
         .frame(maxHeight: .infinity)
         .background(PikaColor.surface)
         .overlay(alignment: .trailing) {
@@ -201,58 +149,13 @@ private struct InvoiceRow: View {
     }
 }
 
-private struct MetadataList: View {
-    let rows: [(String, String)]
-
-    var body: some View {
-        VStack(spacing: PikaSpacing.sm) {
-            ForEach(rows, id: \.0) { row in
-                HStack {
-                    Text(row.0)
-                        .foregroundStyle(PikaColor.textMuted)
-                    Spacer()
-                    Text(row.1)
-                        .foregroundStyle(PikaColor.textPrimary)
-                        .monospacedDigit()
-                }
-                .font(PikaTypography.small)
-            }
-        }
-        .padding(PikaSpacing.md)
-        .pikaSurface()
-    }
-}
-
-private struct InvoiceActivityRow: View {
-    let text: String
-    let detail: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: PikaSpacing.sm) {
-            Circle()
-                .fill(PikaColor.accent)
-                .frame(width: 6, height: 6)
-                .padding(.top, 6)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(text)
-                    .font(PikaTypography.small)
-                    .foregroundStyle(PikaColor.textPrimary)
-                Text(detail)
-                    .font(PikaTypography.small)
-                    .foregroundStyle(PikaColor.textMuted)
-            }
-        }
-    }
-}
-
 private struct PDFPreviewPlaceholder: View {
     let profile: BusinessProfileProjection
-    let invoice: WorkspaceInvoice
-    let totalLabel: String
+    let row: WorkspaceInvoiceRowProjection
     let dateStyle: Date.FormatStyle
 
     var body: some View {
-        ScrollView {
+        ScrollView([.vertical, .horizontal]) {
             VStack {
                 VStack(alignment: .leading, spacing: 28) {
                     HStack(alignment: .top) {
@@ -278,7 +181,7 @@ private struct PDFPreviewPlaceholder: View {
                         VStack(alignment: .trailing, spacing: PikaSpacing.xs) {
                             Text("Invoice")
                                 .font(.title2.weight(.semibold))
-                            Text(invoice.number)
+                            Text(row.number)
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(Color(white: 0.35))
                         }
@@ -289,23 +192,27 @@ private struct PDFPreviewPlaceholder: View {
                             Text("Bill to")
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(Color(white: 0.35))
-                            Text(invoice.clientName)
+                            Text(row.clientName)
                                 .font(.body.weight(.medium))
+                            Text(row.billingAddress)
+                                .font(.caption)
+                                .foregroundStyle(Color(white: 0.35))
                         }
 
                         Spacer()
 
                         VStack(alignment: .trailing, spacing: PikaSpacing.xs) {
-                            Text("Issue \(invoice.issueDate.formatted(dateStyle))")
-                            Text("Due \(invoice.dueDate.formatted(dateStyle))")
+                            Text("Issue \(row.issueDate.formatted(dateStyle))")
+                            Text("Due \(row.dueDate.formatted(dateStyle))")
+                            Text(row.statusTitle)
                         }
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(Color(white: 0.35))
                     }
 
                     VStack(spacing: 0) {
-                        PDFLine(description: "Invoice line preview", amount: totalLabel)
-                        PDFLine(description: "PDF renderer pending", amount: "Included")
+                        PDFLine(description: "Invoice line preview", amount: row.totalLabel)
+                        PDFLine(description: "PDF-ready metadata", amount: "Included")
                     }
 
                     HStack {
@@ -314,7 +221,7 @@ private struct PDFPreviewPlaceholder: View {
                             Text("Total")
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(Color(white: 0.35))
-                            Text(totalLabel)
+                            Text(row.totalLabel)
                                 .font(.title2.monospacedDigit().weight(.semibold))
                         }
                     }
@@ -327,8 +234,8 @@ private struct PDFPreviewPlaceholder: View {
                 .clipShape(RoundedRectangle(cornerRadius: 2))
                 .shadow(color: .black.opacity(0.32), radius: 24, y: 10)
             }
-            .frame(maxWidth: .infinity)
-            .padding(28)
+            .frame(maxWidth: .infinity, alignment: .top)
+            .padding(16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PikaColor.background)

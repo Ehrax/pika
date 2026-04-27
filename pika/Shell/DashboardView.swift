@@ -8,15 +8,12 @@ struct DashboardView: View {
 
     var body: some View {
         let summary = workspace.dashboardSummary(on: currentDate)
-        let activityItems = workspace.recentActivity
 
         ScrollView {
             VStack(alignment: .leading, spacing: PikaSpacing.lg) {
                 metricStrip(summary: summary)
 
                 lowerPanels(summary: summary)
-
-                recentActivity(activityItems)
             }
             .padding(PikaSpacing.lg)
         }
@@ -93,60 +90,29 @@ struct DashboardView: View {
 
     private func revenueHistory(summary: DashboardSummary) -> some View {
         VStack(alignment: .leading, spacing: PikaSpacing.md) {
-            SectionHeader(title: "Revenue", detail: "Simple history")
+            SectionHeader(title: "Revenue · 12 mo", detail: "\(summary.revenueHistory.first?.label ?? "") - \(summary.revenueHistory.last?.label ?? "")")
 
             VStack(alignment: .leading, spacing: PikaSpacing.md) {
-                ForEach(summary.revenueHistory) { point in
-                    HStack(spacing: PikaSpacing.sm) {
-                        Text(point.label)
-                            .font(PikaTypography.small.monospacedDigit())
-                            .foregroundStyle(PikaColor.textSecondary)
-                            .frame(width: 32, alignment: .leading)
+                Text(money(summary.revenueHistory.map(\.amountMinorUnits).reduce(0, +)))
+                    .font(.system(size: 28, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(PikaColor.textPrimary)
 
-                        GeometryReader { proxy in
-                            RoundedRectangle(cornerRadius: PikaRadius.sm)
-                                .fill(PikaColor.accent)
-                                .frame(width: barWidth(
-                                    for: point,
-                                    availableWidth: proxy.size.width,
-                                    revenueHistory: summary.revenueHistory
-                                ))
-                        }
-                        .frame(height: 9)
+                Text("Up 18% vs previous period")
+                    .font(PikaTypography.small)
+                    .foregroundStyle(PikaColor.success)
 
-                        Text(money(point.amountMinorUnits))
-                            .font(PikaTypography.small.monospacedDigit())
-                            .foregroundStyle(PikaColor.textPrimary)
-                            .frame(width: 86, alignment: .trailing)
-                    }
+                RevenueSparkline(points: summary.revenueHistory)
+                    .frame(height: 120)
+
+                HStack {
+                    Text(summary.revenueHistory.first?.label ?? "")
+                    Spacer()
+                    Text(summary.revenueHistory.last?.label ?? "")
                 }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(PikaColor.textMuted)
             }
             .padding(PikaSpacing.md)
-            .pikaSurface()
-        }
-    }
-
-    private func recentActivity(_ activityItems: [WorkspaceActivity]) -> some View {
-        VStack(alignment: .leading, spacing: PikaSpacing.md) {
-            SectionHeader(title: "Recent Activity", detail: "\(activityItems.count) events")
-
-            VStack(spacing: 0) {
-                if activityItems.isEmpty {
-                    Text("No activity yet")
-                        .font(PikaTypography.body)
-                        .foregroundStyle(PikaColor.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(PikaSpacing.md)
-                } else {
-                    ForEach(activityItems) { activity in
-                        ActivityRow(activity: activity)
-
-                        if activity.id != activityItems.last?.id {
-                            Divider()
-                        }
-                    }
-                }
-            }
             .pikaSurface()
         }
     }
@@ -154,62 +120,82 @@ struct DashboardView: View {
     private func money(_ minorUnits: Int) -> String {
         formatter.string(fromMinorUnits: minorUnits)
     }
+}
 
-    private func barWidth(
-        for point: RevenuePoint,
-        availableWidth: CGFloat,
-        revenueHistory: [RevenuePoint]
-    ) -> CGFloat {
-        guard let maxAmount = revenueHistory.map(\.amountMinorUnits).max(), maxAmount > 0 else {
-            return 0
+private struct RevenueSparkline: View {
+    let points: [RevenuePoint]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let samples = normalizedPoints(in: proxy.size)
+            ZStack {
+                SparklineArea(points: samples)
+                    .fill(
+                        LinearGradient(
+                            colors: [PikaColor.accent.opacity(0.28), PikaColor.accent.opacity(0)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                SparklineLine(points: samples)
+                    .stroke(PikaColor.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+                if let last = samples.last {
+                    Circle()
+                        .fill(PikaColor.accent)
+                        .frame(width: 7, height: 7)
+                        .position(last)
+                }
+            }
+        }
+        .accessibilityLabel("Twelve month revenue sparkline")
+    }
+
+    private func normalizedPoints(in size: CGSize) -> [CGPoint] {
+        guard points.count > 1, let maxAmount = points.map(\.amountMinorUnits).max(), maxAmount > 0 else {
+            return []
         }
 
-        return max(8, availableWidth * CGFloat(point.amountMinorUnits) / CGFloat(maxAmount))
+        let padding: CGFloat = 4
+        let availableWidth = max(size.width - padding * 2, 1)
+        let availableHeight = max(size.height - padding * 2, 1)
+        let step = availableWidth / CGFloat(points.count - 1)
+
+        return points.enumerated().map { index, point in
+            let x = padding + CGFloat(index) * step
+            let y = padding + (1 - CGFloat(point.amountMinorUnits) / CGFloat(maxAmount)) * availableHeight
+            return CGPoint(x: x, y: y)
+        }
     }
 }
 
-private struct ActivityRow: View {
-    var activity: WorkspaceActivity
+private struct SparklineLine: Shape {
+    let points: [CGPoint]
 
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.md) {
-                titleBlock
-                    .layoutPriority(1)
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard let first = points.first else { return path }
 
-                Spacer(minLength: PikaSpacing.sm)
-
-                dateText
-            }
-            .padding(.horizontal, PikaSpacing.md)
-            .padding(.vertical, PikaSpacing.sm)
-
-            VStack(alignment: .leading, spacing: PikaSpacing.xs) {
-                titleBlock
-                dateText
-            }
-            .padding(PikaSpacing.md)
+        path.move(to: first)
+        for point in points.dropFirst() {
+            path.addLine(to: point)
         }
+        return path
     }
+}
 
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(activity.message)
-                .font(PikaTypography.body.weight(.medium))
-                .foregroundStyle(PikaColor.textPrimary)
-                .lineLimit(1)
-            Text(activity.detail)
-                .font(PikaTypography.small)
-                .foregroundStyle(PikaColor.textSecondary)
-                .lineLimit(1)
-        }
-    }
+private struct SparklineArea: Shape {
+    let points: [CGPoint]
 
-    private var dateText: some View {
-        Text(activity.occurredAt.formatted(.dateTime.month(.abbreviated).day()))
-            .font(PikaTypography.small.monospacedDigit())
-            .foregroundStyle(PikaColor.textMuted)
-            .fixedSize(horizontal: true, vertical: false)
+    func path(in rect: CGRect) -> Path {
+        var path = SparklineLine(points: points).path(in: rect)
+        guard let first = points.first, let last = points.last else { return path }
+
+        path.addLine(to: CGPoint(x: last.x, y: rect.maxY))
+        path.addLine(to: CGPoint(x: first.x, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

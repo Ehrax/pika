@@ -18,6 +18,27 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func dashboardRevenueHistoryMatchesTwelveMonthDesignWindow() {
+        let workspace = WorkspaceSnapshot.sample
+        let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
+
+        #expect(summary.revenueHistory.map(\.label) == [
+            "May 25",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr 26",
+        ])
+        #expect(summary.revenueHistory.map(\.amountMinorUnits).last == summary.thisMonthMinorUnits)
+    }
+
     @Test func sampleWorkspaceExposesProjectCountsForProjectsSurface() throws {
         let workspace = WorkspaceSnapshot.sample
 
@@ -228,6 +249,17 @@ struct WorkspaceSnapshotTests {
         #expect(projection.rows[1].statusTitle == "Overdue")
         #expect(projection.rows[1].isOverdue == true)
         #expect(projection.rows[0].totalLabel == "EUR 1,200.00")
+    }
+
+    @Test func invoicePreviewProjectionIncludesRecipientAddressForPDFPreview() throws {
+        let workspace = WorkspaceSnapshot.sample
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+
+        #expect(projection.rows[0].clientName == "Northstar Labs")
+        #expect(projection.rows[0].billingAddress == "12 Polaris Yard, Berlin")
+        #expect(projection.rows[1].clientName == "Acme Studio")
+        #expect(projection.rows[1].billingAddress == "5 Market Street, Dublin")
     }
 
     @Test func projectOverviewSummaryTotalsActiveProjects() {

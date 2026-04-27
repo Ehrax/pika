@@ -19,6 +19,7 @@ struct PikaApp: App {
         WindowGroup {
             RootView()
                 .pikaDependencies()
+                .tint(PikaColor.accent)
         }
         .modelContainer(sharedModelContainer)
 #if os(macOS)

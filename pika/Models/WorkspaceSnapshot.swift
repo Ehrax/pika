@@ -223,10 +223,18 @@ struct WorkspaceSnapshot: Equatable {
             clientCount: clients.count,
             needsAttention: overdueInvoices + readyItems,
             revenueHistory: [
+                RevenuePoint(label: "May 25", amountMinorUnits: 208_000),
+                RevenuePoint(label: "Jun", amountMinorUnits: 246_000),
+                RevenuePoint(label: "Jul", amountMinorUnits: 218_000),
+                RevenuePoint(label: "Aug", amountMinorUnits: 272_000),
+                RevenuePoint(label: "Sep", amountMinorUnits: 248_000),
+                RevenuePoint(label: "Oct", amountMinorUnits: 304_000),
+                RevenuePoint(label: "Nov", amountMinorUnits: 284_000),
+                RevenuePoint(label: "Dec", amountMinorUnits: 342_000),
                 RevenuePoint(label: "Jan", amountMinorUnits: 90_000),
                 RevenuePoint(label: "Feb", amountMinorUnits: 140_000),
                 RevenuePoint(label: "Mar", amountMinorUnits: 125_000),
-                RevenuePoint(label: "Apr", amountMinorUnits: 120_000),
+                RevenuePoint(label: "Apr 26", amountMinorUnits: 120_000),
             ]
         )
     }
@@ -533,6 +541,7 @@ struct WorkspaceBucketLineItemProjection: Equatable, Identifiable {
 
 struct WorkspaceInvoicePreviewProjection: Equatable {
     let selectedInvoice: WorkspaceInvoice
+    let selectedRow: WorkspaceInvoiceRowProjection
     let rows: [WorkspaceInvoiceRowProjection]
 }
 
@@ -546,9 +555,15 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let statusTitle: String
     let isOverdue: Bool
     let totalLabel: String
+    let billingAddress: String
     let invoice: WorkspaceInvoice
 
-    init(invoice: WorkspaceInvoice, on date: Date, formatter: MoneyFormatting) {
+    init(
+        invoice: WorkspaceInvoice,
+        billingAddress: String,
+        on date: Date,
+        formatter: MoneyFormatting
+    ) {
         id = invoice.id
         number = invoice.number
         clientName = invoice.clientName
@@ -558,6 +573,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         isOverdue = invoice.status.isOverdue(dueDate: invoice.dueDate, on: date)
         statusTitle = isOverdue ? "Overdue" : invoice.status.rawValue.capitalized
         totalLabel = formatter.string(fromMinorUnits: invoice.totalMinorUnits)
+        self.billingAddress = billingAddress
         self.invoice = invoice
     }
 }
@@ -578,7 +594,12 @@ extension WorkspaceSnapshot {
                 return left.issueDate > right.issueDate
             }
             .map { invoice in
-                WorkspaceInvoiceRowProjection(invoice: invoice, on: date, formatter: formatter)
+                WorkspaceInvoiceRowProjection(
+                    invoice: invoice,
+                    billingAddress: clients.first { $0.name == invoice.clientName }?.billingAddress ?? "",
+                    on: date,
+                    formatter: formatter
+                )
             }
 
         guard let selectedRow = rows.first(where: { $0.id == selectedInvoiceID }) ?? rows.first else {
@@ -587,6 +608,7 @@ extension WorkspaceSnapshot {
 
         return WorkspaceInvoicePreviewProjection(
             selectedInvoice: selectedRow.invoice,
+            selectedRow: selectedRow,
             rows: rows
         )
     }
