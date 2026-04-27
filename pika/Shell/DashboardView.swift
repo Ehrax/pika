@@ -9,6 +9,34 @@ enum DashboardPanelLayoutMode: Equatable {
     case stackedAtAllWidths
 }
 
+enum DashboardRevenueRange: String, CaseIterable, Identifiable {
+    case sevenDays = "7D"
+    case fourteenDays = "14D"
+    case oneMonth = "1M"
+    case threeMonths = "3M"
+    case sixMonths = "6M"
+    case twelveMonths = "12M"
+
+    var id: String { rawValue }
+
+    var visiblePointLimit: Int {
+        switch self {
+        case .sevenDays, .fourteenDays, .oneMonth:
+            2
+        case .threeMonths:
+            3
+        case .sixMonths:
+            6
+        case .twelveMonths:
+            12
+        }
+    }
+
+    func visiblePoints(from points: [RevenuePoint]) -> [RevenuePoint] {
+        Array(points.suffix(visiblePointLimit))
+    }
+}
+
 struct DashboardPanelLayoutPolicy: Equatable {
     static let layoutMode: DashboardPanelLayoutMode = .stackedAtAllWidths
     static let stackedOrder: [DashboardPanel] = [.revenueHistory, .needsAttention]
@@ -19,6 +47,8 @@ struct DashboardView: View {
     let workspace: WorkspaceSnapshot
     let currentDate: Date
     let onSelectAttentionItem: (DashboardAttentionItem) -> Void
+
+    @State private var selectedRevenueRange: DashboardRevenueRange = .twelveMonths
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -124,11 +154,13 @@ struct DashboardView: View {
     }
 
     private func revenueHistory(summary: DashboardSummary, chartHeight: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: PikaSpacing.md) {
-            SectionHeader(title: "Revenue · 12 mo", detail: "\(summary.revenueHistory.first?.label ?? "") - \(summary.revenueHistory.last?.label ?? "")")
+        let visiblePoints = selectedRevenueRange.visiblePoints(from: summary.revenueHistory)
+
+        return VStack(alignment: .leading, spacing: PikaSpacing.md) {
+            revenueHeader(visiblePoints: visiblePoints)
 
             VStack(alignment: .leading, spacing: PikaSpacing.md) {
-                Text(money(summary.revenueHistory.map(\.amountMinorUnits).reduce(0, +)))
+                Text(money(visiblePoints.map(\.amountMinorUnits).reduce(0, +)))
                     .font(.system(size: 28, weight: .semibold).monospacedDigit())
                     .foregroundStyle(PikaColor.textPrimary)
 
@@ -136,13 +168,13 @@ struct DashboardView: View {
                     .font(PikaTypography.small)
                     .foregroundStyle(PikaColor.success)
 
-                RevenueSparkline(points: summary.revenueHistory)
+                RevenueSparkline(points: visiblePoints)
                     .frame(height: chartHeight)
 
                 HStack {
-                    Text(summary.revenueHistory.first?.label ?? "")
+                    Text(visiblePoints.first?.label ?? "")
                     Spacer()
-                    Text(summary.revenueHistory.last?.label ?? "")
+                    Text(visiblePoints.last?.label ?? "")
                 }
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(PikaColor.textMuted)
@@ -150,6 +182,54 @@ struct DashboardView: View {
             .padding(PikaSpacing.md)
             .pikaSurface()
         }
+        .onChange(of: selectedRevenueRange) { _, newRange in
+            AppTelemetry.dashboardRevenueRangeSelected(
+                range: newRange.rawValue,
+                visiblePointCount: newRange.visiblePoints(from: summary.revenueHistory).count
+            )
+        }
+    }
+
+    private func revenueHeader(visiblePoints: [RevenuePoint]) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: PikaSpacing.md) {
+                HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.sm) {
+                    Text("Revenue · \(selectedRevenueRange.rawValue)")
+                        .font(PikaTypography.subheading)
+                        .foregroundStyle(PikaColor.textPrimary)
+
+                    Text(revenueRangeDetail(visiblePoints))
+                        .font(PikaTypography.small)
+                        .foregroundStyle(PikaColor.textSecondary)
+                }
+
+                Spacer(minLength: PikaSpacing.md)
+
+                revenueRangePicker()
+                    .frame(maxWidth: 360)
+            }
+
+            VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+                SectionHeader(title: "Revenue · \(selectedRevenueRange.rawValue)", detail: revenueRangeDetail(visiblePoints))
+
+                revenueRangePicker()
+            }
+        }
+    }
+
+    private func revenueRangePicker() -> some View {
+        Picker("Revenue range", selection: $selectedRevenueRange) {
+            ForEach(DashboardRevenueRange.allCases) { range in
+                Text(range.rawValue).tag(range)
+            }
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.small)
+        .accessibilityHint("Changes the visible revenue period")
+    }
+
+    private func revenueRangeDetail(_ points: [RevenuePoint]) -> String {
+        "\(points.first?.label ?? "") - \(points.last?.label ?? "")"
     }
 
     private func money(_ minorUnits: Int) -> String {
