@@ -4,16 +4,29 @@ struct BucketEntriesTable: View {
     let projection: WorkspaceBucketDetailProjection
     let draftDate: Date
     let showsInlineEditor: Bool
+    let onAddFixedCost: () -> Void
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-            SectionHeader(
-                title: "Entries",
-                detail: showsInlineEditor
-                    ? "\(projection.entryRows.count) rows + 1 draft"
-                    : "\(projection.entryRows.count) rows"
-            )
+            HStack(alignment: .firstTextBaseline) {
+                SectionHeader(
+                    title: "Entries",
+                    detail: showsInlineEditor
+                        ? "\(projection.entryRows.count) rows + 1 draft"
+                        : "\(projection.entryRows.count) rows"
+                )
+
+                if showsInlineEditor {
+                    Button {
+                        onAddFixedCost()
+                    } label: {
+                        Label("Fixed Cost", systemImage: "plus.square")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Add a fixed cost")
+                }
+            }
 
             VStack(spacing: 0) {
                 BucketEntriesHeaderRow()

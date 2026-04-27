@@ -412,6 +412,55 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func inMemoryWorkspaceStoreAddsFixedCostAndReopensReadyBucket() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000803")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000803")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Cost capture",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready with costs",
+                            status: .ready,
+                            totalMinorUnits: 20_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        try store.addFixedCost(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceFixedCostDraft(
+                date: date,
+                description: "Prototype hosting",
+                amountMinorUnits: 5_000
+            ),
+            occurredAt: date
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.status == .open)
+        #expect(bucket.fixedCostEntries.map(\.description) == ["Prototype hosting"])
+        #expect(bucket.effectiveFixedCostMinorUnits == 5_000)
+        #expect(bucket.effectiveTotalMinorUnits == 25_000)
+        #expect(store.workspace.activity.map(\.message) == ["Ready with costs cost added"])
+    }
+
     @Test func sampleWorkspaceExposesRecentActivityNewestFirst() {
         var workspace = WorkspaceSnapshot.sample
         workspace.activity = [

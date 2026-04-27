@@ -4,6 +4,7 @@ struct BucketDetailWorkbench: View {
     let projection: WorkspaceBucketDetailProjection
     let draftDate: Date
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
+    let onAddFixedCost: () -> Void
     let onCreateInvoice: () -> Void
 
     var body: some View {
@@ -22,6 +23,7 @@ struct BucketDetailWorkbench: View {
                     projection: projection,
                     draftDate: draftDate,
                     showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked,
+                    onAddFixedCost: onAddFixedCost,
                     onAddEntry: onAddEntry
                 )
             }

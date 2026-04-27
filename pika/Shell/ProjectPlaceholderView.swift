@@ -8,6 +8,7 @@ struct ProjectPlaceholderView: View {
     @State private var invoiceDraft: InvoiceDraftPresentation?
     @State private var actionFailure: WorkflowActionFailure?
     @State private var showsCreateBucket = false
+    @State private var showsFixedCostSheet = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -44,6 +45,7 @@ struct ProjectPlaceholderView: View {
                                 draft: draft
                             )
                         },
+                        onAddFixedCost: { showsFixedCostSheet = true },
                         onCreateInvoice: {
                             prepareInvoiceDraft(
                                 projectID: project.id,
@@ -103,6 +105,13 @@ struct ProjectPlaceholderView: View {
                 onSave: createBucket
             )
         }
+        .sheet(isPresented: $showsFixedCostSheet) {
+            CreateFixedCostSheet(
+                date: currentDate,
+                onCancel: { showsFixedCostSheet = false },
+                onSave: addFixedCost
+            )
+        }
         .alert(item: $actionFailure) { failure in
             Alert(
                 title: Text("Workflow Action Failed"),
@@ -128,6 +137,21 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func addFixedCost(_ draft: WorkspaceFixedCostDraft) {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
+
+        do {
+            try workspaceStore.addFixedCost(
+                projectID: project.id,
+                bucketID: bucketID,
+                draft: draft
+            )
+            showsFixedCostSheet = false
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
@@ -277,6 +301,59 @@ private struct CreateBucketSheet: View {
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hourlyRate > 0
+    }
+}
+
+private struct CreateFixedCostSheet: View {
+    let date: Date
+    let onCancel: () -> Void
+    let onSave: (WorkspaceFixedCostDraft) -> Void
+
+    @State private var description = ""
+    @State private var amount = 50.0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Fixed cost") {
+                    DatePicker("Date", selection: .constant(date), displayedComponents: .date)
+                        .disabled(true)
+                    TextField("Description", text: $description)
+                    TextField("Amount", value: $amount, format: .number.precision(.fractionLength(0...2)))
+                        .monospacedDigit()
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button {
+                    onSave(WorkspaceFixedCostDraft(
+                        date: date,
+                        description: description,
+                        amountMinorUnits: max(Int((amount * 100).rounded()), 0)
+                    ))
+                } label: {
+                    Label("Add Cost", systemImage: "plus.square")
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(!canSave)
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 420, idealWidth: 460, minHeight: 300)
+    }
+
+    private var canSave: Bool {
+        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amount > 0
     }
 }
 

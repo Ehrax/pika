@@ -29,6 +29,12 @@ struct WorkspaceTimeEntryDraft: Equatable {
     var isBillable: Bool
 }
 
+struct WorkspaceFixedCostDraft: Equatable {
+    var date: Date
+    var description: String
+    var amountMinorUnits: Int
+}
+
 struct WorkspaceProjectDraft: Equatable {
     var name: String
     var clientName: String
@@ -52,6 +58,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case bucketStatusNotReady(BucketStatus)
     case bucketLocked(BucketStatus)
     case invalidTimeEntry
+    case invalidFixedCost
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
 }
 
@@ -238,6 +245,44 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketTimeEntryAdded(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+    }
+
+    func addFixedCost(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: WorkspaceFixedCostDraft,
+        occurredAt: Date = .now
+    ) throws {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard !bucket.status.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucket.status)
+        }
+
+        let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !description.isEmpty, draft.amountMinorUnits > 0 else {
+            throw WorkspaceStoreError.invalidFixedCost
+        }
+
+        bucket.backfillLegacyRowsForEditing(on: draft.date)
+        bucket.fixedCostEntries.append(WorkspaceFixedCostEntry(
+            date: draft.date,
+            description: description,
+            amountMinorUnits: draft.amountMinorUnits
+        ))
+        if bucket.status == .ready {
+            bucket.status = .open
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex] = bucket
+        appendActivity(
+            message: "\(bucket.name) cost added",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.bucketFixedCostAdded(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
     }
 
     @discardableResult
