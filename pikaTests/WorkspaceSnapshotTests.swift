@@ -347,6 +347,41 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.isEmpty)
     }
 
+    @Test func persistentWorkspaceStoreLoadsSavedWorkspaceOnRelaunch() throws {
+        let persistenceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.json")
+        defer {
+            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+        }
+
+        let initialStore = WorkspaceStore(
+            seed: WorkspaceSnapshot(
+                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                clients: [],
+                projects: [],
+                activity: []
+            ),
+            persistenceURL: persistenceURL
+        )
+
+        let client = try initialStore.createClient(WorkspaceClientDraft(
+            name: "Persistent Client",
+            email: "billing@persistent.example",
+            billingAddress: "2 Saved Lane",
+            defaultTermsDays: 21
+        ))
+
+        let relaunchedStore = WorkspaceStore(
+            seed: WorkspaceSnapshot.sample,
+            persistenceURL: persistenceURL
+        )
+
+        #expect(relaunchedStore.workspace.clients.map(\.id) == [client.id])
+        #expect(relaunchedStore.workspace.clients.first?.name == "Persistent Client")
+        #expect(relaunchedStore.workspace.activity.map(\.message) == ["Persistent Client client created"])
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
         let store = WorkspaceStore()
         let project = try #require(store.workspace.project(named: "Launch sprint"))

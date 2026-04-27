@@ -2,7 +2,10 @@ import SwiftUI
 
 private struct PikaDependencyModifier: ViewModifier {
     @State private var appRouter = AppRouter()
-    @State private var workspaceStore = WorkspaceStore(seed: .sample)
+    @State private var workspaceStore = WorkspaceStore(
+        seed: .sample,
+        persistenceURL: WorkspaceStore.defaultPersistenceURL()
+    )
 
     func body(content: Content) -> some View {
         content

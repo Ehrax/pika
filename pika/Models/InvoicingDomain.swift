@@ -1,6 +1,6 @@
 import Foundation
 
-enum BucketStatus: String, CaseIterable, Equatable {
+enum BucketStatus: String, CaseIterable, Codable, Equatable {
     case open
     case ready
     case finalized
@@ -15,7 +15,7 @@ enum BucketStatus: String, CaseIterable, Equatable {
     }
 }
 
-enum InvoiceStatus: String, CaseIterable, Equatable {
+enum InvoiceStatus: String, CaseIterable, Codable, Equatable {
     case finalized
     case sent
     case paid

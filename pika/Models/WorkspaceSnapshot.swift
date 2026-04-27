@@ -1,6 +1,6 @@
 import Foundation
 
-struct WorkspaceSnapshot: Equatable {
+struct WorkspaceSnapshot: Codable, Equatable {
     static let sampleToday = Date.pikaDate(year: 2026, month: 4, day: 27)
 
     var businessProfile: BusinessProfileProjection
@@ -118,7 +118,7 @@ struct WorkspaceSnapshot: Equatable {
     }
 }
 
-struct BusinessProfileProjection: Equatable {
+struct BusinessProfileProjection: Codable, Equatable {
     var businessName: String
     var email: String
     var address: String
@@ -130,7 +130,7 @@ struct BusinessProfileProjection: Equatable {
     var defaultTermsDays: Int
 }
 
-struct WorkspaceClient: Equatable, Identifiable {
+struct WorkspaceClient: Codable, Equatable, Identifiable {
     let id: UUID
     var name: String
     var email: String
@@ -138,7 +138,7 @@ struct WorkspaceClient: Equatable, Identifiable {
     var defaultTermsDays: Int
 }
 
-struct WorkspaceProject: Equatable, Identifiable {
+struct WorkspaceProject: Codable, Equatable, Identifiable {
     let id: UUID
     var name: String
     var clientName: String
@@ -213,7 +213,7 @@ struct WorkspaceProject: Equatable, Identifiable {
     }
 }
 
-struct WorkspaceBucket: Equatable, Identifiable {
+struct WorkspaceBucket: Codable, Equatable, Identifiable {
     let id: UUID
     var name: String
     var status: BucketStatus
@@ -298,7 +298,7 @@ struct WorkspaceBucket: Equatable, Identifiable {
     }
 }
 
-struct WorkspaceTimeEntry: Equatable, Identifiable {
+struct WorkspaceTimeEntry: Codable, Equatable, Identifiable {
     let id: UUID
     var date: Date
     var startTime: String
@@ -339,7 +339,7 @@ struct WorkspaceTimeEntry: Equatable, Identifiable {
     }
 }
 
-struct WorkspaceFixedCostEntry: Equatable, Identifiable {
+struct WorkspaceFixedCostEntry: Codable, Equatable, Identifiable {
     let id: UUID
     var date: Date
     var description: String
@@ -358,7 +358,7 @@ struct WorkspaceFixedCostEntry: Equatable, Identifiable {
     }
 }
 
-struct WorkspaceInvoice: Equatable, Identifiable {
+struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     let id: UUID
     var number: String
     var businessSnapshot: BusinessProfileProjection? = nil
@@ -375,7 +375,7 @@ struct WorkspaceInvoice: Equatable, Identifiable {
     var note: String? = nil
 }
 
-struct WorkspaceActivity: Equatable, Identifiable {
+struct WorkspaceActivity: Codable, Equatable, Identifiable {
     let id: UUID
     var message: String
     var detail: String
@@ -389,7 +389,7 @@ struct WorkspaceActivity: Equatable, Identifiable {
     }
 }
 
-struct WorkspaceInvoiceLineItemSnapshot: Equatable, Identifiable {
+struct WorkspaceInvoiceLineItemSnapshot: Codable, Equatable, Identifiable {
     let id: UUID
     var description: String
     var quantityLabel: String

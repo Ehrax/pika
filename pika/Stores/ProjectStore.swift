@@ -59,6 +59,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
     case invoiceNotFound
+    case persistenceFailed
     case invalidClient
     case invalidProject
     case invalidBucket
@@ -73,9 +74,20 @@ enum WorkspaceStoreError: Error, Equatable {
 @Observable
 final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
+    private let persistenceURL: URL?
 
-    init(seed: WorkspaceSnapshot = .sample) {
-        workspace = seed
+    init(seed: WorkspaceSnapshot = .sample, persistenceURL: URL? = nil) {
+        self.persistenceURL = persistenceURL
+        workspace = persistenceURL.flatMap(Self.loadWorkspace(from:)) ?? seed
+    }
+
+    static func defaultPersistenceURL() -> URL? {
+        FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first?
+            .appendingPathComponent("Pika", isDirectory: true)
+            .appendingPathComponent("workspace.json")
     }
 
     @discardableResult
@@ -110,6 +122,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.clientCreated(clientName: client.name)
+        try persistWorkspace()
         return client
     }
 
@@ -159,6 +172,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.projectCreated(projectName: project.name, clientName: project.clientName)
+        try persistWorkspace()
         return project
     }
 
@@ -191,6 +205,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketCreated(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
         return bucket
     }
 
@@ -241,6 +256,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketMarkedReady(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
     }
 
     func addTimeEntry(
@@ -288,6 +304,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketTimeEntryAdded(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
     }
 
     func addFixedCost(
@@ -326,6 +343,7 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketFixedCostAdded(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
     }
 
     @discardableResult
@@ -381,6 +399,7 @@ final class WorkspaceStore {
         AppTelemetry.bucketFinalized(bucketName: bucket.name, projectName: project.name)
         AppTelemetry.invoiceCreated(invoiceNumber: invoice.number, clientName: invoice.clientName)
         AppTelemetry.invoiceFinalized(invoiceNumber: invoice.number, clientName: invoice.clientName)
+        try persistWorkspace()
         return invoice
     }
 
@@ -423,6 +442,30 @@ final class WorkspaceStore {
             AppTelemetry.invoiceCancelled(invoiceNumber: invoice.number)
         case .finalized:
             break
+        }
+
+        try persistWorkspace()
+    }
+
+    private static func loadWorkspace(from url: URL) -> WorkspaceSnapshot? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
+    }
+
+    private func persistWorkspace() throws {
+        guard let persistenceURL else { return }
+
+        do {
+            try FileManager.default.createDirectory(
+                at: persistenceURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(workspace)
+            try data.write(to: persistenceURL, options: .atomic)
+        } catch {
+            throw WorkspaceStoreError.persistenceFailed
         }
     }
 
