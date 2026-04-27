@@ -275,32 +275,45 @@ private struct ProjectCard: View {
                     .foregroundStyle(PikaColor.textMuted)
             }
 
-            if project.readyToInvoiceMinorUnits > 0 {
-                HStack(spacing: PikaSpacing.sm) {
-                    StatusBadge(.success, title: "Ready")
-                    Text("\(project.readyBucketCount) ready · \(readyAmount)")
-                        .font(PikaTypography.small)
-                        .foregroundStyle(PikaColor.textPrimary)
-                    Spacer()
-                }
-                .padding(PikaSpacing.sm)
-                .background(PikaColor.successMuted)
-                .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-            } else if overdueInvoiceCount > 0 {
-                HStack(spacing: PikaSpacing.sm) {
-                    StatusBadge(.danger, title: "Overdue")
-                    Text("\(overdueInvoiceCount) invoice needs attention")
-                        .font(PikaTypography.small)
-                        .foregroundStyle(PikaColor.textPrimary)
-                    Spacer()
-                }
-                .padding(PikaSpacing.sm)
-                .background(PikaColor.dangerMuted)
-                .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-            }
+            cardFooter
         }
+        .frame(maxWidth: .infinity, minHeight: 224, alignment: .topLeading)
         .padding(PikaSpacing.md)
         .pikaSurface()
+    }
+
+    @ViewBuilder
+    private var cardFooter: some View {
+        if project.readyToInvoiceMinorUnits > 0 {
+            footerStrip(
+                tone: .success,
+                title: "Ready",
+                detail: "\(project.readyBucketCount) ready · \(readyAmount)"
+            )
+        } else if overdueInvoiceCount > 0 {
+            footerStrip(
+                tone: .danger,
+                title: "Overdue",
+                detail: "\(overdueInvoiceCount) invoice needs attention"
+            )
+        } else {
+            footerStrip(tone: .neutral, title: "", detail: "")
+                .hidden()
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func footerStrip(tone: PikaStatusTone, title: String, detail: String) -> some View {
+        HStack(spacing: PikaSpacing.sm) {
+            StatusBadge(tone, title: title)
+            Text(detail)
+                .font(PikaTypography.small)
+                .foregroundStyle(PikaColor.textPrimary)
+            Spacer()
+        }
+        .padding(PikaSpacing.sm)
+        .background(tone.mutedColor)
+        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
     }
 }
 
