@@ -19,7 +19,7 @@ extension View {
 }
 
 private struct AppRouterKey: EnvironmentKey {
-    static let defaultValue = AppRouter()
+    static let defaultValue: AppRouter? = nil
 }
 
 private struct AppSettingsKey: EnvironmentKey {
@@ -35,7 +35,7 @@ private struct InvoicePDFServiceKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var appRouter: AppRouter {
+    var appRouter: AppRouter? {
         get { self[AppRouterKey.self] }
         set { self[AppRouterKey.self] = newValue }
     }

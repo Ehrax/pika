@@ -1,5 +1,7 @@
 import Foundation
+import AppKit
 import SwiftData
+import SwiftUI
 import Testing
 @testable import pika
 
@@ -38,6 +40,7 @@ struct PikaScaffoldTests {
         #expect(records.map(\.title) == ["Preview project"])
     }
 
+    @MainActor
     @Test func navigationBoundariesAreHashableValueState() {
         let projectID = UUID()
         let route = AppRoute.project(id: projectID)
@@ -52,6 +55,7 @@ struct PikaScaffoldTests {
         #expect(newProjectSheet.id == "projectEditor-new")
     }
 
+    @MainActor
     @Test func appRouterSheetPresentationDoesNotMutatePath() {
         let projectID = UUID()
         let route = AppRoute.project(id: projectID)
@@ -72,6 +76,42 @@ struct PikaScaffoldTests {
         #expect(router.sheet == nil)
     }
 
+    @MainActor
+    @Test func dependencyEnvironmentDoesNotCreateSharedRouterFallback() {
+        var environment = EnvironmentValues()
+
+        #expect(environment.appRouter == nil)
+        #expect(environment.appSettings.defaultPaymentTermsDays == 14)
+        #expect(environment.projectStore.placeholderProjects().isEmpty)
+        #expect(throws: InvoicePDFService.Error.notImplemented) {
+            try environment.invoicePDFService.renderDraftPDF()
+        }
+
+        let router = AppRouter()
+        environment.appRouter = router
+
+        #expect(environment.appRouter === router)
+    }
+
+    @MainActor
+    @Test func pikaDependenciesInjectsBoundaryDefaultsIntoViewEnvironment() throws {
+        let probe = DependencyProbeBox()
+        let hostingView = NSHostingView(
+            rootView: DependencyProbeView(probe: probe)
+                .pikaDependencies()
+        )
+
+        hostingView.frame = NSRect(x: 0, y: 0, width: 10, height: 10)
+        hostingView.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+
+        let snapshot = try #require(probe.snapshot)
+        #expect(snapshot.router != nil)
+        #expect(snapshot.defaultPaymentTermsDays == 14)
+        #expect(snapshot.placeholderProjectsAreEmpty)
+        #expect(snapshot.pdfThrowsNotImplemented)
+    }
+
     @Test func appSettingsExposeDefaultPaymentTerms() {
         let settings = AppSettings()
 
@@ -83,6 +123,50 @@ struct PikaScaffoldTests {
 
         #expect(throws: InvoicePDFService.Error.notImplemented) {
             try service.renderDraftPDF()
+        }
+    }
+}
+
+@MainActor
+private final class DependencyProbeBox {
+    var snapshot: DependencySnapshot?
+}
+
+private struct DependencySnapshot {
+    let router: AppRouter?
+    let defaultPaymentTermsDays: Int
+    let placeholderProjectsAreEmpty: Bool
+    let pdfThrowsNotImplemented: Bool
+}
+
+private struct DependencyProbeView: View {
+    @Environment(\.appRouter) private var appRouter
+    @Environment(\.appSettings) private var appSettings
+    @Environment(\.projectStore) private var projectStore
+    @Environment(\.invoicePDFService) private var invoicePDFService
+
+    let probe: DependencyProbeBox
+
+    var body: some View {
+        Color.clear
+            .onAppear {
+                probe.snapshot = DependencySnapshot(
+                    router: appRouter,
+                    defaultPaymentTermsDays: appSettings.defaultPaymentTermsDays,
+                    placeholderProjectsAreEmpty: projectStore.placeholderProjects().isEmpty,
+                    pdfThrowsNotImplemented: pdfThrowsNotImplemented()
+                )
+            }
+    }
+
+    private func pdfThrowsNotImplemented() -> Bool {
+        do {
+            _ = try invoicePDFService.renderDraftPDF()
+            return false
+        } catch InvoicePDFService.Error.notImplemented {
+            return true
+        } catch {
+            return false
         }
     }
 }
