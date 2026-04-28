@@ -36,6 +36,7 @@ struct BucketEntriesTable: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Delete selected entry")
+                    .tint(PikaColor.danger)
                 }
 
                 if showsInlineEditor {
@@ -46,6 +47,7 @@ struct BucketEntriesTable: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Add a fixed cost")
+                    .tint(PikaColor.actionAccent)
                 }
             }
 

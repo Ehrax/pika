@@ -78,7 +78,7 @@ struct InlineEntryEditor: View {
         .onAppear {
             focusedField = .time
         }
-        .onExitCommand {
+        .pikaExitCommand {
             resetDraft()
         }
     }
@@ -110,17 +110,25 @@ struct InlineEntryEditor: View {
             HelperKey("esc")
             Text("cancel")
             Spacer()
-            Toggle("Billable", isOn: $isBillable)
-                .toggleStyle(.checkbox)
-                .font(PikaTypography.entryHelper)
-            Text("type ranges like 10-12 or 2h")
-                .foregroundStyle(PikaColor.textSecondary)
+            billableToggle
         }
         .font(PikaTypography.entryHelper)
         .foregroundStyle(PikaColor.textMuted)
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, PikaSpacing.sm)
         .background(PikaColor.surfaceAlt)
+    }
+
+    @ViewBuilder
+    private var billableToggle: some View {
+        #if os(macOS)
+        Toggle("Billable", isOn: $isBillable)
+            .toggleStyle(.checkbox)
+            .font(PikaTypography.entryHelper)
+        #else
+        Toggle("Billable", isOn: $isBillable)
+            .font(PikaTypography.entryHelper)
+        #endif
     }
 
     private func resetDraft() {
@@ -150,6 +158,17 @@ struct InlineEntryEditor: View {
     private enum Field {
         case time
         case description
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func pikaExitCommand(perform action: (() -> Void)?) -> some View {
+        #if os(macOS)
+        onExitCommand(perform: action)
+        #else
+        self
+        #endif
     }
 }
 
