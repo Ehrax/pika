@@ -136,10 +136,10 @@ struct PikaScaffoldTests {
         #expect(store.workspace.businessProfile.nextInvoiceNumber == 1)
     }
 
-    @Test func appLaunchConfigurationUsesEmptyWorkspaceByDefault() {
+    @Test func appLaunchConfigurationUsesBikeparkWorkspaceByDefault() {
         let configuration = AppLaunchConfiguration(arguments: ["pika"], environment: [:])
 
-        #expect(configuration.initialWorkspace == .empty)
+        #expect(configuration.initialWorkspace == .bikeparkThunersee)
     }
 
     @Test func appLaunchConfigurationCanUseProjectLocalPersistencePath() {

@@ -21,10 +21,10 @@ struct AppLaunchConfiguration: Equatable {
             || environment[Self.sampleWorkspaceEnvironmentKey] == "1" {
             initialWorkspace = .sample
         } else {
-            initialWorkspace = .empty
+            initialWorkspace = .bikeparkThunersee
         }
 #else
-        initialWorkspace = .empty
+        initialWorkspace = .bikeparkThunersee
 #endif
         persistenceURL = Self.persistenceURL(arguments: arguments)
             ?? WorkspaceStore.defaultPersistenceURL()
