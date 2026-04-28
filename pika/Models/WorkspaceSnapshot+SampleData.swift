@@ -4,7 +4,7 @@ import Foundation
 extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
-            businessName: "ALEXANDER RASPUTIN",
+            businessName: "ehrax.dev",
             email: "hello@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd",
@@ -228,8 +228,9 @@ extension WorkspaceSnapshot {
 
     static let bikeparkThunersee = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
-            businessName: "ALEXANDER RASPUTIN",
-            email: "hello@ehrax.dev",
+            businessName: "ehrax.dev",
+            email: "alex@ehrax.dev",
+            phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd\nGermany",
             taxIdentifier: "DE320253387",
             invoicePrefix: "EHX",
