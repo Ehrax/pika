@@ -41,14 +41,16 @@ struct ClientsView: View {
             }
         }
         .background(PikaColor.background)
-        .navigationTitle("Clients")
+        .navigationTitle(navigationTitle)
         .toolbar {
+            #if !os(macOS)
             Button {
                 showsCreateClient = true
             } label: {
                 Label("New Client", systemImage: "plus")
             }
             .help("Create a client")
+            #endif
         }
         .sheet(isPresented: $showsCreateClient) {
             CreateClientSheet(
@@ -80,6 +82,14 @@ struct ClientsView: View {
             creationFailure = ClientCreationFailure(message: error.localizedDescription)
         }
     }
+
+    private var navigationTitle: String {
+        #if os(macOS)
+        ""
+        #else
+        "Clients"
+        #endif
+    }
 }
 
 private struct ClientListColumn: View {
@@ -89,51 +99,35 @@ private struct ClientListColumn: View {
     let onCreateClient: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Clients")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
-                    Text("\(clients.count) billing profiles")
-                        .font(PikaTypography.small)
-                        .foregroundStyle(PikaColor.textSecondary)
-                }
-
-                Spacer()
-
-                Button {
-                    onCreateClient()
-                } label: {
-                    Label("Create a client", systemImage: "plus")
-                }
-                .buttonStyle(PikaColumnHeaderIconButtonStyle())
-                .help("Create a client")
+        PikaSecondarySidebarColumn(
+            title: "Clients",
+            subtitle: "\(clients.count) billing profiles",
+            sectionTitle: "All Clients"
+        ) {
+            Button {
+                onCreateClient()
+            } label: {
+                Label("Create a client", systemImage: "plus")
             }
-            .padding(PikaSpacing.md)
-
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(clients) { client in
-                        Button {
-                            onSelect(client.id)
-                        } label: {
-                            ClientRow(client: client, isSelected: client.id == selectedClientID)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(PikaColumnHeaderIconButtonStyle())
+            .help("Create a client")
+        } controls: {
+            EmptyView()
+        } content: {
+            LazyVStack(spacing: 2) {
+                ForEach(clients) { client in
+                    Button {
+                        onSelect(client.id)
+                    } label: {
+                        ClientRow(client: client, isSelected: client.id == selectedClientID)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, PikaSpacing.sm)
-                .padding(.bottom, PikaSpacing.md)
             }
         }
-        .frame(maxWidth: .infinity)
-        .frame(maxHeight: .infinity)
-        .background(PikaColor.surface)
     }
 }
 
@@ -249,13 +243,7 @@ private struct ClientRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
-        .background(isSelected ? PikaColor.surfaceAlt : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(isSelected ? PikaColor.accent : Color.clear)
-                .frame(width: 2)
-        }
+        .pikaSecondarySidebarRow(isSelected: isSelected)
     }
 }
 
@@ -370,7 +358,7 @@ private struct ClientDetailSurface: View {
                     .pikaSurface()
                 }
             }
-            .padding(.horizontal, PikaSpacing.xl)
+            .padding(.horizontal, PikaSpacing.xl + PikaSpacing.md)
             .padding(.vertical, PikaSpacing.lg)
         }
         .background(PikaColor.background)

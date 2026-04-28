@@ -8,46 +8,11 @@ struct ProjectBucketColumn: View {
     let onCreateBucket: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(projection.bucketRows) { row in
-                        Button {
-                            onSelect(row.id)
-                        } label: {
-                            ProjectBucketRow(row: row, isSelected: row.id == selectedBucketID)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, PikaSpacing.sm)
-                .padding(.bottom, PikaSpacing.md)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(PikaColor.surface.ignoresSafeArea(.container, edges: .top))
-    }
-
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Buckets")
-                    .font(PikaTypography.micro)
-                    .foregroundStyle(PikaColor.textMuted)
-                    .textCase(.uppercase)
-                Text(project.clientName)
-                    .font(PikaTypography.small)
-                    .foregroundStyle(PikaColor.textSecondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
+        PikaSecondarySidebarColumn(
+            title: project.name,
+            subtitle: project.clientName,
+            sectionTitle: "Buckets"
+        ) {
             Button {
                 onCreateBucket()
             } label: {
@@ -55,9 +20,137 @@ struct ProjectBucketColumn: View {
             }
             .buttonStyle(PikaColumnHeaderIconButtonStyle())
             .help("Create a bucket")
+        } controls: {
+            EmptyView()
+        } content: {
+            LazyVStack(spacing: 2) {
+                ForEach(projection.bucketRows) { row in
+                    Button {
+                        onSelect(row.id)
+                    } label: {
+                        ProjectBucketRow(row: row, isSelected: row.id == selectedBucketID)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .padding(.horizontal, PikaSpacing.md)
-        .padding(.vertical, PikaSpacing.md)
+    }
+}
+
+struct PikaSecondarySidebarColumn<Actions: View, Controls: View, Content: View>: View {
+    let title: String
+    let subtitle: String
+    let sectionTitle: String
+    let actions: Actions
+    let controls: Controls
+    let content: Content
+    @State private var columnMinX = CGFloat.greatestFiniteMagnitude
+
+    init(
+        title: String,
+        subtitle: String,
+        sectionTitle: String,
+        @ViewBuilder actions: () -> Actions,
+        @ViewBuilder controls: () -> Controls,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.sectionTitle = sectionTitle
+        self.actions = actions()
+        self.controls = controls()
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+
+            controls
+                .padding(.horizontal, PikaSpacing.md)
+                .padding(.bottom, PikaSpacing.sm)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+                    Text(sectionTitle)
+                        .font(PikaTypography.subheading)
+                        .foregroundStyle(PikaColor.textPrimary)
+                        .padding(.horizontal, PikaSpacing.md)
+                        .padding(.top, PikaSpacing.md)
+
+                    content
+                        .padding(.horizontal, PikaSpacing.sm)
+                        .padding(.bottom, PikaSpacing.md)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(PikaColor.surface.ignoresSafeArea(.container, edges: .top))
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(
+                        key: PikaSecondarySidebarColumnMinXPreferenceKey.self,
+                        value: proxy.frame(in: .global).minX
+                    )
+            }
+        }
+        .onPreferenceChange(PikaSecondarySidebarColumnMinXPreferenceKey.self) { newValue in
+            if abs(columnMinX - newValue) > 0.5 {
+                columnMinX = newValue
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: PikaSpacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(PikaTypography.heading)
+                    .foregroundStyle(PikaColor.textPrimary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(PikaTypography.body.weight(.medium))
+                    .foregroundStyle(PikaColor.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: PikaSpacing.sm)
+
+            actions
+        }
+        .padding(.leading, PikaSpacing.md + PikaSecondarySidebarLayout.leadingChromeClearance(forColumnMinX: columnMinX))
+        .padding(.trailing, PikaSpacing.md)
+        .padding(.top, PikaSecondarySidebarLayout.headerTopPadding)
+        .padding(.bottom, PikaSpacing.md)
+    }
+}
+
+enum PikaSecondarySidebarLayout {
+    #if os(macOS)
+    static let headerTopPadding: CGFloat = PikaSpacing.md
+    static let leadingColumnDetectionThreshold: CGFloat = 96
+    static let leadingWindowChromeClearance: CGFloat = 116
+    #else
+    static let headerTopPadding: CGFloat = PikaSpacing.md
+    static let leadingColumnDetectionThreshold: CGFloat = 0
+    static let leadingWindowChromeClearance: CGFloat = 0
+    #endif
+
+    static func leadingChromeClearance(forColumnMinX columnMinX: CGFloat) -> CGFloat {
+        columnMinX < leadingColumnDetectionThreshold ? leadingWindowChromeClearance : 0
+    }
+}
+
+private struct PikaSecondarySidebarColumnMinXPreferenceKey: PreferenceKey {
+    static let defaultValue = CGFloat.greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
@@ -106,33 +199,36 @@ private struct ProjectBucketRow: View {
             Spacer(minLength: PikaSpacing.sm)
 
             if let statusTitle = row.statusTitle {
-                StatusBadge(row.status.pikaTone, title: statusTitle)
+                StatusBadge(row.statusTone, title: statusTitle)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
-        .background(isSelected ? PikaColor.surfaceAlt : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(isSelected ? PikaColor.accent : Color.clear)
-                .frame(width: 2)
-        }
+        .pikaSecondarySidebarRow(isSelected: isSelected)
     }
 }
 
-extension BucketStatus {
-    var pikaTone: PikaStatusTone {
-        switch self {
-        case .open:
-            .neutral
-        case .ready:
-            .success
-        case .finalized:
-            .warning
-        case .archived:
-            .neutral
-        }
+private struct PikaSecondarySidebarRowModifier: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(isSelected ? PikaColor.surfaceAlt2 : Color.clear)
+            .overlay(alignment: .leading) {
+                if isSelected {
+                    Capsule()
+                        .fill(PikaColor.accent)
+                        .frame(width: 3)
+                        .padding(.vertical, 9)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
+    }
+}
+
+extension View {
+    func pikaSecondarySidebarRow(isSelected: Bool) -> some View {
+        modifier(PikaSecondarySidebarRowModifier(isSelected: isSelected))
     }
 }

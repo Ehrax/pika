@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct PikaApp: App {
-    static let defaultLaunchWindowSize = CGSize(width: 1_200, height: 780)
+    static let defaultLaunchWindowSize = CGSize(width: 1_408, height: 813)
 
     let sharedModelContainer: ModelContainer
 
@@ -21,6 +21,9 @@ struct PikaApp: App {
                 .pikaDependencies()
                 .font(PikaTypography.body)
                 .tint(PikaColor.accent)
+#if os(macOS)
+                .background(MainWindowPersistenceView())
+#endif
         }
         .modelContainer(sharedModelContainer)
 #if os(macOS)
@@ -39,4 +42,9 @@ struct PikaApp: App {
 
         return try ModelContainer(for: schema, configurations: [configuration])
     }
+}
+
+enum MainWindowLayout {
+    static let frameAutosaveName = "PikaMainWindowFrame"
+    static let frameStorageKey = "pika.mainWindow.frame"
 }

@@ -6,11 +6,7 @@ import AppKit
 struct ResizableDetailSplitView<Leading: View, Detail: View>: View {
     private let leading: Leading
     private let detail: Detail
-    private let leadingMinimumWidth: CGFloat = 220
-    private let leadingIdealWidth: CGFloat = 300
-    private let leadingMaximumWidth: CGFloat = 380
-    private let detailMinimumWidth: CGFloat = 420
-    @AppStorage("pika.resizableDetailSplit.leadingWidth") private var storedLeadingWidth = 300.0
+    @AppStorage(ResizableDetailSplitLayout.leadingWidthStorageKey) private var storedLeadingWidth = ResizableDetailSplitLayout.leadingIdealWidth
 
     init(
         @ViewBuilder leading: () -> Leading,
@@ -24,19 +20,32 @@ struct ResizableDetailSplitView<Leading: View, Detail: View>: View {
         #if os(macOS)
         MacDetailSplitView(
             leadingWidth: $storedLeadingWidth,
-            leadingMinimumWidth: leadingMinimumWidth,
-            leadingIdealWidth: leadingIdealWidth,
-            leadingMaximumWidth: leadingMaximumWidth,
-            detailMinimumWidth: detailMinimumWidth,
+            leadingMinimumWidth: CGFloat(ResizableDetailSplitLayout.leadingMinimumWidth),
+            leadingIdealWidth: CGFloat(ResizableDetailSplitLayout.leadingIdealWidth),
+            leadingMaximumWidth: CGFloat(ResizableDetailSplitLayout.leadingMaximumWidth),
+            detailMinimumWidth: CGFloat(ResizableDetailSplitLayout.detailMinimumWidth),
             leading: leading,
             detail: detail
         )
+        .ignoresSafeArea(.container, edges: .top)
         #else
         HStack(spacing: 0) {
             leading
             detail
         }
         #endif
+    }
+}
+
+struct ResizableDetailSplitLayout: Equatable {
+    static let leadingMinimumWidth = 240.0
+    static let leadingIdealWidth = 403.0
+    static let leadingMaximumWidth = 720.0
+    static let detailMinimumWidth = 520.0
+    static let leadingWidthStorageKey = "pika.resizableDetailSplit.leadingWidth"
+
+    static func clampedLeadingWidth(_ width: Double) -> Double {
+        min(max(width, leadingMinimumWidth), leadingMaximumWidth)
     }
 }
 
@@ -124,6 +133,9 @@ private struct MacDetailSplitView<Leading: View, Detail: View>: NSViewRepresenta
                 )
                 splitView.setPosition(preferredWidth, ofDividerAt: 0)
                 self.didApplyInitialPosition = true
+                self.leadingWidth = Double(preferredWidth)
+                UserDefaults.standard.set(Double(preferredWidth), forKey: ResizableDetailSplitLayout.leadingWidthStorageKey)
+                AppTelemetry.secondarySidebarWidthObserved(width: Double(preferredWidth), event: "restored")
             }
         }
 
@@ -154,6 +166,8 @@ private struct MacDetailSplitView<Leading: View, Detail: View>: NSViewRepresenta
             }
 
             leadingWidth = Double(clampedLeadingWidth(leadingSubview.frame.width))
+            UserDefaults.standard.set(leadingWidth, forKey: ResizableDetailSplitLayout.leadingWidthStorageKey)
+            AppTelemetry.secondarySidebarWidthObserved(width: leadingWidth, event: "resized")
         }
 
         private func clampedLeadingWidth(_ width: Double) -> CGFloat {

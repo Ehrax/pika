@@ -50,7 +50,7 @@ struct BucketDetailWorkbench: View {
                     )
                 }
             }
-            .padding(.horizontal, PikaSpacing.xl)
+            .padding(.horizontal, PikaSpacing.xl + PikaSpacing.md)
             .padding(.vertical, PikaSpacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

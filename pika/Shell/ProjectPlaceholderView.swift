@@ -40,7 +40,8 @@ struct ProjectPlaceholderView: View {
                 let project,
                 let projection = project.detailProjection(
                     selectedBucketID: selectedBucketID,
-                    formatter: formatter
+                    formatter: formatter,
+                    on: currentDate
                 )
             {
                 let activeBucketID = project.normalizedBucketID(selectedBucketID) ?? projection.selectedBucket.id
@@ -103,7 +104,7 @@ struct ProjectPlaceholderView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .navigationTitle(project?.name ?? "Project")
+        .navigationTitle(navigationTitle)
         .toolbar {
             projectToolbar
         }
@@ -253,13 +254,22 @@ struct ProjectPlaceholderView: View {
             let project,
             let projection = project.detailProjection(
                 selectedBucketID: selectedBucketID,
-                formatter: formatter
+                formatter: formatter,
+                on: currentDate
             )
         else {
             return nil
         }
 
         return invoiceRow(for: projection, in: project)
+    }
+
+    private var navigationTitle: String {
+        #if os(macOS)
+        ""
+        #else
+        project?.name ?? "Project"
+        #endif
     }
 
     private func invoiceRow(

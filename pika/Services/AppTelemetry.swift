@@ -1,3 +1,4 @@
+import CoreGraphics
 import OSLog
 
 enum AppTelemetry {
@@ -9,9 +10,26 @@ enum AppTelemetry {
     private static let invoiceLogger = Logger(subsystem: subsystem, category: "invoices")
     private static let clientLogger = Logger(subsystem: subsystem, category: "clients")
     private static let settingsLogger = Logger(subsystem: subsystem, category: "settings")
+    private static let layoutLogger = Logger(subsystem: subsystem, category: "layout")
 
     static func shellSelectionChanged(_ selection: String) {
         shellLogger.info("shell.selection_changed destination=\(selection, privacy: .public)")
+    }
+
+    static func mainWindowFrameObserved(frame: CGRect, event: String) {
+        layoutLogger.info(
+            """
+            layout.window_frame event=\(event, privacy: .public) x=\(frame.origin.x, privacy: .public) y=\(frame.origin.y, privacy: .public) width=\(frame.width, privacy: .public) height=\(frame.height, privacy: .public)
+            """
+        )
+    }
+
+    static func primarySidebarWidthObserved(width: Double) {
+        layoutLogger.info("layout.primary_sidebar width=\(width, privacy: .public)")
+    }
+
+    static func secondarySidebarWidthObserved(width: Double, event: String) {
+        layoutLogger.info("layout.secondary_sidebar event=\(event, privacy: .public) width=\(width, privacy: .public)")
     }
 
     static func dashboardLoaded(_ summary: DashboardSummary) {

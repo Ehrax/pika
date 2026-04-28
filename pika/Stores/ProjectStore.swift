@@ -131,7 +131,7 @@ final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
     private let persistenceURL: URL?
 
-    init(seed: WorkspaceSnapshot = .sample, persistenceURL: URL? = nil) {
+    init(seed: WorkspaceSnapshot = .empty, persistenceURL: URL? = nil) {
         self.persistenceURL = persistenceURL
         workspace = persistenceURL.flatMap(Self.loadWorkspace(from:)) ?? seed
         workspace.normalizeMissingHourlyRates()

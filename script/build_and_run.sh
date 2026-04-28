@@ -1,12 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
+MODE="run"
+SEED_WORKSPACE=0
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
+RUN_DATA_DIR="$ROOT_DIR/.build/RunData"
 PROJECT_FILE="$ROOT_DIR/pika.xcodeproj"
 SCHEME="pika"
 DESTINATION="platform=macOS"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    run|--verify|verify)
+      MODE="$1"
+      ;;
+    --seeded|seeded|--preseeded|preseeded)
+      SEED_WORKSPACE=1
+      ;;
+    --empty|empty)
+      SEED_WORKSPACE=0
+      ;;
+    -h|--help)
+      echo "usage: $0 [run|--verify] [--empty|--seeded]" >&2
+      exit 0
+      ;;
+    *)
+      echo "usage: $0 [run|--verify] [--empty|--seeded]" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 kill_running_app() {
   local pids
@@ -60,7 +85,22 @@ find_app_bundle() {
 
 launch_app() {
   local app_bundle="$1"
-  /usr/bin/open -n "$app_bundle"
+  local workspace_name="empty"
+
+  if [[ "$SEED_WORKSPACE" == "1" ]]; then
+    workspace_name="seeded"
+  fi
+
+  local workspace_dir="$RUN_DATA_DIR/$workspace_name"
+  local workspace_path="$workspace_dir/workspace.json"
+  mkdir -p "$workspace_dir"
+  rm -f "$workspace_path"
+
+  if [[ "$SEED_WORKSPACE" == "1" ]]; then
+    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path" --pika-seed-workspace
+  else
+    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path"
+  fi
 }
 
 verify_launch() {

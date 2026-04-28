@@ -10,7 +10,7 @@ struct WorkspaceSnapshotTests {
         #expect(summary.outstandingMinorUnits == 245_000)
         #expect(summary.overdueMinorUnits == 125_000)
         #expect(summary.readyToInvoiceMinorUnits == 407_500)
-        #expect(summary.thisMonthMinorUnits == 120_000)
+        #expect(summary.thisMonthMinorUnits == 0)
         #expect(summary.needsAttention.map(\.title) == [
             "Acme Studio invoice overdue",
             "Northstar Labs mobile qa ready to invoice",
@@ -20,25 +20,100 @@ struct WorkspaceSnapshotTests {
         #expect(summary.needsAttention.first?.target == .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000002")!))
     }
 
-    @Test func dashboardRevenueHistoryMatchesTwelveMonthDesignWindow() {
+    @Test func dashboardRevenueHistoryOnlyIncludesPaidInvoices() {
         let workspace = WorkspaceSnapshot.sample
         let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
 
-        #expect(summary.revenueHistory.map(\.label) == [
-            "May 25",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-            "Jan",
-            "Feb",
-            "Mar",
+        #expect(summary.revenueHistory.isEmpty)
+        #expect(summary.thisMonthMinorUnits == 0)
+    }
+
+    @Test func dashboardRevenueHistoryReflectsPaidInvoicesByIssueMonth() {
+        var workspace = WorkspaceSnapshot.sample
+        let projectIndex = workspace.projects.firstIndex { $0.name == "Launch sprint" }!
+
+        workspace.projects[projectIndex].invoices.append(
+            WorkspaceInvoice(
+                id: UUID(uuidString: "40000000-0000-0000-0000-000000000901")!,
+                number: "EHX-2026-901",
+                clientName: "Happ.ines",
+                projectName: "Launch sprint",
+                bucketName: "April sprint",
+                issueDate: Date.pikaDate(year: 2026, month: 4, day: 26),
+                dueDate: Date.pikaDate(year: 2026, month: 5, day: 12),
+                status: .finalized,
+                totalMinorUnits: 80_000
+            )
+        )
+        workspace.projects[projectIndex].invoices.append(
+            WorkspaceInvoice(
+                id: UUID(uuidString: "40000000-0000-0000-0000-000000000902")!,
+                number: "EHX-2026-902",
+                clientName: "Happ.ines",
+                projectName: "Launch sprint",
+                bucketName: "April sprint",
+                issueDate: Date.pikaDate(year: 2026, month: 4, day: 26),
+                dueDate: Date.pikaDate(year: 2026, month: 5, day: 12),
+                status: .paid,
+                totalMinorUnits: 95_000
+            )
+        )
+
+        let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
+
+        #expect(summary.revenueHistory.map(\.label) == ["EHX-2026-902"])
+        #expect(summary.revenueHistory.map(\.amountMinorUnits) == [95_000])
+        #expect(summary.thisMonthMinorUnits == 95_000)
+    }
+
+    @Test func dashboardRevenueRangeSevenDaysUsesDailyBucketsEndingOnCurrentDate() {
+        let points = [
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 3, day: 16), label: "March", amountMinorUnits: 125_000),
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 23), label: "April first", amountMinorUnits: 80_000),
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 26), label: "April second", amountMinorUnits: 120_000),
+        ]
+
+        let visiblePoints = DashboardRevenueRange.sevenDays.visiblePoints(
+            from: points,
+            endingAt: WorkspaceSnapshot.sampleToday
+        )
+
+        #expect(visiblePoints.map(\.label) == [
+            "Apr 21",
+            "Apr 22",
+            "Apr 23",
+            "Apr 24",
+            "Apr 25",
             "Apr 26",
+            "Apr 27",
         ])
-        #expect(summary.revenueHistory.map(\.amountMinorUnits).last == summary.thisMonthMinorUnits)
+        #expect(visiblePoints.map(\.amountMinorUnits) == [
+            0,
+            0,
+            80_000,
+            0,
+            0,
+            120_000,
+            0,
+        ])
+    }
+
+    @Test func dashboardRevenueRangeAllGroupsEveryInvoiceMonth() {
+        let points = [
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 3, day: 16), label: "March", amountMinorUnits: 125_000),
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 23), label: "April first", amountMinorUnits: 80_000),
+            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 26), label: "April second", amountMinorUnits: 120_000),
+        ]
+
+        let visiblePoints = DashboardRevenueRange.all.visiblePoints(
+            from: points,
+            endingAt: WorkspaceSnapshot.sampleToday
+        )
+
+        #expect(DashboardRevenueRange.all.rawValue == "All")
+        #expect(visiblePoints.map(\.label) == ["Mar 26", "Apr 26"])
+        #expect(visiblePoints.map(\.amountMinorUnits) == [125_000, 200_000])
+        #expect(DashboardRevenueRange.allCases.last == .all)
     }
 
     @Test func sampleWorkspaceExposesProjectCountsForProjectsSurface() throws {
@@ -900,7 +975,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
-        let store = WorkspaceStore()
+        let store = WorkspaceStore(seed: .sample)
         let project = try #require(store.workspace.project(named: "Launch sprint"))
         let date = Date.pikaDate(year: 2026, month: 4, day: 27)
 
@@ -1203,6 +1278,45 @@ struct WorkspaceSnapshotTests {
         #expect(projection.bucketRows[0].meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
         #expect(projection.bucketRows[0].statusTitle == "Ready")
         #expect(projection.bucketRows[1].statusTitle == nil)
+    }
+
+    @Test func projectDetailProjectionMirrorsLinkedInvoiceStatusInBucketRows() throws {
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000001201")!
+        let project = WorkspaceProject(
+            id: UUID(uuidString: "20000000-0000-0000-0000-000000001201")!,
+            name: "Invoice workflow",
+            clientName: "Happ.ines",
+            currencyCode: "EUR",
+            isArchived: false,
+            buckets: [
+                WorkspaceBucket(
+                    id: bucketID,
+                    name: "Paid bucket",
+                    status: .finalized,
+                    totalMinorUnits: 20_000,
+                    billableMinutes: 60,
+                    fixedCostMinorUnits: 0
+                ),
+            ],
+            invoices: [
+                WorkspaceInvoice(
+                    id: UUID(uuidString: "40000000-0000-0000-0000-000000001201")!,
+                    number: "EHX-2026-1201",
+                    clientName: "Happ.ines",
+                    projectName: "Invoice workflow",
+                    bucketName: "Paid bucket",
+                    issueDate: Date.pikaDate(year: 2026, month: 4, day: 1),
+                    dueDate: Date.pikaDate(year: 2026, month: 4, day: 15),
+                    status: .paid,
+                    totalMinorUnits: 20_000
+                ),
+            ]
+        )
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let projection = try #require(project.detailProjection(formatter: formatter))
+
+        #expect(projection.bucketRows.first?.statusTitle == "Paid")
     }
 
     @Test func projectNormalizesUnknownBucketSelectionToFirstBucket() throws {

@@ -98,7 +98,7 @@ struct InvoicesView: View {
             }
         }
         .background(PikaColor.background)
-        .navigationTitle("Invoices")
+        .navigationTitle(navigationTitle)
         .toolbar {
             Button {
                 openSelectedPDF()
@@ -144,6 +144,14 @@ struct InvoicesView: View {
 
     private var selectedInvoice: WorkspaceInvoice? {
         selectedRow?.invoice
+    }
+
+    private var navigationTitle: String {
+        #if os(macOS)
+        ""
+        #else
+        "Invoices"
+        #endif
     }
 
     private var canMarkSelectedInvoiceSent: Bool {
@@ -325,62 +333,38 @@ private struct InvoiceListColumn: View {
     let onSelect: (WorkspaceInvoice.ID) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-
-            ScrollView {
-                if rows.isEmpty {
-                    ContentUnavailableView(
-                        "No Invoices",
-                        systemImage: "doc.text",
-                        description: Text("No invoices match this status.")
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 240)
-                    .foregroundStyle(PikaColor.textSecondary)
-                } else {
-                    VStack(spacing: 2) {
-                        ForEach(rows) { row in
-                            Button {
-                                onSelect(row.id)
-                            } label: {
-                                InvoiceRow(row: row, isSelected: row.id == selectedInvoiceID)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, PikaSpacing.sm)
-                    .padding(.bottom, PikaSpacing.md)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(maxHeight: .infinity)
-        .background(PikaColor.surface)
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Invoices")
-                        .font(PikaTypography.micro)
-                        .foregroundStyle(PikaColor.textMuted)
-                        .textCase(.uppercase)
-                    Text(summary.displayText)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(PikaColor.textSecondary)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-            }
-
+        PikaSecondarySidebarColumn(
+            title: "Invoices",
+            subtitle: summary.displayText,
+            sectionTitle: "\(filter.rawValue) Invoices"
+        ) {
+            EmptyView()
+        } controls: {
             FlowingInvoiceFilters(filter: $filter)
+        } content: {
+            if rows.isEmpty {
+                ContentUnavailableView(
+                    "No Invoices",
+                    systemImage: "doc.text",
+                    description: Text("No invoices match this status.")
+                )
+                .frame(maxWidth: .infinity, minHeight: 240)
+                .foregroundStyle(PikaColor.textSecondary)
+            } else {
+                VStack(spacing: 2) {
+                    ForEach(rows) { row in
+                        Button {
+                            onSelect(row.id)
+                        } label: {
+                            InvoiceRow(row: row, isSelected: row.id == selectedInvoiceID)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
-        .padding(.horizontal, PikaSpacing.md)
-        .padding(.vertical, PikaSpacing.md)
     }
 }
 
@@ -454,13 +438,7 @@ private struct InvoiceRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
-        .background(isSelected ? PikaColor.surfaceAlt : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(isSelected ? PikaColor.accent : Color.clear)
-                .frame(width: 2)
-        }
+        .pikaSecondarySidebarRow(isSelected: isSelected)
     }
 }
 
@@ -582,7 +560,7 @@ private struct PDFPreviewPlaceholder: View {
                 .shadow(color: .black.opacity(0.32), radius: 24, y: 10)
             }
             .frame(maxWidth: .infinity, alignment: .top)
-            .padding(16)
+            .padding(PikaSpacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PikaColor.background)

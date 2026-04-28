@@ -23,6 +23,24 @@ enum PikaColor {
     static let accentMuted = Color.pikaAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
     static let actionAccent = Color.pikaAdaptive(light: 0x7B61FF, dark: 0xB2A7FF)
     static let actionAccentMuted = Color.pikaAdaptive(light: 0x7B61FF, lightOpacity: 0.10, dark: 0xB2A7FF, darkOpacity: 0.14)
+    static let sidebarSelection = Color.pikaAdaptive(light: 0x5423B9, dark: 0x5423B9)
+    static let projectDotPalette = [
+        Color.pikaAdaptive(light: 0xFF5C7A, dark: 0xFF6F8D),
+        Color.pikaAdaptive(light: 0xF97316, dark: 0xFB923C),
+        Color.pikaAdaptive(light: 0xD9A30F, dark: 0xFACC15),
+        Color.pikaAdaptive(light: 0x2F9E44, dark: 0x74C69D),
+        Color.pikaAdaptive(light: 0x0EA5A4, dark: 0x5EEAD4),
+        Color.pikaAdaptive(light: 0x0EA5E9, dark: 0x7DD3FC),
+        Color.pikaAdaptive(light: 0x3B82F6, dark: 0x93C5FD),
+        Color.pikaAdaptive(light: 0x6366F1, dark: 0xA5B4FC),
+        Color.pikaAdaptive(light: 0x8B5CF6, dark: 0xC4B5FD),
+        Color.pikaAdaptive(light: 0xA855F7, dark: 0xD8B4FE),
+        Color.pikaAdaptive(light: 0xD946EF, dark: 0xF0ABFC),
+        Color.pikaAdaptive(light: 0xEC4899, dark: 0xF9A8D4),
+        Color.pikaAdaptive(light: 0xE11D48, dark: 0xFDA4AF),
+        Color.pikaAdaptive(light: 0x14B8A6, dark: 0x99F6E4),
+        Color.pikaAdaptive(light: 0x64748B, dark: 0xCBD5E1),
+    ]
 
     static let success = Color.pikaAdaptive(light: 0x2F8F5A, dark: 0x7AC79A)
     static let successMuted = Color.pikaAdaptive(light: 0x2F8F5A, lightOpacity: 0.08, dark: 0x7AC79A, darkOpacity: 0.12)

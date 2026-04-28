@@ -11,14 +11,47 @@ struct PikaScaffoldTests {
         #expect(PikaStatusTone.success.accessibilityLabel == "Success")
     }
 
-    @Test func selectedSidebarProjectCountUsesHighContrastForeground() {
-        #expect(SidebarProjectRowAppearance(isSelected: true).readyCountContrast == .selectedForeground)
-        #expect(SidebarProjectRowAppearance(isSelected: false).readyCountContrast == .success)
+    @Test func selectedSidebarProjectUsesAccentSelectionTreatment() {
+        #expect(SidebarProjectRowAppearance(isSelected: true).selectionTreatment == .sidebarAccent)
+        #expect(SidebarProjectRowAppearance(isSelected: false).selectionTreatment == .none)
     }
 
-    @Test func selectedSidebarProjectUsesAccentSelectionTreatment() {
-        #expect(SidebarProjectRowAppearance(isSelected: true).selectionTreatment == .accent)
-        #expect(SidebarProjectRowAppearance(isSelected: false).selectionTreatment == .none)
+    @Test func sidebarProjectRowsAreOneLineWithDot() {
+        #expect(SidebarProjectRowLayout.displaysProjectDot)
+        #expect(SidebarProjectRowLayout.displaysClientSubtitle == false)
+    }
+
+    @Test func sidebarProjectDotsUseThemePalette() {
+        #expect(SidebarProjectDotPalette.colorCount == 15)
+        #expect(SidebarProjectDotPalette.colorIndex(forProjectAt: 0) == 0)
+        #expect(SidebarProjectDotPalette.colorIndex(forProjectAt: 1) == 7)
+        #expect(SidebarProjectDotPalette.colorIndex(forProjectAt: 2) == 14)
+    }
+
+    @Test func sidebarProjectDotPaletteDoesNotRepeatBeforePaletteIsExhausted() {
+        let firstPalettePass = (0..<SidebarProjectDotPalette.colorCount)
+            .map(SidebarProjectDotPalette.colorIndex(forProjectAt:))
+
+        #expect(Set(firstPalettePass).count == SidebarProjectDotPalette.colorCount)
+    }
+
+    @Test func sidebarProjectRowsUseFullWidthSelectionWithChildIndentation() {
+        #expect(SidebarProjectRowLayout.listInsets.leading == 0)
+        #expect(SidebarProjectRowLayout.listInsets.trailing == SidebarProjectRowLayout.listInsets.leading)
+        #expect(SidebarProjectsFolderRowLayout.listInsets.trailing == SidebarProjectsFolderRowLayout.listInsets.leading)
+        #expect(SidebarProjectRowLayout.contentLeadingPadding == 24)
+        #expect(SidebarProjectRowLayout.contentHorizontalPadding == PikaSpacing.sm)
+        #expect(SidebarProjectRowLayout.expandsSelectionToAvailableWidth)
+    }
+
+    @Test func sidebarProjectsFolderStartsExpanded() {
+        #expect(SidebarProjectsDisclosurePolicy.isExpandedByDefault)
+        #expect(SidebarProjectsDisclosurePolicy.disclosurePlacement == .leading)
+    }
+
+    @Test func sidebarProjectsDisclosureOnlyShowsWhenProjectsExist() {
+        #expect(SidebarProjectsDisclosurePolicy.showsDisclosure(activeProjectCount: 1))
+        #expect(!SidebarProjectsDisclosurePolicy.showsDisclosure(activeProjectCount: 0))
     }
 
     @Test func clientRowsUseFullCellHitTargets() {
@@ -60,9 +93,73 @@ struct PikaScaffoldTests {
     }
 
     @Test func macOSLaunchWindowPolicyStartsWithRoomForSidebarAndContent() {
-        #expect(PikaApp.defaultLaunchWindowSize.width >= 1_200)
-        #expect(PikaApp.defaultLaunchWindowSize.height >= 780)
+        #expect(PikaApp.defaultLaunchWindowSize.width == 1_408)
+        #expect(PikaApp.defaultLaunchWindowSize.height == 813)
+        #expect(MainWindowLayout.frameAutosaveName == "PikaMainWindowFrame")
+        #expect(MainWindowLayout.frameStorageKey == "pika.mainWindow.frame")
     }
+
+    @Test func macOSPrimarySidebarPolicyStartsWithBreathingRoom() {
+        #expect(PrimarySidebarColumnLayout.minimumWidth == 220)
+        #expect(PrimarySidebarColumnLayout.idealWidth == 242)
+        #expect(PrimarySidebarColumnLayout.maximumWidth == 520)
+        #expect(PrimarySidebarColumnLayout.widthStorageKey == "pika.primarySidebar.width")
+    }
+
+    @Test func resizableDetailSplitPolicyPersistsWideSecondarySidebar() {
+        #expect(ResizableDetailSplitLayout.leadingMinimumWidth == 240)
+        #expect(ResizableDetailSplitLayout.leadingIdealWidth == 403)
+        #expect(ResizableDetailSplitLayout.leadingMaximumWidth == 720)
+        #expect(ResizableDetailSplitLayout.detailMinimumWidth == 520)
+        #expect(ResizableDetailSplitLayout.leadingWidthStorageKey == "pika.resizableDetailSplit.leadingWidth")
+    }
+
+    @Test func secondarySidebarHeaderAvoidsMacWindowChromeWhenItBecomesLeadingColumn() {
+        #expect(PikaSecondarySidebarLayout.headerTopPadding >= PikaSpacing.md)
+        #expect(PikaSecondarySidebarLayout.leadingChromeClearance(forColumnMinX: 0) >= 116)
+        #expect(PikaSecondarySidebarLayout.leadingChromeClearance(forColumnMinX: 260) == 0)
+    }
+
+    @Test func workspaceStoreStartsEmptyByDefault() {
+        let store = WorkspaceStore()
+
+        #expect(store.workspace.clients.isEmpty)
+        #expect(store.workspace.projects.isEmpty)
+        #expect(store.workspace.activity.isEmpty)
+        #expect(store.workspace.businessProfile.invoicePrefix == "INV")
+        #expect(store.workspace.businessProfile.nextInvoiceNumber == 1)
+    }
+
+    @Test func appLaunchConfigurationUsesEmptyWorkspaceByDefault() {
+        let configuration = AppLaunchConfiguration(arguments: ["pika"], environment: [:])
+
+        #expect(configuration.initialWorkspace == .empty)
+    }
+
+    @Test func appLaunchConfigurationCanUseProjectLocalPersistencePath() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-path", "/tmp/pika-empty-workspace.json"],
+            environment: [:]
+        )
+
+        #expect(configuration.persistenceURL?.path == "/tmp/pika-empty-workspace.json")
+    }
+
+#if DEBUG
+    @Test func appLaunchConfigurationCanOptIntoSampleWorkspaceForDevelopment() {
+        let argumentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-seed-workspace"],
+            environment: [:]
+        )
+        let environmentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika"],
+            environment: ["PIKA_SEED_WORKSPACE": "1"]
+        )
+
+        #expect(argumentConfiguration.initialWorkspace == .sample)
+        #expect(environmentConfiguration.initialWorkspace == .sample)
+    }
+#endif
 
     @MainActor
     @Test func navigationBoundariesAreHashableValueState() {

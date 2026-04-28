@@ -1,18 +1,11 @@
 import SwiftUI
 
 struct ProjectsView: View {
-    enum Filter: String, CaseIterable, Identifiable {
-        case active = "Active"
-        case archived = "Archived"
-
-        var id: String { rawValue }
-    }
-
     let workspace: WorkspaceSnapshot
     let currentDate: Date
     let onSelectProject: (PikaShellDestination) -> Void
     @Environment(\.workspaceStore) private var workspaceStore
-    @State private var filter = Filter.active
+    @State private var showsArchivedProjects = false
     @State private var showsCreateProject = false
     @State private var creationFailure: ProjectCreationFailure?
 
@@ -29,12 +22,7 @@ struct ProjectsView: View {
     }
 
     private var projects: [WorkspaceProject] {
-        switch filter {
-        case .active:
-            workspace.activeProjects
-        case .archived:
-            workspace.archivedProjects
-        }
+        workspace.activeProjects
     }
 
     private var summary: ProjectOverviewSummary {
@@ -46,7 +34,7 @@ struct ProjectsView: View {
             VStack(alignment: .leading, spacing: PikaSpacing.lg) {
                 HStack(alignment: .bottom, spacing: PikaSpacing.lg) {
                     VStack(alignment: .leading, spacing: PikaSpacing.xs) {
-                        Text("\(summary.projectCount) \(filter.rawValue.lowercased()) projects")
+                        Text("\(summary.projectCount) active projects")
                             .font(PikaTypography.display)
                             .foregroundStyle(PikaColor.textPrimary)
 
@@ -55,38 +43,16 @@ struct ProjectsView: View {
                             .foregroundStyle(PikaColor.textSecondary)
                     }
 
-                    Spacer()
-
-                    Picker("Project status", selection: $filter) {
-                        ForEach(Filter.allCases) { filter in
-                            Text(filter.rawValue).tag(filter)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 260)
+                    Spacer(minLength: 0)
                 }
 
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 280), spacing: PikaSpacing.md)],
-                    spacing: PikaSpacing.md
-                ) {
-                    ForEach(projects) { project in
-                        Button {
-                            onSelectProject(.projectDestination(for: project))
-                        } label: {
-                            ProjectCard(
-                                project: project,
-                                currentDate: currentDate,
-                                totalAmount: formatter.string(fromMinorUnits: project.totalBucketMinorUnits),
-                                readyAmount: formatter.string(fromMinorUnits: project.readyToInvoiceMinorUnits)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens the project")
-                    }
+                projectGrid(projects)
+
+                if !workspace.archivedProjects.isEmpty {
+                    archivedProjectsSection
                 }
             }
-            .padding(PikaSpacing.lg)
+            .padding(PikaSpacing.md)
         }
         .background(PikaColor.background)
         .navigationTitle("Projects")
@@ -121,6 +87,53 @@ struct ProjectsView: View {
         "\(formatter.string(fromMinorUnits: summary.openMinorUnits)) open · \(formatter.string(fromMinorUnits: summary.readyMinorUnits)) ready · \(formatter.string(fromMinorUnits: summary.overdueMinorUnits)) overdue"
     }
 
+    private var archivedProjectsSection: some View {
+        VStack(alignment: .leading, spacing: PikaSpacing.md) {
+            Button {
+                withAnimation(.easeOut(duration: 0.16)) {
+                    showsArchivedProjects.toggle()
+                }
+            } label: {
+                ArchivedProjectsHeader(
+                    count: workspace.archivedProjects.count,
+                    isExpanded: showsArchivedProjects
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(workspace.archivedProjects.count) archived projects")
+            .accessibilityHint(showsArchivedProjects ? "Collapses archived projects" : "Expands archived projects")
+            .accessibilityAddTraits(.isButton)
+
+            if showsArchivedProjects {
+                projectGrid(workspace.archivedProjects)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.14), value: showsArchivedProjects)
+    }
+
+    private func projectGrid(_ projects: [WorkspaceProject]) -> some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 280), spacing: PikaSpacing.md)],
+            spacing: PikaSpacing.md
+        ) {
+            ForEach(projects) { project in
+                Button {
+                    onSelectProject(.projectDestination(for: project))
+                } label: {
+                    ProjectCard(
+                        project: project,
+                        currentDate: currentDate,
+                        totalAmount: formatter.string(fromMinorUnits: project.totalBucketMinorUnits),
+                        readyAmount: formatter.string(fromMinorUnits: project.readyToInvoiceMinorUnits)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the project")
+            }
+        }
+    }
+
     private func createProject(_ draft: WorkspaceProjectDraft) {
         do {
             let project = try workspaceStore.createProject(draft)
@@ -129,6 +142,49 @@ struct ProjectsView: View {
         } catch {
             creationFailure = ProjectCreationFailure(message: error.localizedDescription)
         }
+    }
+}
+
+private struct ArchivedProjectsHeader: View {
+    let count: Int
+    let isExpanded: Bool
+
+    var body: some View {
+        HStack(spacing: PikaSpacing.md) {
+            Capsule()
+                .fill(PikaColor.textMuted)
+                .frame(width: 3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(count) archived projects")
+                    .font(PikaTypography.subheading)
+                    .foregroundStyle(PikaColor.textPrimary)
+
+                Text(isExpanded ? "Hide completed or paused work" : "Show completed or paused work")
+                    .font(PikaTypography.small)
+                    .foregroundStyle(PikaColor.textMuted)
+            }
+
+            Spacer(minLength: PikaSpacing.md)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(PikaColor.textSecondary)
+                .frame(width: 28, height: 28)
+                .background(PikaColor.surfaceAlt2)
+                .clipShape(Circle())
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+        }
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .padding(.horizontal, PikaSpacing.md)
+        .padding(.vertical, PikaSpacing.sm)
+        .background(PikaColor.surfaceAlt)
+        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous)
+                .stroke(PikaColor.border)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous))
     }
 }
 

@@ -6,6 +6,11 @@ name = "pika"
 script = ""
 
 [[actions]]
-name = "Play"
+name = "Play Empty"
 icon = "play"
-command = "./script/build_and_run.sh --verify"
+command = "./script/build_and_run.sh --verify --empty"
+
+[[actions]]
+name = "Play Seeded"
+icon = "play"
+command = "./script/build_and_run.sh --verify --seeded"

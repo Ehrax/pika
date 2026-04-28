@@ -2,6 +2,22 @@ import Foundation
 
 struct WorkspaceSnapshot: Codable, Equatable {
     static let sampleToday = Date.pikaDate(year: 2026, month: 4, day: 27)
+    static let empty = WorkspaceSnapshot(
+        businessProfile: BusinessProfileProjection(
+            businessName: "",
+            email: "",
+            address: "",
+            invoicePrefix: "INV",
+            nextInvoiceNumber: 1,
+            currencyCode: "EUR",
+            paymentDetails: "",
+            taxNote: "",
+            defaultTermsDays: 14
+        ),
+        clients: [],
+        projects: [],
+        activity: []
+    )
 
     var businessProfile: BusinessProfileProjection
     var clients: [WorkspaceClient]
@@ -50,6 +66,7 @@ struct WorkspaceSnapshot: Codable, Equatable {
 
     func dashboardSummary(on date: Date = .now) -> DashboardSummary {
         let invoices = projects.flatMap(\.invoices)
+        let paidInvoices = invoices.filter { $0.status == .paid }
         let unpaidInvoices = invoices.filter { $0.status == .finalized || $0.status == .sent }
         let readyBuckets = projects.flatMap { project in
             project.buckets
@@ -97,27 +114,28 @@ struct WorkspaceSnapshot: Codable, Equatable {
             outstandingMinorUnits: unpaidInvoices.map(\.totalMinorUnits).reduce(0, +),
             overdueMinorUnits: overdueInvoices.map(\.amountMinorUnits).reduce(0, +),
             readyToInvoiceMinorUnits: readyBuckets.map(\.bucket.effectiveTotalMinorUnits).reduce(0, +),
-            thisMonthMinorUnits: invoices
+            thisMonthMinorUnits: paidInvoices
                 .filter { Calendar.pikaGregorian.isDate($0.issueDate, equalTo: date, toGranularity: .month) }
                 .map(\.totalMinorUnits)
                 .reduce(0, +),
             activeProjectCount: activeProjects.count,
             clientCount: clients.count,
             needsAttention: overdueInvoices + readyItems,
-            revenueHistory: [
-                RevenuePoint(label: "May 25", amountMinorUnits: 208_000),
-                RevenuePoint(label: "Jun", amountMinorUnits: 246_000),
-                RevenuePoint(label: "Jul", amountMinorUnits: 218_000),
-                RevenuePoint(label: "Aug", amountMinorUnits: 272_000),
-                RevenuePoint(label: "Sep", amountMinorUnits: 248_000),
-                RevenuePoint(label: "Oct", amountMinorUnits: 304_000),
-                RevenuePoint(label: "Nov", amountMinorUnits: 284_000),
-                RevenuePoint(label: "Dec", amountMinorUnits: 342_000),
-                RevenuePoint(label: "Jan", amountMinorUnits: 90_000),
-                RevenuePoint(label: "Feb", amountMinorUnits: 140_000),
-                RevenuePoint(label: "Mar", amountMinorUnits: 125_000),
-                RevenuePoint(label: "Apr 26", amountMinorUnits: 120_000),
-            ]
+            revenueHistory: paidInvoices
+                .sorted { left, right in
+                    if left.issueDate == right.issueDate {
+                        return left.number < right.number
+                    }
+
+                    return left.issueDate < right.issueDate
+                }
+                .map { invoice in
+                    RevenuePoint(
+                        date: invoice.issueDate,
+                        label: invoice.number,
+                        amountMinorUnits: invoice.totalMinorUnits
+                    )
+                }
         )
     }
 
@@ -139,6 +157,13 @@ struct WorkspaceSnapshot: Codable, Equatable {
 
     private func readyAttentionTitle(for project: WorkspaceProject) -> String {
         "\(project.clientName) \(project.name.lowercased()) ready to invoice"
+    }
+
+}
+
+extension Date {
+    static func pikaDate(year: Int, month: Int, day: Int) -> Date {
+        Calendar.pikaGregorian.date(from: DateComponents(year: year, month: month, day: day))!
     }
 }
 
@@ -215,7 +240,8 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
 
     func detailProjection(
         selectedBucketID: WorkspaceBucket.ID? = nil,
-        formatter: MoneyFormatting
+        formatter: MoneyFormatting,
+        on date: Date = .now
     ) -> WorkspaceBucketDetailProjection? {
         guard let selectedBucket = bucket(matching: selectedBucketID) ?? buckets.first else {
             return nil
@@ -225,7 +251,12 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
             project: self,
             selectedBucket: selectedBucket,
             bucketRows: buckets.map { bucket in
-                WorkspaceBucketRowProjection(bucket: bucket, formatter: formatter)
+                WorkspaceBucketRowProjection(
+                    bucket: bucket,
+                    linkedInvoice: latestInvoice(for: bucket),
+                    formatter: formatter,
+                    on: date
+                )
             },
             formatter: formatter
         )
@@ -238,6 +269,22 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
     private func bucket(matching id: WorkspaceBucket.ID?) -> WorkspaceBucket? {
         guard let id else { return nil }
         return buckets.first { $0.id == id }
+    }
+
+    private func latestInvoice(for bucket: WorkspaceBucket) -> WorkspaceInvoice? {
+        invoices
+            .filter { invoice in
+                let invoiceProjectName = invoice.projectName.isEmpty ? name : invoice.projectName
+                return invoiceProjectName == name && invoice.bucketName == bucket.name
+            }
+            .sorted { left, right in
+                if left.issueDate == right.issueDate {
+                    return left.number > right.number
+                }
+
+                return left.issueDate > right.issueDate
+            }
+            .first
     }
 }
 
@@ -486,11 +533,18 @@ struct DashboardAttentionItem: Equatable, Identifiable {
 }
 
 struct RevenuePoint: Equatable, Identifiable {
+    var date: Date
     var label: String
     var amountMinorUnits: Int
 
+    init(date: Date = .distantPast, label: String, amountMinorUnits: Int) {
+        self.date = date
+        self.label = label
+        self.amountMinorUnits = amountMinorUnits
+    }
+
     var id: String {
-        label
+        "\(date.timeIntervalSinceReferenceDate)-\(label)"
     }
 }
 
@@ -500,8 +554,14 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
     let meta: String
     let status: BucketStatus
     let statusTitle: String?
+    let statusTone: PikaStatusTone
 
-    init(bucket: WorkspaceBucket, formatter: MoneyFormatting) {
+    init(
+        bucket: WorkspaceBucket,
+        linkedInvoice: WorkspaceInvoice? = nil,
+        formatter: MoneyFormatting,
+        on date: Date = .now
+    ) {
         id = bucket.id
         name = bucket.name
         status = bucket.status
@@ -514,7 +574,49 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
             meta = "\(bucket.billableHoursLabel) · \(amount)"
         }
 
-        statusTitle = bucket.status == .open ? nil : bucket.status.rawValue.capitalized
+        if let linkedInvoice {
+            statusTitle = linkedInvoice.status.displayTitle(dueDate: linkedInvoice.dueDate, on: date)
+            statusTone = linkedInvoice.status.displayTone(dueDate: linkedInvoice.dueDate, on: date)
+        } else {
+            statusTitle = bucket.status == .open ? nil : bucket.status.rawValue.capitalized
+            statusTone = bucket.status.displayTone
+        }
+    }
+}
+
+private extension InvoiceStatus {
+    func displayTitle(dueDate: Date, on date: Date) -> String {
+        isOverdue(dueDate: dueDate, on: date) ? "Overdue" : rawValue.capitalized
+    }
+
+    func displayTone(dueDate: Date, on date: Date) -> PikaStatusTone {
+        if isOverdue(dueDate: dueDate, on: date) { return .danger }
+
+        switch self {
+        case .finalized:
+            return .warning
+        case .sent:
+            return .neutral
+        case .paid:
+            return .success
+        case .cancelled:
+            return .neutral
+        }
+    }
+}
+
+private extension BucketStatus {
+    var displayTone: PikaStatusTone {
+        switch self {
+        case .open:
+            return .neutral
+        case .ready:
+            return .success
+        case .finalized:
+            return .warning
+        case .archived:
+            return .neutral
+        }
     }
 }
 

@@ -1,11 +1,57 @@
 import SwiftUI
 
+struct AppLaunchConfiguration: Equatable {
+    static let sampleWorkspaceArgument = "--pika-seed-workspace"
+    static let sampleWorkspaceEnvironmentKey = "PIKA_SEED_WORKSPACE"
+    static let workspacePathArgument = "--pika-workspace-path"
+
+    let initialWorkspace: WorkspaceSnapshot
+    let persistenceURL: URL?
+
+    init(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
+#if DEBUG
+        if arguments.contains(Self.sampleWorkspaceArgument)
+            || environment[Self.sampleWorkspaceEnvironmentKey] == "1" {
+            initialWorkspace = .sample
+        } else {
+            initialWorkspace = .empty
+        }
+#else
+        initialWorkspace = .empty
+#endif
+        persistenceURL = Self.persistenceURL(arguments: arguments)
+            ?? WorkspaceStore.defaultPersistenceURL()
+    }
+
+    private static func persistenceURL(arguments: [String]) -> URL? {
+        guard let pathIndex = arguments.firstIndex(of: workspacePathArgument) else {
+            return nil
+        }
+
+        let valueIndex = arguments.index(after: pathIndex)
+        guard arguments.indices.contains(valueIndex) else {
+            return nil
+        }
+
+        return URL(fileURLWithPath: arguments[valueIndex])
+    }
+}
+
 private struct PikaDependencyModifier: ViewModifier {
     @State private var appRouter = AppRouter()
-    @State private var workspaceStore = WorkspaceStore(
-        seed: .sample,
-        persistenceURL: WorkspaceStore.defaultPersistenceURL()
-    )
+    @State private var workspaceStore: WorkspaceStore
+
+    init(configuration: AppLaunchConfiguration = AppLaunchConfiguration()) {
+        _workspaceStore = State(
+            initialValue: WorkspaceStore(
+                seed: configuration.initialWorkspace,
+                persistenceURL: configuration.persistenceURL
+            )
+        )
+    }
 
     func body(content: Content) -> some View {
         content
@@ -18,8 +64,8 @@ private struct PikaDependencyModifier: ViewModifier {
 }
 
 extension View {
-    func pikaDependencies() -> some View {
-        modifier(PikaDependencyModifier())
+    func pikaDependencies(configuration: AppLaunchConfiguration = AppLaunchConfiguration()) -> some View {
+        modifier(PikaDependencyModifier(configuration: configuration))
     }
 }
 
@@ -36,7 +82,7 @@ private struct ProjectStoreKey: EnvironmentKey {
 }
 
 private struct WorkspaceStoreKey: EnvironmentKey {
-    static let defaultValue = WorkspaceStore(seed: .sample)
+    static let defaultValue = WorkspaceStore(seed: .empty)
 }
 
 private struct InvoicePDFServiceKey: EnvironmentKey {

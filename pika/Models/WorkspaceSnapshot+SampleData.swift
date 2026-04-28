@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
@@ -223,9 +224,4 @@ extension WorkspaceSnapshot {
         ]
     )
 }
-
-extension Date {
-    static func pikaDate(year: Int, month: Int, day: Int) -> Date {
-        Calendar.pikaGregorian.date(from: DateComponents(year: year, month: month, day: day))!
-    }
-}
+#endif
