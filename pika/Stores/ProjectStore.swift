@@ -105,6 +105,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     var phone: String
     var address: String
     var taxIdentifier: String
+    var economicIdentifier: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
@@ -118,6 +119,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         phone: String,
         address: String,
         taxIdentifier: String,
+        economicIdentifier: String = "",
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
@@ -130,6 +132,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.phone = phone
         self.address = address
         self.taxIdentifier = taxIdentifier
+        self.economicIdentifier = economicIdentifier
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
@@ -145,6 +148,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
             phone: profile.phone,
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
+            economicIdentifier: profile.economicIdentifier,
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
@@ -287,6 +291,7 @@ final class WorkspaceStore {
         let phone = draft.phone.trimmingCharacters(in: .whitespacesAndNewlines)
         let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxIdentifier = draft.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let economicIdentifier = draft.economicIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -309,6 +314,7 @@ final class WorkspaceStore {
             phone: phone,
             address: address,
             taxIdentifier: taxIdentifier,
+            economicIdentifier: economicIdentifier,
             invoicePrefix: invoicePrefix.uppercased(),
             nextInvoiceNumber: draft.nextInvoiceNumber,
             currencyCode: currencyCode,

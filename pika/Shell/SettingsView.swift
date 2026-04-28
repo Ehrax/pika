@@ -71,6 +71,12 @@ struct SettingsView: View {
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.small)
                     }
+                    SettingsDivider()
+                    SettingsEditableFieldRow(label: "Economic identifier") {
+                        TextField("Economic identifier", text: $draft.economicIdentifier)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.small)
+                    }
                 }
 
                 settingsSection(title: "Invoice numbering", detail: "Defaults") {

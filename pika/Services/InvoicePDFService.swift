@@ -204,6 +204,7 @@ private struct InvoicePDFRenderer {
         let email = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let phone = profile.phone.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxIdentifier = profile.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let economicIdentifier = profile.economicIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let contactBlock = [
             email,
             phone,
@@ -241,6 +242,17 @@ private struct InvoicePDFRenderer {
             drawText(taxLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
             let taxValueX = margin + textWidth(taxLabel + " ", size: 10, weight: .regular)
             drawText(taxIdentifier, in: CGRect(x: taxValueX, y: currentY, width: max(0, 260 - (taxValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
+            currentY += headerLineHeight
+        }
+
+        if !economicIdentifier.isEmpty {
+            if currentY > headerTopY {
+                currentY += blockGap
+            }
+            let economicLabel = "Wirtschafts-Identifikationsnummer:"
+            drawText(economicLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
+            let economicValueX = margin + textWidth(economicLabel + " ", size: 10, weight: .regular)
+            drawText(economicIdentifier, in: CGRect(x: economicValueX, y: currentY, width: max(0, 260 - (economicValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
             currentY += headerLineHeight
         }
 

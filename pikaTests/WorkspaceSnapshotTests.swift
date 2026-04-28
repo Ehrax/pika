@@ -158,7 +158,8 @@ struct WorkspaceSnapshotTests {
         let bucket = try #require(project.buckets.first)
 
         #expect(workspace.businessProfile.businessName == "ehrax.dev")
-        #expect(workspace.businessProfile.taxIdentifier == "DE320253387")
+        #expect(workspace.businessProfile.taxIdentifier == "151/260/41486")
+        #expect(workspace.businessProfile.economicIdentifier == "DE320253387")
         #expect(workspace.clients.map(\.name) == ["Verein Bikepark Thunersee"])
         #expect(workspace.clients.first?.billingAddress == "Untere Ttüelmatt 4\n3624 Goldiwil\nSchweiz")
         #expect(bucket.name == "Trailpass Launch")

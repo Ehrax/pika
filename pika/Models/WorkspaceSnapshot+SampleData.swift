@@ -232,12 +232,13 @@ extension WorkspaceSnapshot {
             email: "alex@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd\nGermany",
-            taxIdentifier: "DE320253387",
+            taxIdentifier: "151/260/41486",
+            economicIdentifier: "DE320253387",
             invoicePrefix: "EHX",
             nextInvoiceNumber: 1,
             currencyCode: "EUR",
             paymentDetails: "IBAN DE02 1001 1001 2125 8144 33\nBIC NTSBDEB1XXX",
-            taxNote: "Steuernummer: DE320253387",
+            taxNote: "Steuernummer: 151/260/41486",
             defaultTermsDays: 14
         ),
         clients: [
