@@ -251,7 +251,7 @@ extension WorkspaceSnapshot {
         projects: [
             WorkspaceProject(
                 id: UUID(uuidString: "20000000-0000-0000-0000-000000000101")!,
-                name: "Bikepark Thunersee",
+                name: "Play Bikepark",
                 clientName: "Verein Bikepark Thunersee",
                 currencyCode: "EUR",
                 isArchived: false,
@@ -305,7 +305,7 @@ extension WorkspaceSnapshot {
         activity: [
             WorkspaceActivity(
                 message: "Trailpass Launch marked ready",
-                detail: "Bikepark Thunersee",
+                detail: "Play Bikepark",
                 occurredAt: Date.pikaDate(year: 2026, month: 4, day: 13)
             ),
         ]

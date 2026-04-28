@@ -154,7 +154,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func bikeparkWorkspaceSeedContainsRealProjectAndWorklog() throws {
         let workspace = WorkspaceSnapshot.bikeparkThunersee
-        let project = try #require(workspace.project(named: "Bikepark Thunersee"))
+        let project = try #require(workspace.project(named: "Play Bikepark"))
         let bucket = try #require(project.buckets.first)
 
         #expect(workspace.businessProfile.businessName == "ehrax.dev")
