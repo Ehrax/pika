@@ -826,13 +826,13 @@ struct WorkspaceBucketDetailProjection: Equatable {
         entryRows = selectedBucket.entryRows(formatter: formatter)
         lineItems = [
             WorkspaceBucketLineItemProjection(
-                description: "Billable time",
+                description: selectedBucket.name,
                 quantity: selectedBucket.billableHoursLabel,
                 amountLabel: formatter.string(fromMinorUnits: selectedBucket.billableTimeMinorUnits),
                 isBillable: true
             ),
             WorkspaceBucketLineItemProjection(
-                description: "Fixed costs",
+                description: selectedBucket.fixedCostLineItemDescription,
                 quantity: selectedBucket.effectiveFixedCostMinorUnits > 0 ? max(selectedBucket.fixedCostEntries.count, 1).formattedItemCount : "0 items",
                 amountLabel: formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits),
                 isBillable: selectedBucket.effectiveFixedCostMinorUnits > 0
@@ -844,6 +844,19 @@ struct WorkspaceBucketDetailProjection: Equatable {
 private extension Int {
     var formattedItemCount: String {
         self == 1 ? "1 item" : "\(self) items"
+    }
+}
+
+private extension WorkspaceBucket {
+    var fixedCostLineItemDescription: String {
+        guard fixedCostEntries.count == 1,
+              let description = fixedCostEntries.first?.description.trimmingCharacters(in: .whitespacesAndNewlines),
+              !description.isEmpty
+        else {
+            return "Fixed costs"
+        }
+
+        return description
     }
 }
 

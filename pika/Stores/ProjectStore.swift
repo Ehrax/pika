@@ -24,6 +24,42 @@ struct InvoiceFinalizationDraft: Equatable {
     var taxNote: String
 }
 
+enum InvoiceFinalizationField: CaseIterable, Equatable {
+    case recipientName
+    case recipientEmail
+    case recipientBillingAddress
+    case invoiceNumber
+    case template
+    case issueDate
+    case dueDate
+    case servicePeriod
+    case currencyCode
+    case taxNote
+
+    var isEditable: Bool {
+        switch self {
+        case .template, .issueDate, .dueDate:
+            true
+        case .recipientName,
+             .recipientEmail,
+             .recipientBillingAddress,
+             .invoiceNumber,
+             .servicePeriod,
+             .currencyCode,
+             .taxNote:
+            false
+        }
+    }
+
+    static var editableFields: [Self] {
+        allCases.filter(\.isEditable)
+    }
+
+    static var readOnlyFields: [Self] {
+        allCases.filter { !$0.isEditable }
+    }
+}
+
 struct WorkspaceTimeEntryDraft: Equatable {
     var date: Date
     var timeInput: String
@@ -1104,7 +1140,7 @@ private extension WorkspaceBucket {
 
         if billableTimeMinorUnits > 0 {
             items.append(WorkspaceInvoiceLineItemSnapshot(
-                description: "Billable time",
+                description: name,
                 quantityLabel: billableHoursLabel,
                 amountMinorUnits: billableTimeMinorUnits
             ))
@@ -1112,13 +1148,24 @@ private extension WorkspaceBucket {
 
         if effectiveFixedCostMinorUnits > 0 {
             items.append(WorkspaceInvoiceLineItemSnapshot(
-                description: "Fixed costs",
+                description: fixedCostLineItemDescription,
                 quantityLabel: fixedCostEntries.isEmpty ? "1 item" : fixedCostEntries.count.formattedItemCount,
                 amountMinorUnits: effectiveFixedCostMinorUnits
             ))
         }
 
         return items
+    }
+
+    var fixedCostLineItemDescription: String {
+        guard fixedCostEntries.count == 1,
+              let description = fixedCostEntries.first?.description.trimmingCharacters(in: .whitespacesAndNewlines),
+              !description.isEmpty
+        else {
+            return "Fixed costs"
+        }
+
+        return description
     }
 }
 

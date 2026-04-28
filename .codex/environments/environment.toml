@@ -14,3 +14,8 @@ command = "./script/build_and_run.sh --verify --empty"
 name = "Play Seeded"
 icon = "play"
 command = "./script/build_and_run.sh --verify --seeded"
+
+[[actions]]
+name = "Play Bikepark"
+icon = "play"
+command = "./script/build_and_run.sh --verify --bikepark"

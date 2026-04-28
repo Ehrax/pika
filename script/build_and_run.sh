@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MODE="run"
-SEED_WORKSPACE=0
+SEED_WORKSPACE="empty"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
 RUN_DATA_DIR="$ROOT_DIR/.build/RunData"
@@ -16,17 +16,20 @@ while [[ $# -gt 0 ]]; do
       MODE="$1"
       ;;
     --seeded|seeded|--preseeded|preseeded)
-      SEED_WORKSPACE=1
+      SEED_WORKSPACE="sample"
+      ;;
+    --bikepark|bikepark|--bikepark-thunersee|bikepark-thunersee)
+      SEED_WORKSPACE="bikepark"
       ;;
     --empty|empty)
-      SEED_WORKSPACE=0
+      SEED_WORKSPACE="empty"
       ;;
     -h|--help)
-      echo "usage: $0 [run|--verify] [--empty|--seeded]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
       exit 0
       ;;
     *)
-      echo "usage: $0 [run|--verify] [--empty|--seeded]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
       exit 2
       ;;
   esac
@@ -87,8 +90,10 @@ launch_app() {
   local app_bundle="$1"
   local workspace_name="empty"
 
-  if [[ "$SEED_WORKSPACE" == "1" ]]; then
+  if [[ "$SEED_WORKSPACE" == "sample" ]]; then
     workspace_name="seeded"
+  elif [[ "$SEED_WORKSPACE" == "bikepark" ]]; then
+    workspace_name="bikepark-thunersee"
   fi
 
   local workspace_dir="$RUN_DATA_DIR/$workspace_name"
@@ -96,8 +101,10 @@ launch_app() {
   mkdir -p "$workspace_dir"
   rm -f "$workspace_path"
 
-  if [[ "$SEED_WORKSPACE" == "1" ]]; then
+  if [[ "$SEED_WORKSPACE" == "sample" ]]; then
     /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path" --pika-seed-workspace
+  elif [[ "$SEED_WORKSPACE" == "bikepark" ]]; then
+    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path" --pika-seed-bikepark-thunersee
   else
     /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path"
   fi
@@ -131,7 +138,7 @@ case "$MODE" in
     fi
     ;;
   *)
-    echo "usage: $0 [run|--verify]" >&2
+    echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
     exit 2
     ;;
 esac

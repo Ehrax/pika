@@ -165,6 +165,20 @@ struct PikaScaffoldTests {
         #expect(argumentConfiguration.initialWorkspace == .sample)
         #expect(environmentConfiguration.initialWorkspace == .sample)
     }
+
+    @Test func appLaunchConfigurationCanOptIntoBikeparkWorkspaceForDevelopment() {
+        let argumentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-seed-bikepark-thunersee"],
+            environment: [:]
+        )
+        let environmentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika"],
+            environment: ["PIKA_SEED_WORKSPACE": "bikepark-thunersee"]
+        )
+
+        #expect(argumentConfiguration.initialWorkspace == .bikeparkThunersee)
+        #expect(environmentConfiguration.initialWorkspace == .bikeparkThunersee)
+    }
 #endif
 
     @MainActor

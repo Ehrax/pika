@@ -874,14 +874,13 @@ private struct CreateInvoiceConfirmationSheet: View {
         VStack(spacing: 0) {
             Form {
                 Section("Recipient") {
-                    TextField("Name", text: $draft.recipientName)
-                    TextField("Email", text: $draft.recipientEmail)
-                    TextField("Billing address", text: $draft.recipientBillingAddress, axis: .vertical)
-                        .lineLimit(2...4)
+                    InvoiceFinalizationReviewRow("Name", value: draft.recipientName)
+                    InvoiceFinalizationReviewRow("Email", value: draft.recipientEmail)
+                    InvoiceFinalizationReviewRow("Billing address", value: draft.recipientBillingAddress)
                 }
 
                 Section("Invoice") {
-                    TextField("Invoice number", text: $draft.invoiceNumber)
+                    InvoiceFinalizationReviewRow("Invoice number", value: draft.invoiceNumber)
                     Picker("Template", selection: $draft.template) {
                         ForEach(InvoiceTemplate.allCases) { template in
                             Text(template.displayName).tag(template)
@@ -889,10 +888,9 @@ private struct CreateInvoiceConfirmationSheet: View {
                     }
                     DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
                     DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
-                    TextField("Service period", text: $draft.servicePeriod)
-                    CurrencyCodeField("Currency", text: $draft.currencyCode)
-                    TextField("Tax / VAT note", text: $draft.taxNote, axis: .vertical)
-                        .lineLimit(2...5)
+                    InvoiceFinalizationReviewRow("Service period", value: draft.servicePeriod)
+                    InvoiceFinalizationReviewRow("Currency", value: draft.currencyCode)
+                    InvoiceFinalizationReviewRow("Tax / VAT note", value: draft.taxNote)
                 }
 
                 Section("Totals") {
@@ -945,5 +943,25 @@ private struct CreateInvoiceConfirmationSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 520, idealWidth: 560, minHeight: 620)
+    }
+}
+
+private struct InvoiceFinalizationReviewRow: View {
+    let title: LocalizedStringKey
+    let value: String
+
+    init(_ title: LocalizedStringKey, value: String) {
+        self.title = title
+        self.value = value
+    }
+
+    var body: some View {
+        LabeledContent(title) {
+            Text(value.isEmpty ? "Not set" : value)
+                .foregroundStyle(value.isEmpty ? PikaColor.textSecondary : PikaColor.textPrimary)
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }

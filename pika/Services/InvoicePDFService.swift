@@ -238,9 +238,9 @@ private struct InvoicePDFRenderer {
                 currentY += blockGap
             }
             let taxLabel = "Steuernummer:"
-            drawText(taxLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .primary, context: context)
+            drawText(taxLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
             let taxValueX = margin + textWidth(taxLabel + " ", size: 10, weight: .regular)
-            drawText(taxIdentifier, in: CGRect(x: taxValueX, y: currentY, width: max(0, 260 - (taxValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .primary, context: context)
+            drawText(taxIdentifier, in: CGRect(x: taxValueX, y: currentY, width: max(0, 260 - (taxValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
             currentY += headerLineHeight
         }
 
@@ -260,32 +260,31 @@ private struct InvoicePDFRenderer {
         let servicePeriod = row.servicePeriod.isEmpty ? issueDate : row.servicePeriod
         let dateInfoX = page.width - margin - 250
         let dateGap: CGFloat = 6
-        let dateValueWidth = max(
-            textWidth(issueDate, size: 10, weight: .bold),
-            textWidth(servicePeriod, size: 10, weight: .bold)
-        )
-        let dateLabelWidth = max(
-            textWidth("Rechnungsdatum: ", size: 10, weight: .regular),
-            textWidth("Leistungszeitraum: ", size: 10, weight: .regular)
-        )
+        let dateValueWidth = textWidth(issueDate, size: 10, weight: .bold)
+        let dateLabelWidth = textWidth("Rechnungsdatum: ", size: 10, weight: .regular)
         let dateValueX = dateInfoX + (250 - dateValueWidth)
         let dateLabelX = dateValueX - dateGap - dateLabelWidth
-        drawText("Rechnungsdatum:", in: CGRect(x: dateLabelX, y: contentTopY, width: dateLabelWidth, height: 16), size: 10, color: .primary, alignment: .right, context: context)
-        drawText(issueDate, in: CGRect(x: dateValueX, y: contentTopY, width: dateValueWidth, height: 16), size: 10, weight: .bold, color: .primary, alignment: .right, context: context)
-        drawText("Leistungszeitraum:", in: CGRect(x: dateLabelX, y: contentTopY + 16, width: dateLabelWidth, height: 16), size: 10, color: .primary, alignment: .right, context: context)
-        drawText(servicePeriod, in: CGRect(x: dateValueX, y: contentTopY + 16, width: dateValueWidth, height: 16), size: 10, weight: .bold, color: .primary, alignment: .right, context: context)
+        let dateInfoY = contentTopY + 44
+        drawText("Rechnungsdatum:", in: CGRect(x: dateLabelX, y: dateInfoY, width: dateLabelWidth, height: 16), size: 10, color: .primary, alignment: .right, context: context)
+        drawText(issueDate, in: CGRect(x: dateValueX, y: dateInfoY, width: dateValueWidth, height: 16), size: 10, weight: .bold, color: .primary, alignment: .right, context: context)
 
         let introY = (contentTopY + 48 + 56) + 35
+        let introPrefix = "Hiermit erlaube ich mir, für den folgenden Leistungszeitraum "
+        let introSuffix = "folgende Leistungen in Rechnung zu stellen:"
 
-        drawText(
-            "Hiermit erlaube ich mir, folgende Leistung in Rechnung zu stellen:",
-            in: CGRect(x: margin, y: introY, width: 360, height: 16),
+        drawAttributedText(
+            [
+                TextRun(introPrefix),
+                TextRun("\(servicePeriod) ", weight: .bold),
+                TextRun(introSuffix),
+            ],
+            in: CGRect(x: margin, y: introY, width: page.width - (margin * 2), height: 32),
             size: 10,
             color: .primary,
             context: context
         )
 
-        let dividerY = drawLineItems(lineItems, tableY: introY + 35, context: context)
+        let dividerY = drawLineItems(lineItems, tableY: introY + 45, context: context)
         if pageNumber == pageCount {
             drawClosingSection(startY: dividerY + 12, context: context)
         }
@@ -577,6 +576,54 @@ private struct InvoicePDFRenderer {
         context.restoreGState()
     }
 
+    private func drawAttributedText(
+        _ runs: [TextRun],
+        in rect: CGRect,
+        size: CGFloat,
+        color: TextColor = .primary,
+        alignment: CTTextAlignment = .left,
+        context: CGContext
+    ) {
+        var textAlignment = alignment
+        let paragraph = withUnsafeBytes(of: &textAlignment) { bytes in
+            var setting = CTParagraphStyleSetting(
+                spec: .alignment,
+                valueSize: MemoryLayout<CTTextAlignment>.size,
+                value: bytes.baseAddress!
+            )
+            return CTParagraphStyleCreate(&setting, 1)
+        }
+
+        let attributed = NSMutableAttributedString()
+        for run in runs {
+            attributed.append(
+                NSAttributedString(
+                    string: run.text,
+                    attributes: [
+                        NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName(run.weight.fontName as CFString, size, nil),
+                        NSAttributedString.Key(kCTForegroundColorAttributeName as String): color.cgColor,
+                        NSAttributedString.Key(kCTParagraphStyleAttributeName as String): paragraph,
+                    ]
+                )
+            )
+        }
+
+        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+        let drawingRect = CGRect(
+            x: rect.minX,
+            y: page.height - rect.maxY,
+            width: rect.width,
+            height: rect.height
+        )
+        let path = CGPath(rect: drawingRect, transform: nil)
+        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: attributed.length), path, nil)
+
+        context.saveGState()
+        context.textMatrix = .identity
+        CTFrameDraw(frame, context)
+        context.restoreGState()
+    }
+
     private func textWidth(_ text: String, size: CGFloat, weight: FontWeight) -> CGFloat {
         let font = CTFontCreateWithName(weight.fontName as CFString, size, nil)
         let attributes: [NSAttributedString.Key: Any] = [
@@ -638,6 +685,16 @@ private struct ParsedPaymentDetails: Equatable {
             }
             result.append(pair.element)
         }
+    }
+}
+
+private struct TextRun {
+    let text: String
+    let weight: FontWeight
+
+    init(_ text: String, weight: FontWeight = .regular) {
+        self.text = text
+        self.weight = weight
     }
 }
 

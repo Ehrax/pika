@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppLaunchConfiguration: Equatable {
     static let sampleWorkspaceArgument = "--pika-seed-workspace"
+    static let bikeparkWorkspaceArgument = "--pika-seed-bikepark-thunersee"
     static let sampleWorkspaceEnvironmentKey = "PIKA_SEED_WORKSPACE"
     static let workspacePathArgument = "--pika-workspace-path"
 
@@ -13,7 +14,10 @@ struct AppLaunchConfiguration: Equatable {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) {
 #if DEBUG
-        if arguments.contains(Self.sampleWorkspaceArgument)
+        if arguments.contains(Self.bikeparkWorkspaceArgument)
+            || environment[Self.sampleWorkspaceEnvironmentKey] == "bikepark-thunersee" {
+            initialWorkspace = .bikeparkThunersee
+        } else if arguments.contains(Self.sampleWorkspaceArgument)
             || environment[Self.sampleWorkspaceEnvironmentKey] == "1" {
             initialWorkspace = .sample
         } else {

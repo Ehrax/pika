@@ -152,6 +152,26 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func bikeparkWorkspaceSeedContainsRealProjectAndWorklog() throws {
+        let workspace = WorkspaceSnapshot.bikeparkThunersee
+        let project = try #require(workspace.project(named: "Bikepark Thunersee"))
+        let bucket = try #require(project.buckets.first)
+
+        #expect(workspace.businessProfile.businessName == "ehrax.dev")
+        #expect(workspace.businessProfile.taxIdentifier == "DE320253387")
+        #expect(workspace.clients.map(\.name) == ["Verein Bikepark Thunersee"])
+        #expect(workspace.clients.first?.billingAddress == "Untere Ttüelmatt 4\n3624 Goldiwil\nSchweiz")
+        #expect(bucket.name == "Trailpass Launch")
+        #expect(bucket.status == .ready)
+        #expect(bucket.timeEntries.count == 31)
+        #expect(bucket.effectiveBillableMinutes == 4_440)
+        #expect(bucket.effectiveTotalMinorUnits == 370_000)
+        #expect(bucket.timeEntries.first?.date == Date.pikaDate(year: 2026, month: 3, day: 2))
+        #expect(bucket.timeEntries.first?.description == "Initial MVP scaffold and webhook pipeline")
+        #expect(bucket.timeEntries.map(\.date).contains(Date.pikaDate(year: 2036, month: 3, day: 26)) == false)
+        #expect(bucket.timeEntries.map(\.date).contains(Date.pikaDate(year: 2026, month: 3, day: 26)))
+    }
+
     @Test func inMemoryWorkspaceStoreMarksOpenInvoiceableBucketReadyAndRecordsActivity() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000501")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000501")!
@@ -275,7 +295,7 @@ struct WorkspaceSnapshotTests {
         #expect(storedInvoice.currencyCode == "EUR")
         #expect(storedInvoice.note == "Thank you.")
         #expect(storedInvoice.lineItems.map(\.description) == [
-            "Billable time",
+            "Ready Snapshot",
             "Fixed costs",
         ])
         #expect(storedInvoice.lineItems.map(\.quantityLabel) == [
@@ -284,6 +304,24 @@ struct WorkspaceSnapshotTests {
         ])
         #expect(store.workspace.activity.map(\.message) == [
             "EHX-2026-009 finalized",
+        ])
+    }
+
+    @Test func invoiceFinalizationOnlyAllowsReviewSpecificFieldsToBeEdited() {
+        #expect(InvoiceFinalizationField.editableFields == [
+            .template,
+            .issueDate,
+            .dueDate,
+        ])
+
+        #expect(InvoiceFinalizationField.readOnlyFields == [
+            .recipientName,
+            .recipientEmail,
+            .recipientBillingAddress,
+            .invoiceNumber,
+            .servicePeriod,
+            .currencyCode,
+            .taxNote,
         ])
     }
 
@@ -1713,8 +1751,8 @@ struct WorkspaceSnapshotTests {
         #expect(projection.nonBillableSummary == "0.5h non-billable")
         #expect(projection.fixedCostLabel == "EUR 500.00 fixed")
         #expect(projection.lineItems.map(\.description) == [
-            "Billable time",
-            "Fixed costs",
+            "April sprint",
+            "Prototype hosting",
         ])
     }
 
