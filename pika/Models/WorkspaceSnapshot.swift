@@ -170,6 +170,7 @@ extension Date {
 
 struct BusinessProfileProjection: Codable, Equatable {
     var businessName: String
+    var personName: String
     var email: String
     var phone: String
     var address: String
@@ -184,6 +185,7 @@ struct BusinessProfileProjection: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case businessName
+        case personName
         case email
         case phone
         case address
@@ -199,6 +201,7 @@ struct BusinessProfileProjection: Codable, Equatable {
 
     init(
         businessName: String,
+        personName: String = "",
         email: String,
         phone: String = "",
         address: String,
@@ -212,6 +215,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         defaultTermsDays: Int
     ) {
         self.businessName = businessName
+        self.personName = personName
         self.email = email
         self.phone = phone
         self.address = address
@@ -228,6 +232,7 @@ struct BusinessProfileProjection: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         businessName = try container.decode(String.self, forKey: .businessName)
+        personName = try container.decodeIfPresent(String.self, forKey: .personName) ?? ""
         email = try container.decode(String.self, forKey: .email)
         phone = try container.decodeIfPresent(String.self, forKey: .phone) ?? ""
         address = try container.decode(String.self, forKey: .address)

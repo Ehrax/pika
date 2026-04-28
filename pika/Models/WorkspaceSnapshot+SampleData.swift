@@ -5,6 +5,7 @@ extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "ehrax.dev",
+            personName: "Alexander Raspuitn",
             email: "hello@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd",
@@ -229,6 +230,7 @@ extension WorkspaceSnapshot {
     static let bikeparkThunersee = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "ehrax.dev",
+            personName: "ALEXANDER RASPUTIN",
             email: "alex@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd\nGermany",

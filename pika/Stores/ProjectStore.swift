@@ -101,6 +101,7 @@ struct WorkspaceClientDraft: Equatable {
 
 struct WorkspaceBusinessProfileDraft: Equatable {
     var businessName: String
+    var personName: String
     var email: String
     var phone: String
     var address: String
@@ -115,6 +116,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
 
     init(
         businessName: String,
+        personName: String = "",
         email: String,
         phone: String,
         address: String,
@@ -128,6 +130,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         defaultTermsDays: Int
     ) {
         self.businessName = businessName
+        self.personName = personName
         self.email = email
         self.phone = phone
         self.address = address
@@ -144,6 +147,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     init(profile: BusinessProfileProjection) {
         self.init(
             businessName: profile.businessName,
+            personName: profile.personName,
             email: profile.email,
             phone: profile.phone,
             address: profile.address,
@@ -287,6 +291,7 @@ final class WorkspaceStore {
 
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
         let businessName = draft.businessName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let personName = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
         let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let phone = draft.phone.trimmingCharacters(in: .whitespacesAndNewlines)
         let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -310,6 +315,7 @@ final class WorkspaceStore {
 
         workspace.businessProfile = BusinessProfileProjection(
             businessName: businessName,
+            personName: personName,
             email: email,
             phone: phone,
             address: address,

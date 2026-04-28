@@ -30,6 +30,12 @@ struct SettingsView: View {
                             .controlSize(.small)
                     }
                     SettingsDivider()
+                    SettingsEditableFieldRow(label: "Person name") {
+                        TextField("Person name", text: $draft.personName)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.small)
+                    }
+                    SettingsDivider()
                     SettingsEditableFieldRow(label: "Email") {
                         TextField("Email", text: $draft.email)
                             .textFieldStyle(.roundedBorder)

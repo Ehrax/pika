@@ -200,7 +200,11 @@ private struct InvoicePDFRenderer {
 
         let rightX = page.width - margin - 190
         drawText(profile.businessName, in: CGRect(x: margin, y: 72, width: 260, height: 26), size: 18, weight: .bold, context: context)
-        let addressBlock = profile.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let personName = profile.personName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawAddressBlock = profile.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let addressBlock = [personName, rawAddressBlock]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
         let email = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let phone = profile.phone.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxIdentifier = profile.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -454,8 +458,11 @@ private struct InvoicePDFRenderer {
     ) -> CGFloat? {
         guard let iban = paymentDetails.iban else { return nil }
 
+        let qrRecipientName = profile.personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? profile.businessName
+            : profile.personName
         let payload = try? PaymentQRCodePayload(
-            recipientName: profile.businessName,
+            recipientName: qrRecipientName,
             iban: iban,
             bic: paymentDetails.bic,
             amountMinorUnits: row.invoice.totalMinorUnits,
