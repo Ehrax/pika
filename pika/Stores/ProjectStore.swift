@@ -903,11 +903,16 @@ final class WorkspaceStore {
         guard let first = dates.min(), let last = dates.max() else {
             return ""
         }
+        let dateFormatter = DateFormatter()
+        dateFormatter.calendar = Calendar(identifier: .gregorian)
+        dateFormatter.locale = Locale(identifier: "de_DE")
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        dateFormatter.dateFormat = "dd.MM.yyyy"
         if first == last {
-            return first.formatted(date: .abbreviated, time: .omitted)
+            return dateFormatter.string(from: first)
         }
 
-        return "\(first.formatted(date: .abbreviated, time: .omitted)) - \(last.formatted(date: .abbreviated, time: .omitted))"
+        return "\(dateFormatter.string(from: first)) - \(dateFormatter.string(from: last))"
     }
 
     private func setClientArchived(

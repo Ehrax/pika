@@ -228,14 +228,14 @@ extension WorkspaceSnapshot {
 
     static let bikeparkThunersee = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
-            businessName: "ehrax.dev",
+            businessName: "ALEXANDER RASPUTIN",
             email: "hello@ehrax.dev",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd\nGermany",
             taxIdentifier: "DE320253387",
             invoicePrefix: "EHX",
             nextInvoiceNumber: 1,
             currencyCode: "EUR",
-            paymentDetails: "",
+            paymentDetails: "IBAN DE02 1001 1001 2125 8144 33\nBIC NTSBDEB1XXX",
             taxNote: "Steuernummer: DE320253387",
             defaultTermsDays: 14
         ),

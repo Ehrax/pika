@@ -368,7 +368,7 @@ private struct InvoicePDFRenderer {
         drawText(row.totalLabel, in: CGRect(x: columns.total.minX, y: startY, width: columns.total.width, height: 20), size: 11, weight: .bold, alignment: .right, context: context)
 
         let taxAndPaymentNote = """
-        Für die Lieferung oder sonstige Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 UStG).
+        Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
 
         Der Rechnungsbetrag ist bitte innerhalb von 14 Tagen nach Rechnungseingang auf folgendes Konto zu überweisen:
         """

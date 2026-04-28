@@ -24,7 +24,7 @@ struct AppLaunchConfiguration: Equatable {
             initialWorkspace = .bikeparkThunersee
         }
 #else
-        initialWorkspace = .bikeparkThunersee
+        initialWorkspace = .empty
 #endif
         persistenceURL = Self.persistenceURL(arguments: arguments)
             ?? WorkspaceStore.defaultPersistenceURL()
