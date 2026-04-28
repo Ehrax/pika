@@ -125,6 +125,8 @@ enum WorkspaceStoreError: Error, Equatable {
     case invalidFixedCost
     case entryNotFound
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
+    case clientHasLinkedProjects
+    case clientNotArchived
 }
 
 @Observable
@@ -169,7 +171,8 @@ final class WorkspaceStore {
             name: name,
             email: email,
             billingAddress: billingAddress,
-            defaultTermsDays: draft.defaultTermsDays
+            defaultTermsDays: draft.defaultTermsDays,
+            isArchived: false
         )
 
         workspace.clients.append(client)
@@ -211,7 +214,8 @@ final class WorkspaceStore {
             name: name,
             email: email,
             billingAddress: billingAddress,
-            defaultTermsDays: draft.defaultTermsDays
+            defaultTermsDays: draft.defaultTermsDays,
+            isArchived: workspace.clients[clientIndex].isArchived
         )
 
         workspace.clients[clientIndex] = client
@@ -273,6 +277,39 @@ final class WorkspaceStore {
 
     func restoreProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
         try setProjectArchived(projectID: projectID, isArchived: false, occurredAt: occurredAt)
+    }
+
+    func archiveClient(clientID: WorkspaceClient.ID, occurredAt: Date = .now) throws {
+        try setClientArchived(clientID: clientID, isArchived: true, occurredAt: occurredAt)
+    }
+
+    func restoreClient(clientID: WorkspaceClient.ID, occurredAt: Date = .now) throws {
+        try setClientArchived(clientID: clientID, isArchived: false, occurredAt: occurredAt)
+    }
+
+    func removeClient(clientID: WorkspaceClient.ID, occurredAt: Date = .now) throws {
+        guard let index = workspace.clients.firstIndex(where: { $0.id == clientID }) else {
+            throw WorkspaceStoreError.invalidClient
+        }
+
+        let client = workspace.clients[index]
+        guard client.isArchived else {
+            throw WorkspaceStoreError.clientNotArchived
+        }
+
+        let hasLinkedProjects = workspace.projects.contains { $0.clientName == client.name }
+        guard !hasLinkedProjects else {
+            throw WorkspaceStoreError.clientHasLinkedProjects
+        }
+
+        workspace.clients.remove(at: index)
+        appendActivity(
+            message: "\(client.name) client removed",
+            detail: client.email,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.clientRemoved(clientName: client.name)
+        try persistWorkspace()
     }
 
     func archiveBucket(
@@ -435,6 +472,33 @@ final class WorkspaceStore {
             occurredAt: occurredAt
         )
         AppTelemetry.bucketCreated(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
+        return bucket
+    }
+
+    @discardableResult
+    func updateBucket(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        _ draft: WorkspaceBucketDraft,
+        occurredAt: Date = .now
+    ) throws -> WorkspaceBucket {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
+            throw WorkspaceStoreError.invalidBucket
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex].name = bucketName
+        workspace.projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
+        let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        appendActivity(
+            message: "\(bucket.name) bucket updated",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
         try persistWorkspace()
         return bucket
     }
@@ -754,8 +818,35 @@ final class WorkspaceStore {
             name: draft.recipientName,
             email: draft.recipientEmail,
             billingAddress: draft.recipientBillingAddress,
-            defaultTermsDays: termsDays
+            defaultTermsDays: termsDays,
+            isArchived: false
         )
+    }
+
+    private func setClientArchived(
+        clientID: WorkspaceClient.ID,
+        isArchived: Bool,
+        occurredAt: Date
+    ) throws {
+        guard let index = workspace.clients.firstIndex(where: { $0.id == clientID }) else {
+            throw WorkspaceStoreError.invalidClient
+        }
+
+        workspace.clients[index].isArchived = isArchived
+        let client = workspace.clients[index]
+        appendActivity(
+            message: "\(client.name) \(isArchived ? "archived" : "restored")",
+            detail: client.email,
+            occurredAt: occurredAt
+        )
+
+        if isArchived {
+            AppTelemetry.clientArchived(clientName: client.name)
+        } else {
+            AppTelemetry.clientRestored(clientName: client.name)
+        }
+
+        try persistWorkspace()
     }
 
     private func setProjectArchived(

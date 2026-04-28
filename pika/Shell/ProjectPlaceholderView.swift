@@ -19,7 +19,7 @@ struct ProjectPlaceholderView: View {
     @State private var showsArchiveBucketConfirmation = false
     @State private var showsRemoveBucketConfirmation = false
     @State private var bucketPendingRemovalID: WorkspaceBucket.ID?
-    @State private var showsEditProject = false
+    @State private var showsEditBucket = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -38,74 +38,106 @@ struct ProjectPlaceholderView: View {
 
     var body: some View {
         Group {
-            if
-                let project,
+            if let project {
                 let projection = project.detailProjection(
                     selectedBucketID: selectedBucketID,
                     formatter: formatter,
                     on: currentDate
                 )
-            {
-                let activeBucketID = project.normalizedBucketID(selectedBucketID) ?? projection.selectedBucket.id
-
                 ResizableDetailSplitView {
-                    ProjectBucketColumn(
-                        project: project,
-                        projection: projection,
-                        selectedBucketID: activeBucketID,
-                        onSelect: { bucketID in
-                            selectedBucketID = bucketID
-                            AppTelemetry.projectBucketSelected(projectName: project.name)
-                        },
-                        onCreateBucket: { showsCreateBucket = true },
-                        onArchiveBucket: { bucketID in
-                            selectedBucketID = bucketID
-                            showsArchiveBucketConfirmation = true
-                        },
-                        onRemoveBucket: { bucketID in
-                            selectedBucketID = bucketID
-                            bucketPendingRemovalID = bucketID
-                            showsRemoveBucketConfirmation = true
+                    if let projection {
+                        let activeBucketID = project.normalizedBucketID(selectedBucketID) ?? projection.selectedBucket.id
+                        ProjectBucketColumn(
+                            project: project,
+                            projection: projection,
+                            selectedBucketID: activeBucketID,
+                            onSelect: { bucketID in
+                                selectedBucketID = bucketID
+                                AppTelemetry.projectBucketSelected(projectName: project.name)
+                            },
+                            onCreateBucket: { showsCreateBucket = true },
+                            onArchiveBucket: { bucketID in
+                                selectedBucketID = bucketID
+                                showsArchiveBucketConfirmation = true
+                            },
+                            onRemoveBucket: { bucketID in
+                                selectedBucketID = bucketID
+                                bucketPendingRemovalID = bucketID
+                                showsRemoveBucketConfirmation = true
+                            }
+                        )
+                    } else {
+                        PikaSecondarySidebarColumn(
+                            title: project.name,
+                            subtitle: project.clientName,
+                            sectionTitle: "Buckets",
+                            wrapsContentInScrollView: false
+                        ) {
+                            Button {
+                                showsCreateBucket = true
+                            } label: {
+                                Label("Create a bucket", systemImage: "plus")
+                            }
+                            .buttonStyle(PikaColumnHeaderIconButtonStyle(foreground: PikaColor.actionAccent))
+                            .help("Create a bucket")
+                        } controls: {
+                            EmptyView()
+                        } content: {
+                            VStack(spacing: 0) {
+                                Divider()
+                                List { EmptyView() }
+                                    .listStyle(.plain)
+                                    .scrollContentBackground(.hidden)
+                                    .background(PikaColor.surface)
+                                    .padding(.top, PikaSpacing.md)
+                            }
                         }
-                    )
+                    }
                 } detail: {
-                    BucketDetailWorkbench(
-                        projection: projection,
-                        draftDate: currentDate,
-                        invoiceRow: invoiceRow(for: projection, in: project),
-                        canMarkReady: canMarkSelectedBucketReady,
-                        onAddEntry: { draft in
-                            addTimeEntry(
-                                projectID: project.id,
-                                bucketID: projection.selectedBucket.id,
-                                draft: draft
-                            )
-                        },
-                        onAddFixedCost: { showsFixedCostSheet = true },
-                        onDeleteEntry: { row in
-                            deleteEntry(
-                                projectID: project.id,
-                                bucketID: projection.selectedBucket.id,
-                                row: row
-                            )
-                        },
-                        onMarkReady: markSelectedBucketReady,
-                        onCreateInvoice: {
-                            prepareInvoiceDraft(
-                                projectID: project.id,
-                                bucketID: projection.selectedBucket.id,
-                                totalLabel: projection.totalLabel,
-                                lineItems: projection.lineItems
-                            )
-                        },
-                        onOpenInvoicePDF: openInvoicePDF,
-                        onExportInvoicePDF: exportInvoicePDF
-                    )
+                    if let projection {
+                        BucketDetailWorkbench(
+                            projection: projection,
+                            draftDate: currentDate,
+                            invoiceRow: invoiceRow(for: projection, in: project),
+                            canMarkReady: canMarkSelectedBucketReady,
+                            onAddEntry: { draft in
+                                addTimeEntry(
+                                    projectID: project.id,
+                                    bucketID: projection.selectedBucket.id,
+                                    draft: draft
+                                )
+                            },
+                            onAddFixedCost: { showsFixedCostSheet = true },
+                            onDeleteEntry: { row in
+                                deleteEntry(
+                                    projectID: project.id,
+                                    bucketID: projection.selectedBucket.id,
+                                    row: row
+                                )
+                            },
+                            onMarkReady: markSelectedBucketReady,
+                            onCreateInvoice: {
+                                prepareInvoiceDraft(
+                                    projectID: project.id,
+                                    bucketID: projection.selectedBucket.id,
+                                    totalLabel: projection.totalLabel,
+                                    lineItems: projection.lineItems
+                                )
+                            },
+                            onOpenInvoicePDF: openInvoicePDF,
+                            onExportInvoicePDF: exportInvoicePDF
+                        )
+                    } else {
+                        PikaColor.background
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
                 .background(PikaColor.background)
                 .onAppear {
-                    selectedBucketID = activeBucketID
-                    AppTelemetry.projectDetailLoaded(projectName: project.name, bucketCount: projection.bucketRows.count)
+                    if let projection {
+                        selectedBucketID = project.normalizedBucketID(selectedBucketID) ?? projection.selectedBucket.id
+                        AppTelemetry.projectDetailLoaded(projectName: project.name, bucketCount: projection.bucketRows.count)
+                    }
                 }
                 .onChange(of: project.id) { _, _ in
                     selectedBucketID = nil
@@ -163,13 +195,16 @@ struct ProjectPlaceholderView: View {
                 }
             )
         }
-        .sheet(isPresented: $showsEditProject) {
-            if let project {
-                ProjectEditorSheet(
-                    project: project,
-                    clients: workspaceStore.workspace.clients,
-                    onCancel: { showsEditProject = false },
-                    onSave: updateProject
+        .sheet(isPresented: $showsEditBucket) {
+            if let selectedBucket, let project {
+                CreateBucketSheet(
+                    defaultRateMinorUnits: selectedBucket.hourlyRateMinorUnits ?? 8_000,
+                    currencyCode: project.currencyCode,
+                    initialName: selectedBucket.name,
+                    saveLabel: "Save Bucket",
+                    saveSystemImage: "checkmark.circle",
+                    onCancel: { showsEditBucket = false },
+                    onSave: updateSelectedBucket
                 )
             }
         }
@@ -203,20 +238,20 @@ struct ProjectPlaceholderView: View {
         ToolbarItemGroup {
             bucketActionsMenu
             ControlGroup {
-                editProjectButton
+                editBucketButton
                 markReadyButton
             }
         }
     }
 
-    private var editProjectButton: some View {
+    private var editBucketButton: some View {
         Button {
-            showsEditProject = true
+            showsEditBucket = true
         } label: {
-            Label("Edit Project", systemImage: "pencil")
+            Label("Edit Bucket", systemImage: "pencil")
         }
-        .disabled(project == nil)
-        .help("Edit project")
+        .disabled(project == nil || selectedBucket == nil)
+        .help("Edit selected bucket")
         .tint(PikaColor.textPrimary)
     }
 
@@ -377,12 +412,12 @@ struct ProjectPlaceholderView: View {
         }
     }
 
-    private func updateProject(_ draft: WorkspaceProjectUpdateDraft) {
-        guard let project else { return }
+    private func updateSelectedBucket(_ draft: WorkspaceBucketDraft) {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
 
         do {
-            try workspaceStore.updateProject(projectID: project.id, draft)
-            showsEditProject = false
+            try workspaceStore.updateBucket(projectID: project.id, bucketID: bucketID, draft)
+            showsEditBucket = false
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
@@ -687,22 +722,32 @@ private struct InvoiceDraftPresentation: Identifiable {
 private struct CreateBucketSheet: View {
     let defaultRateMinorUnits: Int
     let currencyCode: String
+    let initialName: String
+    let saveLabel: String
+    let saveSystemImage: String
     let onCancel: () -> Void
     let onSave: (WorkspaceBucketDraft) -> Void
 
-    @State private var name = ""
+    @State private var name: String
     @State private var hourlyRate: Double
 
     init(
         defaultRateMinorUnits: Int,
         currencyCode: String,
+        initialName: String = "",
+        saveLabel: String = "Create Bucket",
+        saveSystemImage: String = "tray.full",
         onCancel: @escaping () -> Void,
         onSave: @escaping (WorkspaceBucketDraft) -> Void
     ) {
         self.defaultRateMinorUnits = defaultRateMinorUnits
         self.currencyCode = currencyCode
+        self.initialName = initialName
+        self.saveLabel = saveLabel
+        self.saveSystemImage = saveSystemImage
         self.onCancel = onCancel
         self.onSave = onSave
+        _name = State(initialValue: initialName)
         _hourlyRate = State(initialValue: Double(defaultRateMinorUnits) / 100)
     }
 
@@ -735,7 +780,7 @@ private struct CreateBucketSheet: View {
                         hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
                     ))
                 } label: {
-                    Label("Create Bucket", systemImage: "tray.full")
+                    Label(saveLabel, systemImage: saveSystemImage)
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.pikaAction(.primary))

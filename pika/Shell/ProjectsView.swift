@@ -150,39 +150,18 @@ private struct ArchivedProjectsHeader: View {
     let isExpanded: Bool
 
     var body: some View {
-        HStack(spacing: PikaSpacing.md) {
-            Capsule()
-                .fill(PikaColor.textMuted)
-                .frame(width: 3)
+        HStack(spacing: PikaSpacing.sm) {
+            Text("\(count) archived projects")
+                .font(PikaTypography.subheading)
+                .foregroundStyle(PikaColor.textPrimary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(count) archived projects")
-                    .font(PikaTypography.subheading)
-                    .foregroundStyle(PikaColor.textPrimary)
-
-                Text(isExpanded ? "Hide completed or paused work" : "Show completed or paused work")
-                    .font(PikaTypography.small)
-                    .foregroundStyle(PikaColor.textMuted)
-            }
-
-            Image(systemName: "chevron.right")
+            Image(systemName: "chevron.down")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(PikaColor.textSecondary)
-                .frame(width: 28, height: 28)
-                .background(PikaColor.surfaceAlt2)
-                .clipShape(Circle())
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .rotationEffect(.degrees(isExpanded ? 0 : -90))
         }
-        .frame(minHeight: 56, alignment: .leading)
-        .padding(.horizontal, PikaSpacing.md)
-        .padding(.vertical, PikaSpacing.sm)
-        .background(PikaColor.surfaceAlt)
-        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous)
-                .stroke(PikaColor.border)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: PikaRadius.lg, style: .continuous))
+        .frame(minHeight: 28, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 

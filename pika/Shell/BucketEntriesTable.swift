@@ -20,13 +20,17 @@ struct BucketEntriesTable: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-            HStack(alignment: .firstTextBaseline) {
-                SectionHeader(
-                    title: "Entries",
-                    detail: showsInlineEditor
-                        ? "\(projection.entryRows.count) rows + 1 draft"
-                        : "\(projection.entryRows.count) rows"
-                )
+            HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.lg) {
+                if showsInlineEditor {
+                    Button {
+                        onAddFixedCost()
+                    } label: {
+                        Label("Fixed Cost", systemImage: "plus.square")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Add a fixed cost")
+                    .tint(PikaColor.actionAccent)
+                }
 
                 if let selectedRow, canDeleteRows {
                     Button(role: .destructive) {
@@ -39,17 +43,10 @@ struct BucketEntriesTable: View {
                     .tint(PikaColor.danger)
                 }
 
-                if showsInlineEditor {
-                    Button {
-                        onAddFixedCost()
-                    } label: {
-                        Label("Fixed Cost", systemImage: "plus.square")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Add a fixed cost")
-                    .tint(PikaColor.actionAccent)
-                }
+                Spacer(minLength: 0)
             }
+            .font(PikaTypography.entryHelper)
+            .padding(.bottom, PikaSpacing.xs)
 
             VStack(spacing: 0) {
                 BucketEntriesHeaderRow()

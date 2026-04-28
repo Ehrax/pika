@@ -336,35 +336,51 @@ private struct InvoiceListColumn: View {
         PikaSecondarySidebarColumn(
             title: "Invoices",
             subtitle: summary.displayText,
-            sectionTitle: "\(filter.rawValue) Invoices"
+            sectionTitle: "\(filter.rawValue) Invoices",
+            wrapsContentInScrollView: false
         ) {
             EmptyView()
         } controls: {
             FlowingInvoiceFilters(filter: $filter)
         } content: {
-            if rows.isEmpty {
-                ContentUnavailableView(
-                    "No Invoices",
-                    systemImage: "doc.text",
-                    description: Text("No invoices match this status.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 240)
-                .foregroundStyle(PikaColor.textSecondary)
-            } else {
-                VStack(spacing: 2) {
-                    ForEach(rows) { row in
-                        Button {
-                            onSelect(row.id)
-                        } label: {
-                            InvoiceRow(row: row, isSelected: row.id == selectedInvoiceID)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
+            VStack(spacing: 0) {
+                Divider()
+                if rows.isEmpty {
+                    ContentUnavailableView(
+                        "No Invoices",
+                        systemImage: "doc.text",
+                        description: Text("No invoices match this status.")
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 240)
+                    .foregroundStyle(PikaColor.textSecondary)
+                    .padding(.top, PikaSpacing.md)
+                } else {
+                    invoiceList
+                        .padding(.top, PikaSpacing.md)
                 }
             }
         }
+    }
+
+    private var invoiceList: some View {
+        List {
+            ForEach(rows) { row in
+                Button {
+                    onSelect(row.id)
+                } label: {
+                    InvoiceRow(row: row, isSelected: row.id == selectedInvoiceID)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 1, leading: PikaSpacing.sm, bottom: 1, trailing: PikaSpacing.sm))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(PikaColor.surface)
     }
 }
 

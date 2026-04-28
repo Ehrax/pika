@@ -185,6 +185,42 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
     var email: String
     var billingAddress: String
     var defaultTermsDays: Int
+    var isArchived: Bool
+
+    init(
+        id: UUID,
+        name: String,
+        email: String,
+        billingAddress: String,
+        defaultTermsDays: Int,
+        isArchived: Bool = false
+    ) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.billingAddress = billingAddress
+        self.defaultTermsDays = defaultTermsDays
+        self.isArchived = isArchived
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case email
+        case billingAddress
+        case defaultTermsDays
+        case isArchived
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        email = try container.decode(String.self, forKey: .email)
+        billingAddress = try container.decode(String.self, forKey: .billingAddress)
+        defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+    }
 }
 
 struct WorkspaceProject: Codable, Equatable, Identifiable {

@@ -13,7 +13,8 @@ struct ProjectBucketColumn: View {
         PikaSecondarySidebarColumn(
             title: project.name,
             subtitle: project.clientName,
-            sectionTitle: "Buckets"
+            sectionTitle: "Buckets",
+            wrapsContentInScrollView: false
         ) {
             Button {
                 onCreateBucket()
@@ -25,17 +26,75 @@ struct ProjectBucketColumn: View {
         } controls: {
             EmptyView()
         } content: {
-            LazyVStack(spacing: 2) {
-                ForEach(projection.bucketRows) { row in
-                    ProjectBucketInteractiveRow(
-                        row: row,
-                        isSelected: row.id == selectedBucketID,
-                        canAct: !project.isArchived,
-                        onSelect: { onSelect(row.id) },
-                        onArchive: { onArchiveBucket(row.id) },
-                        onRemove: { onRemoveBucket(row.id) }
-                    )
+            VStack(spacing: 0) {
+                Divider()
+                bucketList
+                    .padding(.top, PikaSpacing.md)
+            }
+        }
+    }
+
+    private var bucketList: some View {
+        List {
+            ForEach(projection.bucketRows) { row in
+                Button {
+                    onSelect(row.id)
+                } label: {
+                    ProjectBucketRow(row: row, isSelected: row.id == selectedBucketID)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 1, leading: PikaSpacing.sm, bottom: 1, trailing: PikaSpacing.sm))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    bucketSwipeActions(for: row)
+                }
+                .contextMenu {
+                    bucketMenuActions(for: row)
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(PikaColor.surface)
+    }
+
+    @ViewBuilder
+    private func bucketSwipeActions(for row: WorkspaceBucketRowProjection) -> some View {
+        if !project.isArchived, row.status == .archived {
+            Button(role: .destructive) {
+                onRemoveBucket(row.id)
+            } label: {
+                Label("Remove", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+            }
+            .tint(PikaColor.danger)
+        } else if !project.isArchived, !row.status.isInvoiceLocked {
+            Button {
+                onArchiveBucket(row.id)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+                    .labelStyle(.iconOnly)
+            }
+            .tint(PikaColor.warning)
+        }
+    }
+
+    @ViewBuilder
+    private func bucketMenuActions(for row: WorkspaceBucketRowProjection) -> some View {
+        if !project.isArchived, row.status == .archived {
+            Button(role: .destructive) {
+                onRemoveBucket(row.id)
+            } label: {
+                Label("Remove Bucket", systemImage: "trash")
+            }
+        } else if !project.isArchived, !row.status.isInvoiceLocked {
+            Button {
+                onArchiveBucket(row.id)
+            } label: {
+                Label("Archive Bucket", systemImage: "archivebox")
             }
         }
     }
@@ -48,12 +107,14 @@ struct PikaSecondarySidebarColumn<Actions: View, Controls: View, Content: View>:
     let actions: Actions
     let controls: Controls
     let content: Content
+    let wrapsContentInScrollView: Bool
     @State private var columnMinX = CGFloat.greatestFiniteMagnitude
 
     init(
         title: String,
         subtitle: String,
         sectionTitle: String,
+        wrapsContentInScrollView: Bool = true,
         @ViewBuilder actions: () -> Actions,
         @ViewBuilder controls: () -> Controls,
         @ViewBuilder content: () -> Content
@@ -64,6 +125,7 @@ struct PikaSecondarySidebarColumn<Actions: View, Controls: View, Content: View>:
         self.actions = actions()
         self.controls = controls()
         self.content = content()
+        self.wrapsContentInScrollView = wrapsContentInScrollView
     }
 
     var body: some View {
@@ -74,18 +136,22 @@ struct PikaSecondarySidebarColumn<Actions: View, Controls: View, Content: View>:
                 .padding(.horizontal, PikaSpacing.md)
                 .padding(.bottom, PikaSpacing.sm)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                    Text(sectionTitle)
-                        .font(PikaTypography.subheading)
-                        .foregroundStyle(PikaColor.textPrimary)
-                        .padding(.horizontal, PikaSpacing.md)
-                        .padding(.top, PikaSpacing.md)
+            if wrapsContentInScrollView {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+                        Text(sectionTitle)
+                            .font(PikaTypography.subheading)
+                            .foregroundStyle(PikaColor.textPrimary)
+                            .padding(.horizontal, PikaSpacing.md)
+                            .padding(.top, PikaSpacing.md)
 
-                    content
-                        .padding(.horizontal, PikaSpacing.sm)
-                        .padding(.bottom, PikaSpacing.md)
+                        content
+                            .padding(.horizontal, PikaSpacing.sm)
+                            .padding(.bottom, PikaSpacing.md)
+                    }
                 }
+            } else {
+                content
             }
         }
         .frame(maxWidth: .infinity)
@@ -213,165 +279,6 @@ private struct ProjectBucketRow: View {
         .padding(.horizontal, PikaSpacing.sm)
         .padding(.vertical, 10)
         .pikaSecondarySidebarRow(isSelected: isSelected)
-    }
-}
-
-private struct ProjectBucketInteractiveRow: View {
-    let row: WorkspaceBucketRowProjection
-    let isSelected: Bool
-    let canAct: Bool
-    let onSelect: () -> Void
-    let onArchive: () -> Void
-    let onRemove: () -> Void
-
-    @State private var isRevealed = false
-    @GestureState private var dragOffset: CGFloat = 0
-
-    private let actionWidth: CGFloat = 96
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            if let action {
-                Button(role: action.role) {
-                    perform(action)
-                } label: {
-                    Label(action.title, systemImage: action.systemImage)
-                        .labelStyle(.titleAndIcon)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: actionWidth)
-                        .frame(maxHeight: .infinity)
-                        .padding(.vertical, 10)
-                        .background(action.background)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Button {
-                if isRevealed {
-                    setRevealed(false)
-                } else {
-                    onSelect()
-                }
-            } label: {
-                ProjectBucketRow(row: row, isSelected: isSelected)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .offset(x: currentOffset)
-            .gesture(swipeGesture)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-        .contextMenu {
-            if let action {
-                Button(role: action.role) {
-                    perform(action)
-                } label: {
-                    Label(action.menuTitle, systemImage: action.systemImage)
-                }
-            }
-        }
-    }
-
-    private var currentOffset: CGFloat {
-        let baseOffset = isRevealed ? -actionWidth : 0
-        return min(0, max(-actionWidth, baseOffset + dragOffset))
-    }
-
-    private var action: ProjectBucketRowAction? {
-        guard canAct else { return nil }
-
-        if row.status == .archived {
-            return .remove
-        }
-
-        if !row.status.isInvoiceLocked {
-            return .archive
-        }
-
-        return nil
-    }
-
-    private var swipeGesture: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .updating($dragOffset) { value, state, _ in
-                guard action != nil, abs(value.translation.width) > abs(value.translation.height) else { return }
-                state = value.translation.width
-            }
-            .onEnded { value in
-                guard action != nil, abs(value.translation.width) > abs(value.translation.height) else { return }
-
-                let baseOffset = isRevealed ? -actionWidth : 0
-                setRevealed(baseOffset + value.translation.width < -(actionWidth / 2))
-            }
-    }
-
-    private func perform(_ action: ProjectBucketRowAction) {
-        setRevealed(false)
-
-        switch action {
-        case .archive:
-            onArchive()
-        case .remove:
-            onRemove()
-        }
-    }
-
-    private func setRevealed(_ isRevealed: Bool) {
-        withAnimation(.snappy(duration: 0.18)) {
-            self.isRevealed = isRevealed
-        }
-    }
-}
-
-private enum ProjectBucketRowAction {
-    case archive
-    case remove
-
-    var title: String {
-        switch self {
-        case .archive:
-            return "Archive"
-        case .remove:
-            return "Remove"
-        }
-    }
-
-    var menuTitle: String {
-        switch self {
-        case .archive:
-            return "Archive Bucket"
-        case .remove:
-            return "Remove Bucket"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .archive:
-            return "archivebox"
-        case .remove:
-            return "trash"
-        }
-    }
-
-    var role: ButtonRole? {
-        switch self {
-        case .archive:
-            return nil
-        case .remove:
-            return .destructive
-        }
-    }
-
-    var background: Color {
-        switch self {
-        case .archive:
-            return PikaColor.warning
-        case .remove:
-            return PikaColor.danger
-        }
     }
 }
 

@@ -158,6 +158,18 @@ enum AppTelemetry {
         clientLogger.info("client.updated client=\(clientName, privacy: .private)")
     }
 
+    static func clientArchived(clientName: String) {
+        clientLogger.info("client.archived client=\(clientName, privacy: .private)")
+    }
+
+    static func clientRestored(clientName: String) {
+        clientLogger.info("client.restored client=\(clientName, privacy: .private)")
+    }
+
+    static func clientRemoved(clientName: String) {
+        clientLogger.info("client.removed client=\(clientName, privacy: .private)")
+    }
+
     static func settingsSaved() {
         settingsLogger.info("settings.saved")
     }

@@ -1079,6 +1079,55 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.last?.message == "May sprint bucket created")
     }
 
+    @Test func inMemoryWorkspaceStoreUpdatesBucketNameAndDefaultRate() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000811")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000811")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Retainer",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "April",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            defaultHourlyRateMinorUnits: 8_000
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let date = Date.pikaDate(year: 2026, month: 4, day: 27)
+
+        let bucket = try store.updateBucket(
+            projectID: projectID,
+            bucketID: bucketID,
+            WorkspaceBucketDraft(
+                name: "  May  ",
+                hourlyRateMinorUnits: 9_000
+            ),
+            occurredAt: date
+        )
+
+        #expect(bucket.name == "May")
+        #expect(bucket.defaultHourlyRateMinorUnits == 9_000)
+        #expect(store.workspace.projects.first?.buckets.first?.name == "May")
+        #expect(store.workspace.projects.first?.buckets.first?.defaultHourlyRateMinorUnits == 9_000)
+        #expect(store.workspace.activity.last?.message == "May bucket updated")
+        #expect(store.workspace.activity.last?.occurredAt == date)
+    }
+
     @Test func inMemoryWorkspaceStoreAddsTimeEntryToOpenBucket() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000801")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000801")!
