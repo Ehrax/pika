@@ -72,8 +72,8 @@ struct SettingsView: View {
                             .controlSize(.small)
                     }
                     SettingsDivider()
-                    SettingsEditableFieldRow(label: "Economic identifier") {
-                        TextField("Economic identifier", text: $draft.economicIdentifier)
+                    SettingsEditableFieldRow(label: "Wirtschafts-IdNr") {
+                        TextField("Wirtschafts-IdNr", text: $draft.economicIdentifier)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.small)
                     }

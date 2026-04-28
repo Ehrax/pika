@@ -246,10 +246,7 @@ private struct InvoicePDFRenderer {
         }
 
         if !economicIdentifier.isEmpty {
-            if currentY > headerTopY {
-                currentY += blockGap
-            }
-            let economicLabel = "Wirtschafts-Identifikationsnummer:"
+            let economicLabel = "Wirtschafts-IdNr:"
             drawText(economicLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
             let economicValueX = margin + textWidth(economicLabel + " ", size: 10, weight: .regular)
             drawText(economicIdentifier, in: CGRect(x: economicValueX, y: currentY, width: max(0, 260 - (economicValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
