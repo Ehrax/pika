@@ -19,8 +19,9 @@ struct InvoiceFinalizationDraft: Equatable {
     var template: InvoiceTemplate
     var issueDate: Date
     var dueDate: Date
+    var servicePeriod: String
     var currencyCode: String
-    var note: String
+    var taxNote: String
 }
 
 struct WorkspaceTimeEntryDraft: Equatable {
@@ -65,7 +66,9 @@ struct WorkspaceClientDraft: Equatable {
 struct WorkspaceBusinessProfileDraft: Equatable {
     var businessName: String
     var email: String
+    var phone: String
     var address: String
+    var taxIdentifier: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
@@ -76,7 +79,9 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     init(
         businessName: String,
         email: String,
+        phone: String,
         address: String,
+        taxIdentifier: String,
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
@@ -86,7 +91,9 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     ) {
         self.businessName = businessName
         self.email = email
+        self.phone = phone
         self.address = address
+        self.taxIdentifier = taxIdentifier
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
@@ -99,7 +106,9 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.init(
             businessName: profile.businessName,
             email: profile.email,
+            phone: profile.phone,
             address: profile.address,
+            taxIdentifier: profile.taxIdentifier,
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
@@ -239,19 +248,19 @@ final class WorkspaceStore {
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
         let businessName = draft.businessName.trimmingCharacters(in: .whitespacesAndNewlines)
         let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let phone = draft.phone.trimmingCharacters(in: .whitespacesAndNewlines)
         let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let taxIdentifier = draft.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
-
         guard !businessName.isEmpty,
               !email.isEmpty,
               !address.isEmpty,
               !invoicePrefix.isEmpty,
               !currencyCode.isEmpty,
               !paymentDetails.isEmpty,
-              !taxNote.isEmpty,
               draft.nextInvoiceNumber > 0,
               draft.defaultTermsDays > 0
         else {
@@ -261,7 +270,9 @@ final class WorkspaceStore {
         workspace.businessProfile = BusinessProfileProjection(
             businessName: businessName,
             email: email,
+            phone: phone,
             address: address,
+            taxIdentifier: taxIdentifier,
             invoicePrefix: invoicePrefix.uppercased(),
             nextInvoiceNumber: draft.nextInvoiceNumber,
             currencyCode: currencyCode,
@@ -545,11 +556,12 @@ final class WorkspaceStore {
             recipientEmail: client?.email ?? "",
             recipientBillingAddress: client?.billingAddress ?? "",
             invoiceNumber: nextInvoiceNumber(issueDate: issueDate),
-            template: .classic,
+            template: .kleinunternehmerClassic,
             issueDate: issueDate,
             dueDate: dueDate,
+            servicePeriod: defaultServicePeriod(for: project.buckets.first { $0.id == bucketID }),
             currencyCode: project.currencyCode,
-            note: workspace.businessProfile.taxNote
+            taxNote: workspace.businessProfile.taxNote
         )
     }
 
@@ -733,11 +745,12 @@ final class WorkspaceStore {
             template: draft.template,
             issueDate: draft.issueDate,
             dueDate: draft.dueDate,
+            servicePeriod: draft.servicePeriod.trimmingCharacters(in: .whitespacesAndNewlines),
             status: .finalized,
             totalMinorUnits: bucket.effectiveTotalMinorUnits,
             lineItems: lineItems,
             currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
-            note: draft.note.isEmpty ? nil : draft.note
+            note: draft.taxNote.isEmpty ? nil : draft.taxNote
         )
 
         workspace.projects[projectIndex].buckets[bucketIndex].status = .finalized
@@ -845,6 +858,20 @@ final class WorkspaceStore {
             defaultTermsDays: termsDays,
             isArchived: false
         )
+    }
+
+    private func defaultServicePeriod(for bucket: WorkspaceBucket?) -> String {
+        guard let bucket else { return "" }
+
+        let dates = bucket.timeEntries.map(\.date) + bucket.fixedCostEntries.map(\.date)
+        guard let first = dates.min(), let last = dates.max() else {
+            return ""
+        }
+        if first == last {
+            return first.formatted(date: .abbreviated, time: .omitted)
+        }
+
+        return "\(first.formatted(date: .abbreviated, time: .omitted)) - \(last.formatted(date: .abbreviated, time: .omitted))"
     }
 
     private func setClientArchived(

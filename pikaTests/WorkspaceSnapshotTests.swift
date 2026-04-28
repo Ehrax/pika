@@ -245,11 +245,12 @@ struct WorkspaceSnapshotTests {
                 recipientEmail: "billing@snapshot.example",
                 recipientBillingAddress: "1 Snapshot Way",
                 invoiceNumber: "EHX-2026-009",
-                template: .classic,
+                template: .kleinunternehmerClassic,
                 issueDate: issueDate,
                 dueDate: dueDate,
+                servicePeriod: "Apr 2026",
                 currencyCode: "EUR",
-                note: "Thank you."
+                taxNote: "Thank you."
             ),
             occurredAt: issueDate
         )
@@ -269,7 +270,8 @@ struct WorkspaceSnapshotTests {
         #expect(storedInvoice.clientSnapshot?.billingAddress == "1 Snapshot Way")
         #expect(storedInvoice.projectName == "Snapshot Project")
         #expect(storedInvoice.bucketName == "Ready Snapshot")
-        #expect(storedInvoice.template == .classic)
+        #expect(storedInvoice.template == .kleinunternehmerClassic)
+        #expect(storedInvoice.servicePeriod == "Apr 2026")
         #expect(storedInvoice.currencyCode == "EUR")
         #expect(storedInvoice.note == "Thank you.")
         #expect(storedInvoice.lineItems.map(\.description) == [
@@ -285,7 +287,7 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
-    @Test func legacyInvoicesWithoutTemplateDecodeAsClassic() throws {
+    @Test func legacyInvoicesWithoutTemplateDecodeAsKleinunternehmerClassic() throws {
         let data = Data("""
         {
           "id": "40000000-0000-0000-0000-000000000777",
@@ -300,10 +302,29 @@ struct WorkspaceSnapshotTests {
 
         let invoice = try JSONDecoder().decode(WorkspaceInvoice.self, from: data)
 
-        #expect(invoice.template == .classic)
+        #expect(invoice.template == .kleinunternehmerClassic)
         #expect(invoice.projectName == "")
         #expect(invoice.bucketName == "")
         #expect(invoice.lineItems == [])
+    }
+
+    @Test func legacyClassicTemplateDecodesAsKleinunternehmerClassic() throws {
+        let data = Data("""
+        {
+          "id": "40000000-0000-0000-0000-000000000778",
+          "number": "EHX-2026-778",
+          "clientName": "Legacy Client",
+          "template": "classic",
+          "issueDate": 0,
+          "dueDate": 0,
+          "status": "finalized",
+          "totalMinorUnits": 100000
+        }
+        """.utf8)
+
+        let invoice = try JSONDecoder().decode(WorkspaceInvoice.self, from: data)
+
+        #expect(invoice.template == .kleinunternehmerClassic)
     }
 
     @Test func inMemoryWorkspaceStoreAppliesInvoiceStatusTransitionsAndRejectsInvalidOnes() throws {
@@ -1059,7 +1080,9 @@ struct WorkspaceSnapshotTests {
         try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
             businessName: "  North Coast Studio  ",
             email: "  invoices@north.example  ",
+            phone: "",
             address: "  9 Harbour Road  ",
+            taxIdentifier: "  DE123456789  ",
             invoicePrefix: "  NCS  ",
             nextInvoiceNumber: 42,
             currencyCode: "  usd  ",
@@ -1083,11 +1106,12 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.businessProfile.currencyCode == "USD")
         #expect(store.workspace.businessProfile.paymentDetails == "ACH 123456")
         #expect(store.workspace.businessProfile.taxNote == "VAT not applicable.")
+        #expect(store.workspace.businessProfile.taxIdentifier == "DE123456789")
         #expect(store.workspace.businessProfile.defaultTermsDays == 21)
         #expect(draft.invoiceNumber == "NCS-2026-042")
-        #expect(draft.template == .classic)
+        #expect(draft.template == .kleinunternehmerClassic)
         #expect(draft.dueDate == Date.pikaDate(year: 2026, month: 5, day: 25))
-        #expect(draft.note == "VAT not applicable.")
+        #expect(draft.taxNote == "VAT not applicable.")
         #expect(relaunchedStore.workspace.businessProfile == store.workspace.businessProfile)
     }
 
@@ -1104,7 +1128,9 @@ struct WorkspaceSnapshotTests {
             try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
                 businessName: "",
                 email: "billing@example.com",
+                phone: "",
                 address: "1 Main Street",
+                taxIdentifier: "",
                 invoicePrefix: "INV",
                 nextInvoiceNumber: 1,
                 currencyCode: "EUR",
@@ -1118,7 +1144,9 @@ struct WorkspaceSnapshotTests {
             try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
                 businessName: "Studio",
                 email: "billing@example.com",
+                phone: "",
                 address: "1 Main Street",
+                taxIdentifier: "",
                 invoicePrefix: "INV",
                 nextInvoiceNumber: 0,
                 currencyCode: "EUR",
@@ -1132,7 +1160,9 @@ struct WorkspaceSnapshotTests {
             try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
                 businessName: "Studio",
                 email: "billing@example.com",
+                phone: "",
                 address: "1 Main Street",
+                taxIdentifier: "",
                 invoicePrefix: "INV",
                 nextInvoiceNumber: 1,
                 currencyCode: "EUR",
@@ -1812,6 +1842,15 @@ struct WorkspaceSnapshotTests {
         ])
         #expect(projection.rows[0].lineItems.map(\.quantityLabel) == [
             "8h",
+        ])
+        #expect(projection.rows[0].lineItems.map(\.quantityValueLabel) == [
+            "8",
+        ])
+        #expect(projection.rows[0].lineItems.map(\.unitLabel) == [
+            "Stunden",
+        ])
+        #expect(projection.rows[0].lineItems.map(\.unitPriceLabel) == [
+            "EUR 150.00",
         ])
         #expect(projection.rows[0].lineItems.map(\.amountLabel) == [
             "EUR 1,200.00",

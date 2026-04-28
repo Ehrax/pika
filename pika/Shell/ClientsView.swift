@@ -332,7 +332,7 @@ private struct CreateClientSheet: View {
 
     @State private var name = ""
     @State private var email = ""
-    @State private var billingAddress = ""
+    @State private var billingAddress = ClientAddressComponents()
     @State private var defaultTermsDaysValue: Int
 
     init(
@@ -351,8 +351,16 @@ private struct CreateClientSheet: View {
                 Section("Client") {
                     TextField("Name", text: $name)
                     TextField("Billing email", text: $email)
-                    TextField("Billing address", text: $billingAddress, axis: .vertical)
-                        .lineLimit(2...4)
+                    VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+                        TextField("Street and number", text: $billingAddress.street)
+                        HStack(spacing: PikaSpacing.sm) {
+                            TextField("Postal code", text: $billingAddress.postalCode)
+                                .frame(maxWidth: 120)
+                            TextField("City", text: $billingAddress.city)
+                            TextField("Country", text: $billingAddress.country)
+                                .frame(maxWidth: 180)
+                        }
+                    }
                 }
 
                 Section("Invoice defaults") {
@@ -383,7 +391,7 @@ private struct CreateClientSheet: View {
                     onSave(WorkspaceClientDraft(
                         name: name,
                         email: email,
-                        billingAddress: billingAddress,
+                        billingAddress: billingAddress.singleString,
                         defaultTermsDays: defaultTermsDaysValue
                     ))
                 } label: {
@@ -401,7 +409,7 @@ private struct CreateClientSheet: View {
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !billingAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !billingAddress.singleString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && defaultTermsDaysValue > 0
     }
 }
@@ -450,6 +458,7 @@ private struct ClientDetailSurface: View {
     @Environment(\.workspaceStore) private var workspaceStore
     @State private var draft: WorkspaceClientDraft
     @State private var savedDraft: WorkspaceClientDraft
+    @State private var billingAddress: ClientAddressComponents
     @State private var saveFailure: ClientSaveFailure?
     @State private var showsArchiveClientConfirmation = false
     @State private var showsDeleteClientConfirmation = false
@@ -460,6 +469,7 @@ private struct ClientDetailSurface: View {
         let draft = WorkspaceClientDraft(client: client)
         _draft = State(initialValue: draft)
         _savedDraft = State(initialValue: draft)
+        _billingAddress = State(initialValue: ClientAddressComponents(rawAddress: draft.billingAddress))
     }
 
     var body: some View {
@@ -500,10 +510,21 @@ private struct ClientDetailSurface: View {
                                 .textFieldStyle(.roundedBorder)
                         }
                         ClientDivider()
-                        ClientEditableFieldRow(label: "Billing address") {
-                            TextField("Billing address", text: $draft.billingAddress, axis: .vertical)
-                                .textFieldStyle(.roundedBorder)
-                                .lineLimit(2...4)
+                        ClientEditableFieldRow(label: "Billing address", alignment: .top) {
+                            VStack(alignment: .leading, spacing: PikaSpacing.sm) {
+                                TextField("Street and number", text: $billingAddress.street)
+                                    .textFieldStyle(.roundedBorder)
+                                HStack(spacing: PikaSpacing.sm) {
+                                    TextField("Postal code", text: $billingAddress.postalCode)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 120)
+                                    TextField("City", text: $billingAddress.city)
+                                        .textFieldStyle(.roundedBorder)
+                                    TextField("Country", text: $billingAddress.country)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 180)
+                                }
+                            }
                         }
                         ClientDivider()
                         ClientEditableFieldRow(label: "Payment terms") {
@@ -634,6 +655,11 @@ private struct ClientDetailSurface: View {
             let updatedDraft = WorkspaceClientDraft(client: updatedClient)
             draft = updatedDraft
             savedDraft = updatedDraft
+            billingAddress = ClientAddressComponents(rawAddress: updatedDraft.billingAddress)
+            saveFailure = nil
+        }
+        .onChange(of: billingAddress) { _, newAddress in
+            draft.billingAddress = newAddress.singleString
             saveFailure = nil
         }
     }
@@ -663,6 +689,7 @@ private struct ClientDetailSurface: View {
             let updatedDraft = WorkspaceClientDraft(client: client)
             draft = updatedDraft
             savedDraft = updatedDraft
+            billingAddress = ClientAddressComponents(rawAddress: updatedDraft.billingAddress)
             saveFailure = nil
         } catch WorkspaceStoreError.invalidClient {
             saveFailure = ClientSaveFailure(message: "Name, billing email, billing address, and payment terms are required.")
@@ -673,6 +700,7 @@ private struct ClientDetailSurface: View {
 
     private func revertChanges() {
         draft = savedDraft
+        billingAddress = ClientAddressComponents(rawAddress: savedDraft.billingAddress)
         saveFailure = nil
     }
 
@@ -748,10 +776,11 @@ private struct ClientFieldRow: View {
 
 private struct ClientEditableFieldRow<Content: View>: View {
     let label: String
+    var alignment: VerticalAlignment = .firstTextBaseline
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: PikaSpacing.lg) {
+        HStack(alignment: alignment, spacing: PikaSpacing.lg) {
             Text(label)
                 .font(PikaTypography.small)
                 .foregroundStyle(PikaColor.textMuted)
@@ -789,5 +818,105 @@ private extension WorkspaceClientDraft {
             billingAddress: client.billingAddress,
             defaultTermsDays: client.defaultTermsDays
         )
+    }
+}
+
+private struct ClientAddressComponents: Equatable {
+    var street: String = ""
+    var postalCode: String = ""
+    var city: String = ""
+    var country: String = ""
+
+    init() {}
+
+    init(rawAddress: String) {
+        let normalized = rawAddress
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if normalized.isEmpty {
+            return
+        }
+
+        let lines = normalized
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if lines.count >= 2 {
+            street = lines[0]
+            splitPostalAndCity(from: lines[1], fallbackStreet: nil)
+            if lines.count >= 3 {
+                country = lines[2]
+            }
+            return
+        }
+
+        if normalized.contains(",") {
+            let parts = normalized
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            if let first = parts.first {
+                street = first
+            }
+            if parts.count > 1 {
+                splitPostalAndCity(from: parts[1], fallbackStreet: nil)
+            }
+            if parts.count > 2 {
+                country = parts[2]
+            }
+            return
+        }
+
+        splitPostalAndCity(from: normalized, fallbackStreet: normalized)
+    }
+
+    var singleString: String {
+        let secondLine = [postalCode, city]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        let lines = [
+            street.trimmingCharacters(in: .whitespacesAndNewlines),
+            secondLine,
+            country.trimmingCharacters(in: .whitespacesAndNewlines),
+        ].filter { !$0.isEmpty }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private mutating func splitPostalAndCity(from input: String, fallbackStreet: String?) {
+        let raw = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            if let fallbackStreet {
+                street = fallbackStreet
+            }
+            return
+        }
+
+        let pattern = #"\b\d{4,5}\b"#
+        guard let range = raw.range(of: pattern, options: .regularExpression) else {
+            if let fallbackStreet {
+                street = fallbackStreet
+            } else {
+                city = raw
+            }
+            return
+        }
+
+        let prefix = raw[..<range.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = raw[range].trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffix = raw[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+
+        postalCode = code
+        city = suffix
+
+        if let fallbackStreet, street.isEmpty {
+            street = prefix.isEmpty ? fallbackStreet : prefix
+        } else if street.isEmpty {
+            street = prefix
+        }
     }
 }

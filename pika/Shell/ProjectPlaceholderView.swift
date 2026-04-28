@@ -889,8 +889,9 @@ private struct CreateInvoiceConfirmationSheet: View {
                     }
                     DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
                     DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
+                    TextField("Service period", text: $draft.servicePeriod)
                     CurrencyCodeField("Currency", text: $draft.currencyCode)
-                    TextField("Note", text: $draft.note, axis: .vertical)
+                    TextField("Tax / VAT note", text: $draft.taxNote, axis: .vertical)
                         .lineLimit(2...5)
                 }
 

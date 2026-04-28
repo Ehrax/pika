@@ -3,6 +3,31 @@ import Testing
 @testable import pika
 
 struct InvoicePDFServiceTests {
+    @Test func paymentQRCodePayloadBuildsEPCSepaTransferText() throws {
+        let payload = try PaymentQRCodePayload(
+            recipientName: "Ehrax Studio",
+            iban: "DE32 1001 1001 2141 1444 52",
+            bic: "NTSBDEB1XXX",
+            amountMinorUnits: 120_000,
+            currencyCode: "EUR",
+            remittanceText: "Rechnung EHX-2026-004"
+        )
+
+        #expect(payload.text == """
+        BCD
+        002
+        1
+        SCT
+        NTSBDEB1XXX
+        Ehrax Studio
+        DE32100110012141144452
+        EUR1200.00
+
+
+        Rechnung EHX-2026-004
+        """)
+    }
+
     @Test func renderInvoiceReturnsPDFDataAndInvoiceMetadata() throws {
         let workspace = WorkspaceSnapshot.sample
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
@@ -26,7 +51,7 @@ struct InvoicePDFServiceTests {
         #expect(rendered.metadata.clientName == "Northstar Labs")
         #expect(rendered.metadata.projectName == "Mobile QA")
         #expect(rendered.metadata.bucketName == "Regression pass")
-        #expect(rendered.metadata.templateName == "Classic")
+        #expect(rendered.metadata.templateName == "Kleinunternehmer Classic")
         #expect(rendered.metadata.currencyCode == "EUR")
         #expect(rendered.metadata.totalLabel == "EUR 1,200.00")
         #expect(rendered.metadata.lineItemCount == 1)

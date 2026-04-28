@@ -6,6 +6,7 @@ struct WorkspaceSnapshot: Codable, Equatable {
         businessProfile: BusinessProfileProjection(
             businessName: "",
             email: "",
+            phone: "",
             address: "",
             invoicePrefix: "INV",
             nextInvoiceNumber: 1,
@@ -170,13 +171,70 @@ extension Date {
 struct BusinessProfileProjection: Codable, Equatable {
     var businessName: String
     var email: String
+    var phone: String
     var address: String
+    var taxIdentifier: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
     var paymentDetails: String
     var taxNote: String
     var defaultTermsDays: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case businessName
+        case email
+        case phone
+        case address
+        case taxIdentifier
+        case invoicePrefix
+        case nextInvoiceNumber
+        case currencyCode
+        case paymentDetails
+        case taxNote
+        case defaultTermsDays
+    }
+
+    init(
+        businessName: String,
+        email: String,
+        phone: String = "",
+        address: String,
+        taxIdentifier: String = "",
+        invoicePrefix: String,
+        nextInvoiceNumber: Int,
+        currencyCode: String,
+        paymentDetails: String,
+        taxNote: String,
+        defaultTermsDays: Int
+    ) {
+        self.businessName = businessName
+        self.email = email
+        self.phone = phone
+        self.address = address
+        self.taxIdentifier = taxIdentifier
+        self.invoicePrefix = invoicePrefix
+        self.nextInvoiceNumber = nextInvoiceNumber
+        self.currencyCode = currencyCode
+        self.paymentDetails = paymentDetails
+        self.taxNote = taxNote
+        self.defaultTermsDays = defaultTermsDays
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        businessName = try container.decode(String.self, forKey: .businessName)
+        email = try container.decode(String.self, forKey: .email)
+        phone = try container.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        address = try container.decode(String.self, forKey: .address)
+        taxIdentifier = try container.decodeIfPresent(String.self, forKey: .taxIdentifier) ?? ""
+        invoicePrefix = try container.decode(String.self, forKey: .invoicePrefix)
+        nextInvoiceNumber = try container.decode(Int.self, forKey: .nextInvoiceNumber)
+        currencyCode = try container.decode(String.self, forKey: .currencyCode)
+        paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
+        taxNote = try container.decode(String.self, forKey: .taxNote)
+        defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+    }
 }
 
 struct WorkspaceClient: Codable, Equatable, Identifiable {
@@ -478,9 +536,10 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     var clientName: String
     var projectName: String = ""
     var bucketName: String = ""
-    var template: InvoiceTemplate = .classic
+    var template: InvoiceTemplate = .kleinunternehmerClassic
     var issueDate: Date
     var dueDate: Date
+    var servicePeriod: String = ""
     var status: InvoiceStatus
     var totalMinorUnits: Int
     var lineItems: [WorkspaceInvoiceLineItemSnapshot] = []
@@ -498,6 +557,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         case template
         case issueDate
         case dueDate
+        case servicePeriod
         case status
         case totalMinorUnits
         case lineItems
@@ -513,9 +573,10 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         clientName: String,
         projectName: String = "",
         bucketName: String = "",
-        template: InvoiceTemplate = .classic,
+        template: InvoiceTemplate = .kleinunternehmerClassic,
         issueDate: Date,
         dueDate: Date,
+        servicePeriod: String = "",
         status: InvoiceStatus,
         totalMinorUnits: Int,
         lineItems: [WorkspaceInvoiceLineItemSnapshot] = [],
@@ -532,6 +593,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         self.template = template
         self.issueDate = issueDate
         self.dueDate = dueDate
+        self.servicePeriod = servicePeriod
         self.status = status
         self.totalMinorUnits = totalMinorUnits
         self.lineItems = lineItems
@@ -548,9 +610,10 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         clientName = try container.decode(String.self, forKey: .clientName)
         projectName = try container.decodeIfPresent(String.self, forKey: .projectName) ?? ""
         bucketName = try container.decodeIfPresent(String.self, forKey: .bucketName) ?? ""
-        template = try container.decodeIfPresent(InvoiceTemplate.self, forKey: .template) ?? .classic
+        template = try container.decodeIfPresent(InvoiceTemplate.self, forKey: .template) ?? .kleinunternehmerClassic
         issueDate = try container.decode(Date.self, forKey: .issueDate)
         dueDate = try container.decode(Date.self, forKey: .dueDate)
+        servicePeriod = try container.decodeIfPresent(String.self, forKey: .servicePeriod) ?? ""
         status = try container.decode(InvoiceStatus.self, forKey: .status)
         totalMinorUnits = try container.decode(Int.self, forKey: .totalMinorUnits)
         lineItems = try container.decodeIfPresent([WorkspaceInvoiceLineItemSnapshot].self, forKey: .lineItems) ?? []
@@ -811,6 +874,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let template: InvoiceTemplate
     let issueDate: Date
     let dueDate: Date
+    let servicePeriod: String
     let status: InvoiceStatus
     let statusTitle: String
     let isOverdue: Bool
@@ -835,6 +899,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         template = invoice.template
         issueDate = invoice.issueDate
         dueDate = invoice.dueDate
+        servicePeriod = invoice.servicePeriod
         status = invoice.status
         isOverdue = invoice.status.isOverdue(dueDate: invoice.dueDate, on: date)
         statusTitle = isOverdue ? "Overdue" : invoice.status.rawValue.capitalized
@@ -864,6 +929,8 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
                 id: item.id,
                 description: item.description,
                 quantityLabel: item.quantityLabel,
+                amountMinorUnits: item.amountMinorUnits,
+                formatter: formatter,
                 amountLabel: formatter.string(fromMinorUnits: item.amountMinorUnits)
             )
         }
@@ -874,7 +941,76 @@ struct WorkspaceInvoiceLineItemProjection: Equatable, Identifiable {
     let id: UUID
     let description: String
     let quantityLabel: String
+    let quantityValueLabel: String
+    let unitLabel: String
+    let unitPriceLabel: String
     let amountLabel: String
+
+    init(
+        id: UUID,
+        description: String,
+        quantityLabel: String,
+        amountMinorUnits: Int,
+        formatter: MoneyFormatting,
+        amountLabel: String
+    ) {
+        self.id = id
+        self.description = description
+        self.quantityLabel = quantityLabel
+        self.amountLabel = amountLabel
+
+        let quantityUnit = Self.quantityUnit(from: quantityLabel)
+        quantityValueLabel = quantityUnit.quantity
+        unitLabel = quantityUnit.unit
+        unitPriceLabel = Self.unitPriceLabel(
+            quantity: quantityUnit.numericQuantity,
+            amountMinorUnits: amountMinorUnits,
+            formatter: formatter
+        )
+    }
+
+    private static func quantityUnit(from label: String) -> (quantity: String, numericQuantity: Double?, unit: String) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = trimmed.lowercased()
+
+        if lowercased.hasSuffix("h") {
+            let value = String(trimmed.dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+            return (localizedDecimal(value), numericQuantity(from: value), "Stunden")
+        }
+
+        if lowercased.hasSuffix("hours") || lowercased.hasSuffix("hour") {
+            let parts = trimmed.split(separator: " ")
+            let value = parts.first.map(String.init) ?? trimmed
+            return (localizedDecimal(value), numericQuantity(from: value), "Stunden")
+        }
+
+        if lowercased.hasSuffix("items") || lowercased.hasSuffix("item") {
+            let parts = trimmed.split(separator: " ")
+            let value = parts.first.map(String.init) ?? trimmed
+            return (localizedDecimal(value), numericQuantity(from: value), "Stück")
+        }
+
+        return (trimmed, numericQuantity(from: trimmed), "")
+    }
+
+    private static func localizedDecimal(_ value: String) -> String {
+        value.replacingOccurrences(of: ".", with: ",")
+    }
+
+    private static func numericQuantity(from value: String) -> Double? {
+        Double(value.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private static func unitPriceLabel(
+        quantity: Double?,
+        amountMinorUnits: Int,
+        formatter: MoneyFormatting
+    ) -> String {
+        guard let quantity, quantity > 0 else { return "" }
+
+        let unitAmount = Int((Double(amountMinorUnits) / quantity).rounded())
+        return formatter.string(fromMinorUnits: unitAmount)
+    }
 }
 
 extension WorkspaceSnapshot {

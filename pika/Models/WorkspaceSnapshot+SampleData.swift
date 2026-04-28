@@ -5,12 +5,14 @@ extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "Ehrax Studio",
-            email: "hello@ehrax.dev",
-            address: "Lisbon, Portugal",
+            email: "alex@ehrax.dev",
+            phone: "+49 151 44231139",
+            address: "Donaustr. 52\n73529 Schwäbisch Gmünd",
+            taxIdentifier: "DE123456789",
             invoicePrefix: "EHX",
             nextInvoiceNumber: 5,
             currencyCode: "EUR",
-            paymentDetails: "IBAN PT50 0000 0000 0000 0000 0000 0",
+            paymentDetails: "IBAN DE32 1001 1001 2141 1444 52\nBIC NTSBDEB1XXX",
             taxNote: "VAT reverse charge where applicable.",
             defaultTermsDays: 14
         ),

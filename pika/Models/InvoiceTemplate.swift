@@ -1,7 +1,7 @@
 import Foundation
 
 enum InvoiceTemplate: String, CaseIterable, Codable, Equatable, Identifiable {
-    case classic
+    case kleinunternehmerClassic = "kleinunternehmer-classic"
 
     var id: String {
         rawValue
@@ -9,8 +9,26 @@ enum InvoiceTemplate: String, CaseIterable, Codable, Equatable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .classic:
-            "Classic"
+        case .kleinunternehmerClassic:
+            "Kleinunternehmer Classic"
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+
+        switch rawValue {
+        case "classic":
+            self = .kleinunternehmerClassic
+        default:
+            guard let template = Self(rawValue: rawValue) else {
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Unknown invoice template: \(rawValue)"
+                )
+            }
+            self = template
         }
     }
 }
