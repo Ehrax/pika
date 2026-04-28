@@ -230,7 +230,7 @@ extension WorkspaceSnapshot {
     static let bikeparkThunersee = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "ehrax.dev",
-            personName: "Alexander Raspuitn",
+            personName: "Alexander Rasputin",
             email: "alex@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd\nGermany",
