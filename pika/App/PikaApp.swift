@@ -37,7 +37,8 @@ struct PikaApp: App {
         ])
         let configuration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: inMemory
+            isStoredInMemoryOnly: inMemory,
+            cloudKitDatabase: inMemory ? .none : .automatic
         )
 
         return try ModelContainer(for: schema, configurations: [configuration])

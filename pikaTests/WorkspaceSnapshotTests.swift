@@ -245,6 +245,7 @@ struct WorkspaceSnapshotTests {
                 recipientEmail: "billing@snapshot.example",
                 recipientBillingAddress: "1 Snapshot Way",
                 invoiceNumber: "EHX-2026-009",
+                template: .classic,
                 issueDate: issueDate,
                 dueDate: dueDate,
                 currencyCode: "EUR",
@@ -268,6 +269,7 @@ struct WorkspaceSnapshotTests {
         #expect(storedInvoice.clientSnapshot?.billingAddress == "1 Snapshot Way")
         #expect(storedInvoice.projectName == "Snapshot Project")
         #expect(storedInvoice.bucketName == "Ready Snapshot")
+        #expect(storedInvoice.template == .classic)
         #expect(storedInvoice.currencyCode == "EUR")
         #expect(storedInvoice.note == "Thank you.")
         #expect(storedInvoice.lineItems.map(\.description) == [
@@ -281,6 +283,27 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.map(\.message) == [
             "EHX-2026-009 finalized",
         ])
+    }
+
+    @Test func legacyInvoicesWithoutTemplateDecodeAsClassic() throws {
+        let data = Data("""
+        {
+          "id": "40000000-0000-0000-0000-000000000777",
+          "number": "EHX-2026-777",
+          "clientName": "Legacy Client",
+          "issueDate": 0,
+          "dueDate": 0,
+          "status": "finalized",
+          "totalMinorUnits": 100000
+        }
+        """.utf8)
+
+        let invoice = try JSONDecoder().decode(WorkspaceInvoice.self, from: data)
+
+        #expect(invoice.template == .classic)
+        #expect(invoice.projectName == "")
+        #expect(invoice.bucketName == "")
+        #expect(invoice.lineItems == [])
     }
 
     @Test func inMemoryWorkspaceStoreAppliesInvoiceStatusTransitionsAndRejectsInvalidOnes() throws {
@@ -459,6 +482,70 @@ struct WorkspaceSnapshotTests {
             archiveDate,
             restoreDate,
         ])
+    }
+
+    @Test func inMemoryWorkspaceStoreRemovesArchivedProjects() throws {
+        let archivedProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000855")!
+        let activeProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000856")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: archivedProjectID,
+                    name: "Old project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: true,
+                    buckets: [],
+                    invoices: []
+                ),
+                WorkspaceProject(
+                    id: activeProjectID,
+                    name: "Current project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let removeDate = Date.pikaDate(year: 2026, month: 4, day: 29)
+
+        try store.removeProject(projectID: archivedProjectID, occurredAt: removeDate)
+
+        #expect(store.workspace.projects.map(\.id) == [activeProjectID])
+        #expect(store.workspace.activity.map(\.message) == ["Old project project removed"])
+        #expect(store.workspace.activity.map(\.detail) == ["Happ.ines"])
+        #expect(store.workspace.activity.map(\.occurredAt) == [removeDate])
+    }
+
+    @Test func inMemoryWorkspaceStoreOnlyRemovesArchivedProjects() throws {
+        let activeProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000857")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: activeProjectID,
+                    name: "Guard project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        #expect(throws: WorkspaceStoreError.projectNotArchived) {
+            try store.removeProject(projectID: activeProjectID)
+        }
+        #expect(store.workspace.projects.map(\.id) == [activeProjectID])
+        #expect(store.workspace.activity.isEmpty)
     }
 
     @Test func inMemoryWorkspaceStoreArchivesAndRestoresBuckets() throws {
@@ -998,6 +1085,7 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.businessProfile.taxNote == "VAT not applicable.")
         #expect(store.workspace.businessProfile.defaultTermsDays == 21)
         #expect(draft.invoiceNumber == "NCS-2026-042")
+        #expect(draft.template == .classic)
         #expect(draft.dueDate == Date.pikaDate(year: 2026, month: 5, day: 25))
         #expect(draft.note == "VAT not applicable.")
         #expect(relaunchedStore.workspace.businessProfile == store.workspace.businessProfile)

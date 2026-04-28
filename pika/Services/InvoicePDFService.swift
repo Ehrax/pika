@@ -19,6 +19,7 @@ struct InvoicePDFService {
         var clientName: String
         var projectName: String
         var bucketName: String
+        var templateName: String
         var currencyCode: String
         var totalLabel: String
         var lineItemCount: Int
@@ -43,6 +44,7 @@ struct InvoicePDFService {
             clientName: row.clientName,
             projectName: row.projectName,
             bucketName: row.bucketName,
+            templateName: row.template.displayName,
             currencyCode: profile.currencyCode,
             totalLabel: row.totalLabel,
             lineItemCount: row.lineItems.count,

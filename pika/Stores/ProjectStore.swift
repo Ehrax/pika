@@ -16,6 +16,7 @@ struct InvoiceFinalizationDraft: Equatable {
     var recipientEmail: String
     var recipientBillingAddress: String
     var invoiceNumber: String
+    var template: InvoiceTemplate
     var issueDate: Date
     var dueDate: Date
     var currencyCode: String
@@ -127,6 +128,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
     case clientHasLinkedProjects
     case clientNotArchived
+    case projectNotArchived
 }
 
 @Observable
@@ -277,6 +279,26 @@ final class WorkspaceStore {
 
     func restoreProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
         try setProjectArchived(projectID: projectID, isArchived: false, occurredAt: occurredAt)
+    }
+
+    func removeProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
+        guard let index = workspace.projects.firstIndex(where: { $0.id == projectID }) else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        let project = workspace.projects[index]
+        guard project.isArchived else {
+            throw WorkspaceStoreError.projectNotArchived
+        }
+
+        workspace.projects.remove(at: index)
+        appendActivity(
+            message: "\(project.name) project removed",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectRemoved(projectName: project.name)
+        try persistWorkspace()
     }
 
     func archiveClient(clientID: WorkspaceClient.ID, occurredAt: Date = .now) throws {
@@ -523,6 +545,7 @@ final class WorkspaceStore {
             recipientEmail: client?.email ?? "",
             recipientBillingAddress: client?.billingAddress ?? "",
             invoiceNumber: nextInvoiceNumber(issueDate: issueDate),
+            template: .classic,
             issueDate: issueDate,
             dueDate: dueDate,
             currencyCode: project.currencyCode,
@@ -707,6 +730,7 @@ final class WorkspaceStore {
             clientName: draft.recipientName,
             projectName: project.name,
             bucketName: bucket.name,
+            template: draft.template,
             issueDate: draft.issueDate,
             dueDate: draft.dueDate,
             status: .finalized,

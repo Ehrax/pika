@@ -15,6 +15,9 @@ struct ClientsView: View {
     @State private var showsCreateClient = false
     @State private var creationFailure: ClientCreationFailure?
     @State private var listActionFailure: ClientActionFailure?
+    @State private var showsArchiveClientConfirmation = false
+    @State private var showsDeleteClientConfirmation = false
+    @State private var clientPendingListActionID: WorkspaceClient.ID?
 
     private var selectedClient: WorkspaceClient? {
         workspace.clients.first { $0.id == selectedClientID } ?? workspace.clients.first
@@ -78,6 +81,30 @@ struct ClientsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .confirmationDialog(
+            "Archive this client?",
+            isPresented: $showsArchiveClientConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Archive Client", role: .destructive) {
+                archivePendingClient()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Archived clients stay available for history, but must be archived before deletion.")
+        }
+        .confirmationDialog(
+            "Delete this client?",
+            isPresented: $showsDeleteClientConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Client", role: .destructive) {
+                deletePendingClient()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Deleted clients are removed permanently and cannot be restored.")
+        }
         .onAppear {
             selectedClientID = selectedClientID ?? workspace.clients.first?.id
             AppTelemetry.clientsLoaded(clientCount: workspace.clients.count)
@@ -113,11 +140,8 @@ struct ClientsView: View {
     }
 
     private func archiveClientFromList(_ clientID: WorkspaceClient.ID) {
-        do {
-            try workspaceStore.archiveClient(clientID: clientID)
-        } catch {
-            listActionFailure = ClientActionFailure(message: "Client could not be archived.")
-        }
+        clientPendingListActionID = clientID
+        showsArchiveClientConfirmation = true
     }
 
     private func restoreClientFromList(_ clientID: WorkspaceClient.ID) {
@@ -129,6 +153,19 @@ struct ClientsView: View {
     }
 
     private func deleteClientFromList(_ clientID: WorkspaceClient.ID) {
+        clientPendingListActionID = clientID
+        showsDeleteClientConfirmation = true
+    }
+
+    private func performArchiveClientFromList(_ clientID: WorkspaceClient.ID) {
+        do {
+            try workspaceStore.archiveClient(clientID: clientID)
+        } catch {
+            listActionFailure = ClientActionFailure(message: "Client could not be archived.")
+        }
+    }
+
+    private func performDeleteClientFromList(_ clientID: WorkspaceClient.ID) {
         do {
             try workspaceStore.removeClient(clientID: clientID)
             if selectedClientID == clientID {
@@ -141,6 +178,18 @@ struct ClientsView: View {
         } catch {
             listActionFailure = ClientActionFailure(message: "Client could not be deleted.")
         }
+    }
+
+    private func archivePendingClient() {
+        guard let clientID = clientPendingListActionID else { return }
+        performArchiveClientFromList(clientID)
+        clientPendingListActionID = nil
+    }
+
+    private func deletePendingClient() {
+        guard let clientID = clientPendingListActionID else { return }
+        performDeleteClientFromList(clientID)
+        clientPendingListActionID = nil
     }
 }
 

@@ -26,6 +26,7 @@ struct InvoicePDFServiceTests {
         #expect(rendered.metadata.clientName == "Northstar Labs")
         #expect(rendered.metadata.projectName == "Mobile QA")
         #expect(rendered.metadata.bucketName == "Regression pass")
+        #expect(rendered.metadata.templateName == "Classic")
         #expect(rendered.metadata.currencyCode == "EUR")
         #expect(rendered.metadata.totalLabel == "EUR 1,200.00")
         #expect(rendered.metadata.lineItemCount == 1)

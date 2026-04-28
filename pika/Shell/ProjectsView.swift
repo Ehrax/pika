@@ -8,6 +8,10 @@ struct ProjectsView: View {
     @State private var showsArchivedProjects = false
     @State private var showsCreateProject = false
     @State private var creationFailure: ProjectCreationFailure?
+    @State private var listActionFailure: ProjectListActionFailure?
+    @State private var showsArchiveProjectConfirmation = false
+    @State private var showsDeleteProjectConfirmation = false
+    @State private var projectPendingListActionID: WorkspaceProject.ID?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -80,6 +84,37 @@ struct ProjectsView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .alert(item: $listActionFailure) { failure in
+            Alert(
+                title: Text("Project Action Failed"),
+                message: Text(failure.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .confirmationDialog(
+            "Archive this project?",
+            isPresented: $showsArchiveProjectConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Archive Project", role: .destructive) {
+                archivePendingProject()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Archived projects stay available for history, and can be deleted later.")
+        }
+        .confirmationDialog(
+            "Delete this project?",
+            isPresented: $showsDeleteProjectConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Project", role: .destructive) {
+                deletePendingProject()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Deleted projects are removed permanently and cannot be restored.")
+        }
         .accessibilityIdentifier("ProjectsView")
     }
 
@@ -130,8 +165,60 @@ struct ProjectsView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens the project")
+                .contextMenu {
+                    projectMenuActions(for: project)
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func projectMenuActions(for project: WorkspaceProject) -> some View {
+        if project.isArchived {
+            Button(role: .destructive) {
+                projectPendingListActionID = project.id
+                showsDeleteProjectConfirmation = true
+            } label: {
+                Label("Delete Project", systemImage: "trash")
+            }
+        } else {
+            Button {
+                projectPendingListActionID = project.id
+                showsArchiveProjectConfirmation = true
+            } label: {
+                Label("Archive Project", systemImage: "archivebox")
+            }
+        }
+    }
+
+    private func archiveProjectFromList(_ projectID: WorkspaceProject.ID) {
+        do {
+            try workspaceStore.archiveProject(projectID: projectID)
+        } catch {
+            listActionFailure = ProjectListActionFailure(message: "Project could not be archived.")
+        }
+    }
+
+    private func deleteProjectFromList(_ projectID: WorkspaceProject.ID) {
+        do {
+            try workspaceStore.removeProject(projectID: projectID)
+        } catch WorkspaceStoreError.projectNotArchived {
+            listActionFailure = ProjectListActionFailure(message: "Only archived projects can be deleted.")
+        } catch {
+            listActionFailure = ProjectListActionFailure(message: "Project could not be deleted.")
+        }
+    }
+
+    private func archivePendingProject() {
+        guard let projectID = projectPendingListActionID else { return }
+        archiveProjectFromList(projectID)
+        projectPendingListActionID = nil
+    }
+
+    private func deletePendingProject() {
+        guard let projectID = projectPendingListActionID else { return }
+        deleteProjectFromList(projectID)
+        projectPendingListActionID = nil
     }
 
     private func createProject(_ draft: WorkspaceProjectDraft) {
@@ -166,6 +253,11 @@ private struct ArchivedProjectsHeader: View {
 }
 
 private struct ProjectCreationFailure: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct ProjectListActionFailure: Identifiable {
     let id = UUID()
     let message: String
 }

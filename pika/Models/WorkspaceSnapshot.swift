@@ -478,6 +478,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     var clientName: String
     var projectName: String = ""
     var bucketName: String = ""
+    var template: InvoiceTemplate = .classic
     var issueDate: Date
     var dueDate: Date
     var status: InvoiceStatus
@@ -485,6 +486,77 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     var lineItems: [WorkspaceInvoiceLineItemSnapshot] = []
     var currencyCode: String = ""
     var note: String? = nil
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case number
+        case businessSnapshot
+        case clientSnapshot
+        case clientName
+        case projectName
+        case bucketName
+        case template
+        case issueDate
+        case dueDate
+        case status
+        case totalMinorUnits
+        case lineItems
+        case currencyCode
+        case note
+    }
+
+    init(
+        id: UUID,
+        number: String,
+        businessSnapshot: BusinessProfileProjection? = nil,
+        clientSnapshot: WorkspaceClient? = nil,
+        clientName: String,
+        projectName: String = "",
+        bucketName: String = "",
+        template: InvoiceTemplate = .classic,
+        issueDate: Date,
+        dueDate: Date,
+        status: InvoiceStatus,
+        totalMinorUnits: Int,
+        lineItems: [WorkspaceInvoiceLineItemSnapshot] = [],
+        currencyCode: String = "",
+        note: String? = nil
+    ) {
+        self.id = id
+        self.number = number
+        self.businessSnapshot = businessSnapshot
+        self.clientSnapshot = clientSnapshot
+        self.clientName = clientName
+        self.projectName = projectName
+        self.bucketName = bucketName
+        self.template = template
+        self.issueDate = issueDate
+        self.dueDate = dueDate
+        self.status = status
+        self.totalMinorUnits = totalMinorUnits
+        self.lineItems = lineItems
+        self.currencyCode = currencyCode
+        self.note = note
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        number = try container.decode(String.self, forKey: .number)
+        businessSnapshot = try container.decodeIfPresent(BusinessProfileProjection.self, forKey: .businessSnapshot)
+        clientSnapshot = try container.decodeIfPresent(WorkspaceClient.self, forKey: .clientSnapshot)
+        clientName = try container.decode(String.self, forKey: .clientName)
+        projectName = try container.decodeIfPresent(String.self, forKey: .projectName) ?? ""
+        bucketName = try container.decodeIfPresent(String.self, forKey: .bucketName) ?? ""
+        template = try container.decodeIfPresent(InvoiceTemplate.self, forKey: .template) ?? .classic
+        issueDate = try container.decode(Date.self, forKey: .issueDate)
+        dueDate = try container.decode(Date.self, forKey: .dueDate)
+        status = try container.decode(InvoiceStatus.self, forKey: .status)
+        totalMinorUnits = try container.decode(Int.self, forKey: .totalMinorUnits)
+        lineItems = try container.decodeIfPresent([WorkspaceInvoiceLineItemSnapshot].self, forKey: .lineItems) ?? []
+        currencyCode = try container.decodeIfPresent(String.self, forKey: .currencyCode) ?? ""
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+    }
 }
 
 struct WorkspaceActivity: Codable, Equatable, Identifiable {
@@ -736,6 +808,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let clientName: String
     let projectName: String
     let bucketName: String
+    let template: InvoiceTemplate
     let issueDate: Date
     let dueDate: Date
     let status: InvoiceStatus
@@ -759,6 +832,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         clientName = invoice.clientSnapshot?.name ?? invoice.clientName
         self.projectName = invoice.projectName.isEmpty ? projectName : invoice.projectName
         bucketName = invoice.bucketName.isEmpty ? "Project services" : invoice.bucketName
+        template = invoice.template
         issueDate = invoice.issueDate
         dueDate = invoice.dueDate
         status = invoice.status

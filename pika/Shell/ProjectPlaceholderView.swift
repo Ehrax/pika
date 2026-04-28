@@ -882,6 +882,11 @@ private struct CreateInvoiceConfirmationSheet: View {
 
                 Section("Invoice") {
                     TextField("Invoice number", text: $draft.invoiceNumber)
+                    Picker("Template", selection: $draft.template) {
+                        ForEach(InvoiceTemplate.allCases) { template in
+                            Text(template.displayName).tag(template)
+                        }
+                    }
                     DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
                     DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
                     CurrencyCodeField("Currency", text: $draft.currencyCode)
