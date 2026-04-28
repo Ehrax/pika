@@ -5,7 +5,7 @@ extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "ALEXANDER RASPUTIN",
-            email: "alex@ehrax.dev",
+            email: "hello@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd",
             taxIdentifier: "DE123456789",
