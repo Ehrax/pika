@@ -766,22 +766,11 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
 
 private extension InvoiceStatus {
     func displayTitle(dueDate: Date, on date: Date) -> String {
-        isOverdue(dueDate: dueDate, on: date) ? "Overdue" : rawValue.capitalized
+        InvoiceWorkflowPolicy.statusTitle(status: self, isOverdue: isOverdue(dueDate: dueDate, on: date))
     }
 
     func displayTone(dueDate: Date, on date: Date) -> PikaStatusTone {
-        if isOverdue(dueDate: dueDate, on: date) { return .danger }
-
-        switch self {
-        case .finalized:
-            return .warning
-        case .sent:
-            return .neutral
-        case .paid:
-            return .success
-        case .cancelled:
-            return .neutral
-        }
+        InvoiceWorkflowPolicy.statusTone(status: self, isOverdue: isOverdue(dueDate: dueDate, on: date))
     }
 }
 
@@ -1074,12 +1063,4 @@ extension WorkspaceSnapshot {
             rows: rows
         )
     }
-}
-
-extension Calendar {
-    static let pikaGregorian: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        return calendar
-    }()
 }

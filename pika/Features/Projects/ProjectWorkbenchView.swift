@@ -1,10 +1,6 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
-import UniformTypeIdentifiers
 
-struct ProjectPlaceholderView: View {
+struct ProjectWorkbenchView: View {
     @Environment(\.invoicePDFService) private var invoicePDFService
 
     let project: WorkspaceProject?
@@ -235,96 +231,28 @@ struct ProjectPlaceholderView: View {
 
     @ToolbarContentBuilder
     private var projectToolbar: some ToolbarContent {
-        ToolbarItemGroup {
-            bucketActionsMenu
-            ControlGroup {
-                editBucketButton
-                markReadyButton
-            }
-        }
-    }
-
-    private var editBucketButton: some View {
-        Button {
-            showsEditBucket = true
-        } label: {
-            Label("Edit Bucket", systemImage: "pencil")
-        }
-        .disabled(project == nil || selectedBucket == nil)
-        .help("Edit selected bucket")
-        .tint(PikaColor.textPrimary)
-    }
-
-    private var markReadyButton: some View {
-        Button {
-            markSelectedBucketReady()
-        } label: {
-            Label("Mark Ready", systemImage: "checkmark.circle")
-        }
-        .disabled(!canMarkSelectedBucketReady)
-        .help("Mark the selected bucket ready for invoicing")
-        .tint(PikaColor.success)
-    }
-
-    private var bucketActionsMenu: some View {
-        Menu {
-            if let invoiceRow = selectedInvoiceRow {
-                Button {
-                    markInvoiceSent(invoiceRow)
-                } label: {
-                    Label("Mark Sent", systemImage: "paperplane")
-                }
-                .disabled(!invoiceRow.canMarkSent)
-                .tint(PikaColor.actionAccent)
-
-                Button {
-                    markInvoicePaid(invoiceRow)
-                } label: {
-                    Label("Mark Paid", systemImage: "checkmark.seal")
-                }
-                .disabled(!invoiceRow.canMarkPaid)
-                .tint(PikaColor.success)
-
-                Button(role: .destructive) {
-                    cancelInvoice(invoiceRow)
-                } label: {
-                    Label("Cancel Invoice", systemImage: "xmark.circle")
-                }
-                .disabled(!invoiceRow.canCancel)
-
-                Divider()
-            }
-
-            Button {
+        ProjectWorkbenchToolbarContent(
+            hasSelectedProject: project != nil,
+            hasSelectedBucket: selectedBucket != nil,
+            canMarkReady: canMarkSelectedBucketReady,
+            selectedInvoiceRow: selectedInvoiceRow,
+            selectedBucketStatus: selectedBucket?.status,
+            canArchiveOrRestore: canArchiveOrRestoreSelectedBucket,
+            canRemove: canRemoveSelectedBucket,
+            onEditBucket: { showsEditBucket = true },
+            onMarkReady: markSelectedBucketReady,
+            onMarkInvoiceSent: markInvoiceSent,
+            onMarkInvoicePaid: markInvoicePaid,
+            onCancelInvoice: cancelInvoice,
+            onArchiveOrRestore: {
                 if selectedBucket?.status == .archived {
                     restoreSelectedBucket()
                 } else {
                     showsArchiveBucketConfirmation = true
                 }
-            } label: {
-                Label(
-                    selectedBucket?.status == .archived ? "Restore Bucket" : "Archive Bucket",
-                    systemImage: selectedBucket?.status == .archived ? "arrow.uturn.backward" : "archivebox"
-                )
-            }
-            .disabled(!canArchiveOrRestoreSelectedBucket)
-            .tint(selectedBucket?.status == .archived ? PikaColor.success : PikaColor.warning)
-
-            if selectedBucket?.status == .archived {
-                Divider()
-
-                Button(role: .destructive) {
-                    prepareRemoveSelectedBucket()
-                } label: {
-                    Label("Remove Bucket", systemImage: "trash")
-                }
-                .disabled(!canRemoveSelectedBucket)
-            }
-        } label: {
-            Label("Bucket Actions", systemImage: "ellipsis.circle")
-        }
-        .help("Bucket actions")
-        .tint(PikaColor.textPrimary)
+            },
+            onRemoveBucket: prepareRemoveSelectedBucket
+        )
     }
 
     private var selectedBucket: WorkspaceBucket? {
@@ -613,48 +541,22 @@ struct ProjectPlaceholderView: View {
 
     private func openInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
         performInvoicePDFAction("open") {
-            let rendered = try renderInvoicePDF(row)
-            let url = try writeTemporaryPDF(rendered)
-
-            #if os(macOS)
-            guard NSWorkspace.shared.open(url) else {
-                throw ProjectInvoiceActionError.openFailed
-            }
-            AppTelemetry.invoicePDFOpened(invoiceNumber: rendered.metadata.invoiceNumber)
-            #else
-            throw ProjectInvoiceActionError.unsupportedPlatform
-            #endif
+            _ = try InvoicePDFActions.open(
+                invoicePDFService: invoicePDFService,
+                profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
+                row: row
+            )
         }
     }
 
     private func exportInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
         performInvoicePDFAction("export") {
-            let rendered = try renderInvoicePDF(row)
-
-            #if os(macOS)
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.pdf]
-            panel.canCreateDirectories = true
-            panel.isExtensionHidden = false
-            panel.nameFieldStringValue = rendered.metadata.suggestedFilename
-
-            guard panel.runModal() == .OK, let url = panel.url else {
-                return
-            }
-
-            try rendered.data.write(to: url, options: .atomic)
-            AppTelemetry.invoicePDFExported(invoiceNumber: rendered.metadata.invoiceNumber)
-            #else
-            throw ProjectInvoiceActionError.unsupportedPlatform
-            #endif
+            _ = try InvoicePDFActions.export(
+                invoicePDFService: invoicePDFService,
+                profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
+                row: row
+            )
         }
-    }
-
-    private func renderInvoicePDF(_ row: WorkspaceInvoiceRowProjection) throws -> InvoicePDFService.RenderedInvoice {
-        try invoicePDFService.renderInvoice(
-            profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
-            row: row
-        )
     }
 
     private func performInvoicePDFAction(_ action: String, operation: () throws -> Void) {
@@ -667,27 +569,19 @@ struct ProjectPlaceholderView: View {
         }
     }
 
-    private func writeTemporaryPDF(_ rendered: InvoicePDFService.RenderedInvoice) throws -> URL {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Pika", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-
-        let url = directory.appendingPathComponent(rendered.metadata.suggestedFilename)
-        try rendered.data.write(to: url, options: .atomic)
-        return url
-    }
 }
 
 private extension WorkspaceInvoiceRowProjection {
     var canMarkSent: Bool {
-        status == .finalized
+        InvoiceWorkflowPolicy.canMarkSent(status: status)
     }
 
     var canMarkPaid: Bool {
-        status == .finalized || status == .sent
+        InvoiceWorkflowPolicy.canMarkPaid(status: status)
     }
 
     var canCancel: Bool {
-        status == .finalized || status == .sent
+        InvoiceWorkflowPolicy.canCancel(status: status)
     }
 }
 
@@ -696,272 +590,11 @@ private struct WorkflowActionFailure: Identifiable {
     let message: String
 }
 
-private enum ProjectInvoiceActionError: LocalizedError {
-    case openFailed
-    case unsupportedPlatform
-
-    var errorDescription: String? {
-        switch self {
-        case .openFailed:
-            return "The invoice PDF could not be opened."
-        case .unsupportedPlatform:
-            return "This invoice action is only available on Mac."
-        }
-    }
-}
-
-private struct InvoiceDraftPresentation: Identifiable {
+struct InvoiceDraftPresentation: Identifiable {
     let id = UUID()
     let projectID: WorkspaceProject.ID
     let bucketID: WorkspaceBucket.ID
     let draft: InvoiceFinalizationDraft
     let totalLabel: String
     let lineItems: [WorkspaceBucketLineItemProjection]
-}
-
-private struct CreateBucketSheet: View {
-    let defaultRateMinorUnits: Int
-    let currencyCode: String
-    let initialName: String
-    let saveLabel: String
-    let saveSystemImage: String
-    let onCancel: () -> Void
-    let onSave: (WorkspaceBucketDraft) -> Void
-
-    @State private var name: String
-    @State private var hourlyRate: Double
-
-    init(
-        defaultRateMinorUnits: Int,
-        currencyCode: String,
-        initialName: String = "",
-        saveLabel: String = "Create Bucket",
-        saveSystemImage: String = "tray.full",
-        onCancel: @escaping () -> Void,
-        onSave: @escaping (WorkspaceBucketDraft) -> Void
-    ) {
-        self.defaultRateMinorUnits = defaultRateMinorUnits
-        self.currencyCode = currencyCode
-        self.initialName = initialName
-        self.saveLabel = saveLabel
-        self.saveSystemImage = saveSystemImage
-        self.onCancel = onCancel
-        self.onSave = onSave
-        _name = State(initialValue: initialName)
-        _hourlyRate = State(initialValue: Double(defaultRateMinorUnits) / 100)
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section("Bucket") {
-                    TextField("Bucket name", text: $name)
-                    CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
-                }
-            }
-            .formStyle(.grouped)
-
-            Divider()
-
-            HStack {
-                Button {
-                    onCancel()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
-                }
-                .keyboardShortcut(.cancelAction)
-                .buttonStyle(.pikaAction(.destructive))
-
-                Spacer()
-
-                Button {
-                    onSave(WorkspaceBucketDraft(
-                        name: name,
-                        hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
-                    ))
-                } label: {
-                    Label(saveLabel, systemImage: saveSystemImage)
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.pikaAction(.primary))
-                .disabled(!canSave)
-            }
-            .padding(PikaSpacing.md)
-        }
-        .frame(minWidth: 420, idealWidth: 460, minHeight: 260)
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && hourlyRate > 0
-    }
-}
-
-private struct CreateFixedCostSheet: View {
-    let date: Date
-    let currencyCode: String
-    let onCancel: () -> Void
-    let onSave: (WorkspaceFixedCostDraft) -> Void
-
-    @State private var description = ""
-    @State private var amount = 50.0
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section("Fixed cost") {
-                    DatePicker("Date", selection: .constant(date), displayedComponents: .date)
-                        .disabled(true)
-                    TextField("Description", text: $description)
-                    CurrencyAmountField("Amount", value: $amount, currencyCode: currencyCode)
-                }
-            }
-            .formStyle(.grouped)
-
-            Divider()
-
-            HStack {
-                Button {
-                    onCancel()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
-                }
-                .keyboardShortcut(.cancelAction)
-                .buttonStyle(.pikaAction(.destructive))
-
-                Spacer()
-
-                Button {
-                    onSave(WorkspaceFixedCostDraft(
-                        date: date,
-                        description: description,
-                        amountMinorUnits: max(Int((amount * 100).rounded()), 0)
-                    ))
-                } label: {
-                    Label("Add Cost", systemImage: "plus.square")
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.pikaAction(.primary))
-                .disabled(!canSave)
-            }
-            .padding(PikaSpacing.md)
-        }
-        .frame(minWidth: 420, idealWidth: 460, minHeight: 300)
-    }
-
-    private var canSave: Bool {
-        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amount > 0
-    }
-}
-
-private struct CreateInvoiceConfirmationSheet: View {
-    let presentation: InvoiceDraftPresentation
-    let onCancel: () -> Void
-    let onSave: (InvoiceFinalizationDraft) -> Void
-    @State private var draft: InvoiceFinalizationDraft
-
-    init(
-        presentation: InvoiceDraftPresentation,
-        onCancel: @escaping () -> Void,
-        onSave: @escaping (InvoiceFinalizationDraft) -> Void
-    ) {
-        self.presentation = presentation
-        self.onCancel = onCancel
-        self.onSave = onSave
-        _draft = State(initialValue: presentation.draft)
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section("Recipient") {
-                    InvoiceFinalizationReviewRow("Name", value: draft.recipientName)
-                    InvoiceFinalizationReviewRow("Email", value: draft.recipientEmail)
-                    InvoiceFinalizationReviewRow("Billing address", value: draft.recipientBillingAddress)
-                }
-
-                Section("Invoice") {
-                    InvoiceFinalizationReviewRow("Invoice number", value: draft.invoiceNumber)
-                    Picker("Template", selection: $draft.template) {
-                        ForEach(InvoiceTemplate.allCases) { template in
-                            Text(template.displayName).tag(template)
-                        }
-                    }
-                    DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
-                    DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
-                    InvoiceFinalizationReviewRow("Service period", value: draft.servicePeriod)
-                    InvoiceFinalizationReviewRow("Currency", value: draft.currencyCode)
-                    InvoiceFinalizationReviewRow("Tax / VAT note", value: draft.taxNote)
-                }
-
-                Section("Totals") {
-                    ForEach(presentation.lineItems) { item in
-                        HStack {
-                            Text(item.description)
-                            Spacer()
-                            Text(item.quantity)
-                                .foregroundStyle(PikaColor.textSecondary)
-                            Text(item.amountLabel)
-                                .monospacedDigit()
-                                .frame(width: 120, alignment: .trailing)
-                        }
-                    }
-
-                    HStack {
-                        Text("Total")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text(presentation.totalLabel)
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                    }
-                }
-            }
-            .formStyle(.grouped)
-
-            Divider()
-
-            HStack {
-                Button {
-                    onCancel()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
-                }
-                .keyboardShortcut(.cancelAction)
-                .buttonStyle(.pikaAction(.destructive))
-
-                Spacer()
-
-                Button {
-                    onSave(draft)
-                } label: {
-                    Label("Save as finalized", systemImage: "checkmark.circle")
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.pikaAction(.primary))
-                .disabled(draft.invoiceNumber.isEmpty || draft.recipientName.isEmpty)
-            }
-            .padding(PikaSpacing.md)
-        }
-        .frame(minWidth: 520, idealWidth: 560, minHeight: 620)
-    }
-}
-
-private struct InvoiceFinalizationReviewRow: View {
-    let title: LocalizedStringKey
-    let value: String
-
-    init(_ title: LocalizedStringKey, value: String) {
-        self.title = title
-        self.value = value
-    }
-
-    var body: some View {
-        LabeledContent(title) {
-            Text(value.isEmpty ? "Not set" : value)
-                .foregroundStyle(value.isEmpty ? PikaColor.textSecondary : PikaColor.textPrimary)
-                .multilineTextAlignment(.trailing)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
 }

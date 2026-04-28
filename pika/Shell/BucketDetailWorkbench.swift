@@ -198,18 +198,7 @@ private struct InvoiceBucketActions: View {
 
 private extension WorkspaceInvoiceRowProjection {
     var statusTone: PikaStatusTone {
-        if isOverdue { return .danger }
-
-        switch status {
-        case .finalized:
-            return .warning
-        case .sent:
-            return .neutral
-        case .paid:
-            return .success
-        case .cancelled:
-            return .neutral
-        }
+        InvoiceWorkflowPolicy.statusTone(status: status, isOverdue: isOverdue)
     }
 }
 

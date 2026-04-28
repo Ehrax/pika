@@ -62,7 +62,7 @@ struct RootView: View {
             SettingsView(profile: workspace.businessProfile)
         case .project(let id):
             let project = workspace.projects.first { $0.id == id }
-            ProjectPlaceholderView(
+            ProjectWorkbenchContainerView(
                 project: project,
                 workspaceStore: workspaceStore,
                 currentDate: currentDate,
