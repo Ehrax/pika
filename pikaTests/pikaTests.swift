@@ -152,18 +152,23 @@ struct PikaScaffoldTests {
         #expect(configuration.persistenceURL?.path == "/tmp/pika-empty-workspace.json")
     }
 
-#if DEBUG
     @Test func appLaunchConfigurationCanExplicitlyUseEmptyWorkspace() {
-        let configuration = AppLaunchConfiguration(
+        let namedConfiguration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-seed", "empty"],
             environment: [:]
         )
+        let bareConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--empty"],
+            environment: ["PIKA_WORKSPACE_SEED": "demo"]
+        )
 
-        #expect(configuration.workspaceSeed == .empty)
-        #expect(configuration.initialWorkspace == .empty)
+        #expect(namedConfiguration.workspaceSeed == .empty)
+        #expect(namedConfiguration.initialWorkspace == .empty)
+        #expect(bareConfiguration.workspaceSeed == .empty)
+        #expect(bareConfiguration.initialWorkspace == .empty)
     }
 
-    @Test func appLaunchConfigurationLegacySeedWorkspaceMapsToDemoWorkspace() {
+    @Test func appLaunchConfigurationLegacySeedWorkspaceParsesDemoSeed() {
         let argumentConfiguration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-seed-workspace"],
             environment: [:]
@@ -174,12 +179,10 @@ struct PikaScaffoldTests {
         )
 
         #expect(argumentConfiguration.workspaceSeed == .demo)
-        #expect(argumentConfiguration.initialWorkspace == .sample)
         #expect(environmentConfiguration.workspaceSeed == .demo)
-        #expect(environmentConfiguration.initialWorkspace == .sample)
     }
 
-    @Test func appLaunchConfigurationCanUseNamedWorkspaceSeeds() {
+    @Test func appLaunchConfigurationParsesNamedWorkspaceSeeds() {
         let emptyConfiguration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-seed", "empty"],
             environment: [:]
@@ -196,12 +199,10 @@ struct PikaScaffoldTests {
         #expect(emptyConfiguration.workspaceSeed == .empty)
         #expect(emptyConfiguration.initialWorkspace == .empty)
         #expect(demoConfiguration.workspaceSeed == .demo)
-        #expect(demoConfiguration.initialWorkspace == .sample)
         #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
-        #expect(bikeparkConfiguration.initialWorkspace == .bikeparkThunersee)
     }
 
-    @Test func appLaunchConfigurationCanOptIntoBikeparkWorkspaceForDevelopment() {
+    @Test func appLaunchConfigurationParsesBikeparkWorkspaceSeed() {
         let argumentConfiguration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-seed-bikepark-thunersee"],
             environment: [:]
@@ -212,9 +213,52 @@ struct PikaScaffoldTests {
         )
 
         #expect(argumentConfiguration.workspaceSeed == .bikeparkThunersee)
-        #expect(argumentConfiguration.initialWorkspace == .bikeparkThunersee)
         #expect(environmentConfiguration.workspaceSeed == .bikeparkThunersee)
-        #expect(environmentConfiguration.initialWorkspace == .bikeparkThunersee)
+    }
+
+#if DEBUG
+    @Test func appLaunchConfigurationResolvesDemoWorkspaceSeedForDevelopment() {
+        let argumentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-seed-workspace"],
+            environment: [:]
+        )
+        let namedConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "demo"],
+            environment: [:]
+        )
+
+        #expect(argumentConfiguration.initialWorkspace == .sample)
+        #expect(namedConfiguration.initialWorkspace == .sample)
+    }
+
+    @Test func appLaunchConfigurationResolvesBikeparkWorkspaceSeedForDevelopment() {
+        let argumentConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-seed-bikepark-thunersee"],
+            environment: [:]
+        )
+        let namedConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
+            environment: [:]
+        )
+
+        #expect(argumentConfiguration.initialWorkspace == .bikeparkThunersee)
+        #expect(namedConfiguration.initialWorkspace == .bikeparkThunersee)
+    }
+#else
+    @Test func appLaunchConfigurationFallsBackToEmptyForDevelopmentOnlySeedsInRelease() {
+        let demoConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "demo"],
+            environment: [:]
+        )
+        let bikeparkConfiguration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
+            environment: [:]
+        )
+
+        #expect(demoConfiguration.workspaceSeed == .demo)
+        #expect(demoConfiguration.initialWorkspace == .empty)
+        #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
+        #expect(bikeparkConfiguration.initialWorkspace == .empty)
     }
 #endif
 

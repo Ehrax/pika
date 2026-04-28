@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MODE="run"
-SEED_WORKSPACE="empty"
+WORKSPACE_SEED="empty"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
 RUN_DATA_DIR="$ROOT_DIR/.build/RunData"
@@ -15,21 +15,21 @@ while [[ $# -gt 0 ]]; do
     run|--verify|verify)
       MODE="$1"
       ;;
-    --seeded|seeded|--preseeded|preseeded)
-      SEED_WORKSPACE="sample"
+    --seeded|seeded|--preseeded|preseeded|--demo|demo)
+      WORKSPACE_SEED="demo"
       ;;
     --bikepark|bikepark|--bikepark-thunersee|bikepark-thunersee)
-      SEED_WORKSPACE="bikepark"
+      WORKSPACE_SEED="bikepark-thunersee"
       ;;
     --empty|empty)
-      SEED_WORKSPACE="empty"
+      WORKSPACE_SEED="empty"
       ;;
     -h|--help)
-      echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
       exit 0
       ;;
     *)
-      echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
       exit 2
       ;;
   esac
@@ -90,9 +90,9 @@ launch_app() {
   local app_bundle="$1"
   local workspace_name="empty"
 
-  if [[ "$SEED_WORKSPACE" == "sample" ]]; then
-    workspace_name="seeded"
-  elif [[ "$SEED_WORKSPACE" == "bikepark" ]]; then
+  if [[ "$WORKSPACE_SEED" == "demo" ]]; then
+    workspace_name="demo"
+  elif [[ "$WORKSPACE_SEED" == "bikepark-thunersee" ]]; then
     workspace_name="bikepark-thunersee"
   fi
 
@@ -101,13 +101,9 @@ launch_app() {
   mkdir -p "$workspace_dir"
   rm -f "$workspace_path"
 
-  if [[ "$SEED_WORKSPACE" == "sample" ]]; then
-    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path" --pika-seed-workspace
-  elif [[ "$SEED_WORKSPACE" == "bikepark" ]]; then
-    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path" --pika-seed-bikepark-thunersee
-  else
-    /usr/bin/open -n "$app_bundle" --args --pika-workspace-path "$workspace_path"
-  fi
+  /usr/bin/open -n "$app_bundle" --args \
+    --pika-workspace-path "$workspace_path" \
+    --pika-workspace-seed "$WORKSPACE_SEED"
 }
 
 verify_launch() {
@@ -138,7 +134,7 @@ case "$MODE" in
     fi
     ;;
   *)
-    echo "usage: $0 [run|--verify] [--empty|--seeded|--bikepark]" >&2
+    echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
     exit 2
     ;;
 esac
