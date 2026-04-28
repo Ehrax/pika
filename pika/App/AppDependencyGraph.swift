@@ -1,11 +1,14 @@
+import SwiftData
 import SwiftUI
 
 struct AppLaunchConfiguration: Equatable {
-    static let workspacePathArgument = "--pika-workspace-path"
-
     let workspaceSeed: WorkspaceSeed
     let initialWorkspace: WorkspaceSnapshot
-    let persistenceURL: URL?
+    let workspaceStoreURL: URL?
+
+    private static let workspaceStorePathArgument = "--pika-workspace-store-path"
+    private static let legacyWorkspacePathArgument = "--pika-workspace-path"
+    private static let workspaceStorePathEnvironmentKey = "PIKA_WORKSPACE_STORE_PATH"
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -13,21 +16,43 @@ struct AppLaunchConfiguration: Equatable {
     ) {
         workspaceSeed = WorkspaceSeed.resolve(arguments: arguments, environment: environment)
         initialWorkspace = workspaceSeed.initialWorkspace
-        persistenceURL = Self.persistenceURL(arguments: arguments)
-            ?? WorkspaceStore.defaultPersistenceURL()
+        workspaceStoreURL = Self.resolveWorkspaceStoreURL(arguments: arguments, environment: environment)
     }
 
-    private static func persistenceURL(arguments: [String]) -> URL? {
-        guard let pathIndex = arguments.firstIndex(of: workspacePathArgument) else {
-            return nil
+    private static func resolveWorkspaceStoreURL(
+        arguments: [String],
+        environment: [String: String]
+    ) -> URL? {
+        if let storePath = argumentValue(after: workspaceStorePathArgument, in: arguments), !storePath.isEmpty {
+            return URL(fileURLWithPath: storePath)
         }
 
-        let valueIndex = arguments.index(after: pathIndex)
-        guard arguments.indices.contains(valueIndex) else {
-            return nil
+        if let legacyPath = argumentValue(after: legacyWorkspacePathArgument, in: arguments), !legacyPath.isEmpty {
+            return migratedLegacyStoreURL(fromLegacyPath: legacyPath)
         }
 
-        return URL(fileURLWithPath: arguments[valueIndex])
+        if let environmentPath = environment[workspaceStorePathEnvironmentKey], !environmentPath.isEmpty {
+            return URL(fileURLWithPath: environmentPath)
+        }
+
+        return nil
+    }
+
+    private static func argumentValue(after argument: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: argument) else { return nil }
+        let nextIndex = arguments.index(after: index)
+        guard nextIndex < arguments.endIndex else { return nil }
+        let value = arguments[nextIndex]
+        guard !value.hasPrefix("--") else { return nil }
+        return value
+    }
+
+    private static func migratedLegacyStoreURL(fromLegacyPath legacyPath: String) -> URL {
+        let legacyURL = URL(fileURLWithPath: legacyPath)
+        if legacyURL.pathExtension.lowercased() == "json" {
+            return legacyURL.deletingPathExtension().appendingPathExtension("store")
+        }
+        return legacyURL
     }
 }
 
@@ -36,10 +61,21 @@ private struct PikaDependencyModifier: ViewModifier {
     @State private var workspaceStore: WorkspaceStore
 
     init(configuration: AppLaunchConfiguration = AppLaunchConfiguration()) {
+        let container: ModelContainer
+        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        do {
+            container = try WorkspaceStore.makeModelContainer(
+                inMemory: isRunningTests,
+                storeURL: isRunningTests ? nil : (configuration.workspaceStoreURL ?? WorkspaceStore.defaultStoreURL())
+            )
+        } catch {
+            fatalError("Could not create workspace persistence container: \(error)")
+        }
+
         _workspaceStore = State(
             initialValue: WorkspaceStore(
                 seed: configuration.initialWorkspace,
-                persistenceURL: configuration.persistenceURL
+                modelContext: ModelContext(container)
             )
         )
     }

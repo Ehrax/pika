@@ -34,13 +34,19 @@ struct CreateBucketSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section("Bucket") {
-                    TextField("Bucket name", text: $name)
-                    CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
+            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                PikaInputSheetSection(title: "Bucket") {
+                    PikaInputSheetFieldRow(label: "Bucket name") {
+                        TextField("Bucket name", text: $name)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    PikaInputSheetDivider()
+                    PikaInputSheetFieldRow(label: "Hourly rate") {
+                        CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
+                    }
                 }
             }
-            .formStyle(.grouped)
+            .padding(PikaSpacing.md)
 
             Divider()
 
@@ -70,6 +76,7 @@ struct CreateBucketSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 420, idealWidth: 460, minHeight: 260)
+        .background(PikaColor.background)
     }
 
     private var canSave: Bool {

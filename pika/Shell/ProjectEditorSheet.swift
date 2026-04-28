@@ -27,24 +27,32 @@ struct ProjectEditorSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section("Project") {
-                    TextField("Project name", text: $name)
-
-                    Picker("Client", selection: $clientName) {
-                        if !clients.contains(where: { $0.name == clientName }) {
-                            Text(clientName).tag(clientName)
-                        }
-
-                        ForEach(clients) { client in
-                            Text(client.name).tag(client.name)
-                        }
+            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                PikaInputSheetSection(title: "Project") {
+                    PikaInputSheetFieldRow(label: "Project name") {
+                        TextField("Project name", text: $name)
+                            .textFieldStyle(.roundedBorder)
                     }
+                    PikaInputSheetDivider()
+                    PikaInputSheetFieldRow(label: "Client") {
+                        Picker("Client", selection: $clientName) {
+                            if !clients.contains(where: { $0.name == clientName }) {
+                                Text(clientName).tag(clientName)
+                            }
 
-                    CurrencyCodeField("Currency", text: $currencyCode)
+                            ForEach(clients) { client in
+                                Text(client.name).tag(client.name)
+                            }
+                        }
+                        .labelsHidden()
+                    }
+                    PikaInputSheetDivider()
+                    PikaInputSheetFieldRow(label: "Currency") {
+                        CurrencyCodeField("Currency", text: $currencyCode)
+                    }
                 }
             }
-            .formStyle(.grouped)
+            .padding(PikaSpacing.md)
 
             Divider()
 
@@ -75,6 +83,7 @@ struct ProjectEditorSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 460, idealWidth: 500, minHeight: 280)
+        .background(PikaColor.background)
     }
 
     private var canSave: Bool {

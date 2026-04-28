@@ -11,6 +11,7 @@ enum AppTelemetry {
     private static let clientLogger = Logger(subsystem: subsystem, category: "clients")
     private static let settingsLogger = Logger(subsystem: subsystem, category: "settings")
     private static let layoutLogger = Logger(subsystem: subsystem, category: "layout")
+    private static let persistenceLogger = Logger(subsystem: subsystem, category: "persistence")
 
     static func shellSelectionChanged(_ selection: String) {
         shellLogger.info("shell.selection_changed destination=\(selection, privacy: .public)")
@@ -176,5 +177,21 @@ enum AppTelemetry {
 
     static func settingsSaved() {
         settingsLogger.info("settings.saved")
+    }
+
+    static func persistenceContainerRecoveryAttempted(storePath: String, reason: String) {
+        persistenceLogger.warning(
+            "persistence.recovery_attempted store=\(storePath, privacy: .public) reason=\(reason, privacy: .public)"
+        )
+    }
+
+    static func persistenceContainerRecovered(storePath: String) {
+        persistenceLogger.info("persistence.recovered store=\(storePath, privacy: .public)")
+    }
+
+    static func persistenceContainerRecoveryFailed(storePath: String, message: String) {
+        persistenceLogger.error(
+            "persistence.recovery_failed store=\(storePath, privacy: .public) error=\(message, privacy: .private)"
+        )
     }
 }

@@ -143,13 +143,24 @@ struct PikaScaffoldTests {
         #expect(configuration.initialWorkspace == .empty)
     }
 
-    @Test func appLaunchConfigurationCanUseProjectLocalPersistencePath() {
+    @Test func appLaunchConfigurationMapsLegacyWorkspacePathArgumentToSwiftDataStorePath() {
         let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-path", "/tmp/pika-empty-workspace.json"],
             environment: [:]
         )
 
-        #expect(configuration.persistenceURL?.path == "/tmp/pika-empty-workspace.json")
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.initialWorkspace == .empty)
+        #expect(configuration.workspaceStoreURL?.path == "/tmp/pika-empty-workspace.store")
+    }
+
+    @Test func appLaunchConfigurationSupportsExplicitWorkspaceStorePathArgument() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-store-path", "/tmp/pika-bikepark.store"],
+            environment: [:]
+        )
+
+        #expect(configuration.workspaceStoreURL?.path == "/tmp/pika-bikepark.store")
     }
 
     @Test func appLaunchConfigurationCanExplicitlyUseEmptyWorkspace() {

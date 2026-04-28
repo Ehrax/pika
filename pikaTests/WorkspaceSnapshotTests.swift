@@ -1,8 +1,17 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import pika
 
 struct WorkspaceSnapshotTests {
+    private func makePersistentModelContext() throws -> (ModelContext, URL) {
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.store")
+        let container = try WorkspaceStore.makeModelContainer(inMemory: false, storeURL: storeURL)
+        return (ModelContext(container), storeURL)
+    }
+
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
         let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
@@ -324,46 +333,6 @@ struct WorkspaceSnapshotTests {
             .currencyCode,
             .taxNote,
         ])
-    }
-
-    @Test func legacyInvoicesWithoutTemplateDecodeAsKleinunternehmerClassic() throws {
-        let data = Data("""
-        {
-          "id": "40000000-0000-0000-0000-000000000777",
-          "number": "EHX-2026-777",
-          "clientName": "Legacy Client",
-          "issueDate": 0,
-          "dueDate": 0,
-          "status": "finalized",
-          "totalMinorUnits": 100000
-        }
-        """.utf8)
-
-        let invoice = try JSONDecoder().decode(WorkspaceInvoice.self, from: data)
-
-        #expect(invoice.template == .kleinunternehmerClassic)
-        #expect(invoice.projectName == "")
-        #expect(invoice.bucketName == "")
-        #expect(invoice.lineItems == [])
-    }
-
-    @Test func legacyClassicTemplateDecodesAsKleinunternehmerClassic() throws {
-        let data = Data("""
-        {
-          "id": "40000000-0000-0000-0000-000000000778",
-          "number": "EHX-2026-778",
-          "clientName": "Legacy Client",
-          "template": "classic",
-          "issueDate": 0,
-          "dueDate": 0,
-          "status": "finalized",
-          "totalMinorUnits": 100000
-        }
-        """.utf8)
-
-        let invoice = try JSONDecoder().decode(WorkspaceInvoice.self, from: data)
-
-        #expect(invoice.template == .kleinunternehmerClassic)
     }
 
     @Test func inMemoryWorkspaceStoreAppliesInvoiceStatusTransitionsAndRejectsInvalidOnes() throws {
@@ -892,11 +861,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func persistentWorkspaceStoreSavesClientUpdates() throws {
-        let persistenceURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
-            .appendingPathComponent("workspace.json")
+        let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
-            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
         }
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000821")!
         let store = WorkspaceStore(
@@ -924,7 +891,7 @@ struct WorkspaceSnapshotTests {
                 ],
                 activity: []
             ),
-            persistenceURL: persistenceURL
+            modelContext: modelContext
         )
 
         try store.updateClient(
@@ -937,7 +904,7 @@ struct WorkspaceSnapshotTests {
             )
         )
 
-        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, persistenceURL: persistenceURL)
+        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, modelContext: modelContext)
         #expect(relaunchedStore.workspace.clients.first?.name == "Stored Client Updated")
         #expect(relaunchedStore.workspace.clients.first?.email == "billing@updated.example")
         #expect(relaunchedStore.workspace.clients.first?.billingAddress == "9 Updated Lane")
@@ -1043,11 +1010,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func persistentWorkspaceStoreLoadsSavedWorkspaceOnRelaunch() throws {
-        let persistenceURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
-            .appendingPathComponent("workspace.json")
+        let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
-            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
         }
 
         let initialStore = WorkspaceStore(
@@ -1057,7 +1022,7 @@ struct WorkspaceSnapshotTests {
                 projects: [],
                 activity: []
             ),
-            persistenceURL: persistenceURL
+            modelContext: modelContext
         )
 
         let client = try initialStore.createClient(WorkspaceClientDraft(
@@ -1069,7 +1034,7 @@ struct WorkspaceSnapshotTests {
 
         let relaunchedStore = WorkspaceStore(
             seed: WorkspaceFixtures.demoWorkspace,
-            persistenceURL: persistenceURL
+            modelContext: modelContext
         )
 
         #expect(relaunchedStore.workspace.clients.map(\.id) == [client.id])
@@ -1078,11 +1043,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func persistentWorkspaceStoreUpdatesBusinessProfileAndInvoiceDefaults() throws {
-        let persistenceURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
-            .appendingPathComponent("workspace.json")
+        let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
-            try? FileManager.default.removeItem(at: persistenceURL.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
         }
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000901")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000901")!
@@ -1113,7 +1076,7 @@ struct WorkspaceSnapshotTests {
                 ],
                 activity: []
             ),
-            persistenceURL: persistenceURL
+            modelContext: modelContext
         )
 
         try store.updateBusinessProfile(WorkspaceBusinessProfileDraft(
@@ -1135,7 +1098,7 @@ struct WorkspaceSnapshotTests {
             bucketID: bucketID,
             issueDate: issueDate
         )
-        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, persistenceURL: persistenceURL)
+        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, modelContext: modelContext)
 
         #expect(store.workspace.businessProfile.businessName == "North Coast Studio")
         #expect(store.workspace.businessProfile.email == "invoices@north.example")

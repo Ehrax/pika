@@ -22,7 +22,7 @@ struct ClientListColumn: View {
             } label: {
                 Label("Create a client", systemImage: "plus")
             }
-            .buttonStyle(PikaColumnHeaderIconButtonStyle())
+            .buttonStyle(PikaColumnHeaderIconButtonStyle(foreground: PikaColor.actionAccent))
             .help("Create a client")
         } controls: {
             EmptyView()

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftData
 
 protocol ProjectStore {
     func placeholderProjects() -> [ProjectRecord]
@@ -8,6 +9,28 @@ protocol ProjectStore {
 struct NoopProjectStore: ProjectStore {
     func placeholderProjects() -> [ProjectRecord] {
         []
+    }
+}
+
+@Model
+final class WorkspaceStorageRecord {
+    var id: UUID
+    var payload: Data
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        payload: Data,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.payload = payload
+        self.updatedAt = updatedAt
+    }
+
+    func apply(payload: Data) {
+        self.payload = payload
+        updatedAt = .now
     }
 }
 
@@ -35,21 +58,174 @@ enum WorkspaceStoreError: Error, Equatable {
 @Observable
 final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
-    private let persistenceURL: URL?
 
-    init(seed: WorkspaceSnapshot = .empty, persistenceURL: URL? = nil) {
-        self.persistenceURL = persistenceURL
-        workspace = persistenceURL.flatMap(Self.loadWorkspace(from:)) ?? seed
+    private let modelContext: ModelContext
+    private let storageRecordID: UUID
+
+    init(
+        seed: WorkspaceSnapshot = .empty,
+        modelContext: ModelContext? = nil,
+        storageRecordID: UUID = UUID(uuidString: "8C2E6FE9-EA65-4D16-91A0-CF1220195B79")!
+    ) {
+        self.storageRecordID = storageRecordID
+
+        if let modelContext {
+            self.modelContext = modelContext
+        } else {
+            self.modelContext = WorkspaceStore.makeDefaultModelContext()
+        }
+
+        let loadedWorkspace = Self.loadWorkspace(from: self.modelContext, recordID: storageRecordID) ?? seed
+        workspace = loadedWorkspace
         workspace.normalizeMissingHourlyRates()
+
+        if Self.loadWorkspace(from: self.modelContext, recordID: storageRecordID) == nil {
+            try? persistWorkspace()
+        }
     }
 
-    static func defaultPersistenceURL() -> URL? {
+    static func defaultStoreURL() -> URL? {
         FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first?
             .appendingPathComponent("Pika", isDirectory: true)
-            .appendingPathComponent("workspace.json")
+            .appendingPathComponent("workspace.store")
+    }
+
+    static func makeModelContainer(
+        inMemory: Bool,
+        storeURL: URL? = nil
+    ) throws -> ModelContainer {
+        let schema = Schema([WorkspaceStorageRecord.self])
+
+        let configuration: ModelConfiguration
+        if inMemory {
+            configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+        } else if let storeURL {
+            removeLegacyWorkspaceJSON(near: storeURL)
+            configuration = ModelConfiguration(
+                schema: schema,
+                url: storeURL,
+                cloudKitDatabase: .none
+            )
+        } else {
+            configuration = ModelConfiguration(
+                schema: schema,
+                cloudKitDatabase: .none
+            )
+        }
+
+        do {
+            return try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            guard !inMemory, let storeURL else {
+                throw error
+            }
+
+            AppTelemetry.persistenceContainerRecoveryAttempted(
+                storePath: storeURL.path,
+                reason: String(describing: error)
+            )
+            do {
+                try removeStoreArtifacts(at: storeURL)
+                let recovered = try ModelContainer(for: schema, configurations: [configuration])
+                AppTelemetry.persistenceContainerRecovered(storePath: storeURL.path)
+                return recovered
+            } catch {
+                AppTelemetry.persistenceContainerRecoveryFailed(
+                    storePath: storeURL.path,
+                    message: String(describing: error)
+                )
+                throw error
+            }
+        }
+    }
+
+    private static func removeStoreArtifacts(at storeURL: URL) throws {
+        let fileManager = FileManager.default
+        let directory = storeURL.deletingLastPathComponent()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let artifacts = [
+            storeURL,
+            URL(fileURLWithPath: storeURL.path + "-shm"),
+            URL(fileURLWithPath: storeURL.path + "-wal"),
+        ]
+
+        for artifact in artifacts where fileManager.fileExists(atPath: artifact.path) {
+            try fileManager.removeItem(at: artifact)
+        }
+    }
+
+    private static func removeLegacyWorkspaceJSON(near storeURL: URL) {
+        let legacyURL = storeURL.deletingLastPathComponent().appendingPathComponent("workspace.json")
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: legacyURL.path) else { return }
+        try? fileManager.removeItem(at: legacyURL)
+    }
+
+    private static func makeDefaultModelContext() -> ModelContext {
+        do {
+            let container = try makeModelContainer(inMemory: true)
+            return ModelContext(container)
+        } catch {
+            fatalError("Could not create WorkspaceStore ModelContext: \(error)")
+        }
+    }
+
+    private static func loadWorkspace(
+        from context: ModelContext,
+        recordID: UUID
+    ) -> WorkspaceSnapshot? {
+        var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
+            predicate: #Predicate { $0.id == recordID }
+        )
+        descriptor.fetchLimit = 1
+
+        guard let record = try? context.fetch(descriptor).first else {
+            return nil
+        }
+
+        return decodeWorkspace(from: record.payload)
+    }
+
+    func persistWorkspace() throws {
+        do {
+            let payload = try Self.encodeWorkspace(workspace)
+            var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
+                predicate: #Predicate { $0.id == storageRecordID }
+            )
+            descriptor.fetchLimit = 1
+
+            if let existingRecord = try modelContext.fetch(descriptor).first {
+                existingRecord.apply(payload: payload)
+            } else {
+                let record = WorkspaceStorageRecord(
+                    id: storageRecordID,
+                    payload: payload
+                )
+                modelContext.insert(record)
+            }
+
+            try modelContext.save()
+        } catch {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+    }
+
+    private static func encodeWorkspace(_ snapshot: WorkspaceSnapshot) throws -> Data {
+        let encoder = PropertyListEncoder()
+        encoder.outputFormat = .binary
+        return try encoder.encode(snapshot)
+    }
+
+    private static func decodeWorkspace(from payload: Data) -> WorkspaceSnapshot? {
+        try? PropertyListDecoder().decode(WorkspaceSnapshot.self, from: payload)
     }
 
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
@@ -93,28 +269,6 @@ final class WorkspaceStore {
         )
         AppTelemetry.settingsSaved()
         try persistWorkspace()
-    }
-
-    nonisolated private static func loadWorkspace(from url: URL) -> WorkspaceSnapshot? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(WorkspaceSnapshot.self, from: data)
-    }
-
-    func persistWorkspace() throws {
-        guard let persistenceURL else { return }
-
-        do {
-            try FileManager.default.createDirectory(
-                at: persistenceURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(workspace)
-            try data.write(to: persistenceURL, options: .atomic)
-        } catch {
-            throw WorkspaceStoreError.persistenceFailed
-        }
     }
 
     func nextInvoiceNumber(issueDate: Date) -> String {

@@ -11,15 +11,25 @@ struct CreateFixedCostSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section("Fixed cost") {
-                    DatePicker("Date", selection: .constant(date), displayedComponents: .date)
-                        .disabled(true)
-                    TextField("Description", text: $description)
-                    CurrencyAmountField("Amount", value: $amount, currencyCode: currencyCode)
+            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                PikaInputSheetSection(title: "Fixed cost") {
+                    PikaInputSheetFieldRow(label: "Date") {
+                        DatePicker("", selection: .constant(date), displayedComponents: .date)
+                            .labelsHidden()
+                            .disabled(true)
+                    }
+                    PikaInputSheetDivider()
+                    PikaInputSheetFieldRow(label: "Description") {
+                        TextField("Description", text: $description)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    PikaInputSheetDivider()
+                    PikaInputSheetFieldRow(label: "Amount") {
+                        CurrencyAmountField("Amount", value: $amount, currencyCode: currencyCode)
+                    }
                 }
             }
-            .formStyle(.grouped)
+            .padding(PikaSpacing.md)
 
             Divider()
 
@@ -50,6 +60,7 @@ struct CreateFixedCostSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 420, idealWidth: 460, minHeight: 300)
+        .background(PikaColor.background)
     }
 
     private var canSave: Bool {

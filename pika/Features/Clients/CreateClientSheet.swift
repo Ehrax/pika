@@ -21,32 +21,53 @@ struct CreateClientSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section("Client") {
-                    TextField("Name", text: $name)
-                    TextField("Billing email", text: $email)
-                    VStack(alignment: .leading, spacing: PikaSpacing.sm) {
-                        TextField("Street and number", text: $billingAddress.street)
-                        HStack(spacing: PikaSpacing.sm) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                    PikaInputSheetSection(title: "Client") {
+                        PikaInputSheetFieldRow(label: "Name") {
+                            TextField("Name", text: $name)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Billing email") {
+                            TextField("Billing email", text: $email)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Street and number") {
+                            TextField("Street and number", text: $billingAddress.street)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Postal code") {
                             TextField("Postal code", text: $billingAddress.postalCode)
-                                .frame(maxWidth: 120)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "City") {
                             TextField("City", text: $billingAddress.city)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Country") {
                             TextField("Country", text: $billingAddress.country)
-                                .frame(maxWidth: 180)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+
+                    PikaInputSheetSection(title: "Invoice defaults") {
+                        PikaInputSheetFieldRow(label: "Payment terms") {
+                            HStack(spacing: PikaSpacing.sm) {
+                                Text("\(defaultTermsDaysValue) days")
+                                    .font(PikaTypography.body.monospacedDigit())
+                                Stepper("", value: $defaultTermsDaysValue, in: 1...120)
+                                    .labelsHidden()
+                            }
                         }
                     }
                 }
-
-                Section("Invoice defaults") {
-                    Stepper(
-                        value: $defaultTermsDaysValue,
-                        in: 1...120
-                    ) {
-                        LabeledContent("Payment terms", value: "\(defaultTermsDaysValue) days")
-                    }
-                }
+                .padding(PikaSpacing.md)
             }
-            .formStyle(.grouped)
 
             Divider()
 
@@ -78,6 +99,7 @@ struct CreateClientSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 460, idealWidth: 500, minHeight: 360)
+        .background(PikaColor.background)
     }
 
     private var canSave: Bool {

@@ -91,12 +91,12 @@ launch_app() {
   local workspace_name="$WORKSPACE_SEED"
 
   local workspace_dir="$RUN_DATA_DIR/$workspace_name"
-  local workspace_path="$workspace_dir/workspace.json"
+  local workspace_store_path="$workspace_dir/workspace.store"
   mkdir -p "$workspace_dir"
-  rm -f "$workspace_path"
+  rm -f "$workspace_store_path" "$workspace_store_path-shm" "$workspace_store_path-wal"
 
   /usr/bin/open -n "$app_bundle" --args \
-    --pika-workspace-path "$workspace_path" \
+    --pika-workspace-store-path "$workspace_store_path" \
     --pika-workspace-seed "$WORKSPACE_SEED"
 }
 

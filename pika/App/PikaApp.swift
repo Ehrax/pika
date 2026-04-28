@@ -8,8 +8,9 @@ struct PikaApp: App {
     let sharedModelContainer: ModelContainer
 
     init() {
+        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         do {
-            sharedModelContainer = try Self.makeModelContainer(inMemory: false)
+            sharedModelContainer = try Self.makeModelContainer(inMemory: isRunningTests)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -34,11 +35,12 @@ struct PikaApp: App {
     static func makeModelContainer(inMemory: Bool) throws -> ModelContainer {
         let schema = Schema([
             ProjectRecord.self,
+            WorkspaceStorageRecord.self,
         ])
         let configuration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: inMemory ? .none : .automatic
+            cloudKitDatabase: .none
         )
 
         return try ModelContainer(for: schema, configurations: [configuration])

@@ -66,7 +66,6 @@ struct ProjectsFeatureView: View {
             } label: {
                 Label("New Project", systemImage: "plus")
             }
-            .disabled(workspace.clients.isEmpty)
             .help("Create a project")
         }
         .sheet(isPresented: $showsCreateProject) {
@@ -290,25 +289,46 @@ private struct CreateProjectSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Section("Project") {
-                    TextField("Project name", text: $name)
-
-                    Picker("Client", selection: $clientName) {
-                        ForEach(clients) { client in
-                            Text(client.name).tag(client.name)
+            ScrollView {
+                VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                    PikaInputSheetSection(title: "Project") {
+                        PikaInputSheetFieldRow(label: "Project name") {
+                            TextField("Project name", text: $name)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Client") {
+                            if clients.isEmpty {
+                                TextField("Client", text: $clientName)
+                                    .textFieldStyle(.roundedBorder)
+                            } else {
+                                Picker("Client", selection: $clientName) {
+                                    ForEach(clients) { client in
+                                        Text(client.name).tag(client.name)
+                                    }
+                                }
+                                .labelsHidden()
+                            }
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Currency") {
+                            CurrencyCodeField("Currency", text: $currencyCode)
                         }
                     }
 
-                    CurrencyCodeField("Currency", text: $currencyCode)
+                    PikaInputSheetSection(title: "Starter bucket") {
+                        PikaInputSheetFieldRow(label: "Bucket name") {
+                            TextField("Bucket name", text: $firstBucketName)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        PikaInputSheetDivider()
+                        PikaInputSheetFieldRow(label: "Hourly rate") {
+                            CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
+                        }
+                    }
                 }
-
-                Section("Starter bucket") {
-                    TextField("Bucket name", text: $firstBucketName)
-                    CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
-                }
+                .padding(PikaSpacing.md)
             }
-            .formStyle(.grouped)
 
             Divider()
 
@@ -341,6 +361,7 @@ private struct CreateProjectSheet: View {
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 460, idealWidth: 500, minHeight: 360)
+        .background(PikaColor.background)
     }
 
     private var canSave: Bool {
