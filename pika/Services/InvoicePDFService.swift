@@ -95,7 +95,9 @@ struct PaymentQRCodePayload: Equatable {
         currencyCode: String,
         remittanceText: String
     ) throws {
-        let cleanRecipientName = recipientName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanRecipientName = recipientName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
         let cleanIBAN = iban
             .filter { !$0.isWhitespace }
             .uppercased()
@@ -103,7 +105,9 @@ struct PaymentQRCodePayload: Equatable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .uppercased()
         let cleanCurrencyCode = currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        let cleanRemittanceText = remittanceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanRemittanceText = remittanceText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
 
         guard !cleanRecipientName.isEmpty else { throw Error.missingRecipientName }
         guard !cleanIBAN.isEmpty else { throw Error.missingIBAN }
