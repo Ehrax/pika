@@ -165,8 +165,6 @@ private struct ArchivedProjectsHeader: View {
                     .foregroundStyle(PikaColor.textMuted)
             }
 
-            Spacer(minLength: PikaSpacing.md)
-
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(PikaColor.textSecondary)
@@ -175,7 +173,7 @@ private struct ArchivedProjectsHeader: View {
                 .clipShape(Circle())
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
         }
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .frame(minHeight: 56, alignment: .leading)
         .padding(.horizontal, PikaSpacing.md)
         .padding(.vertical, PikaSpacing.sm)
         .background(PikaColor.surfaceAlt)
@@ -231,13 +229,12 @@ private struct CreateProjectSheet: View {
                         }
                     }
 
-                    TextField("Currency", text: $currencyCode)
+                    CurrencyCodeField("Currency", text: $currencyCode)
                 }
 
                 Section("Starter bucket") {
                     TextField("Bucket name", text: $firstBucketName)
-                    TextField("Hourly rate", value: $hourlyRate, format: .number.precision(.fractionLength(0...2)))
-                        .monospacedDigit()
+                    CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
                 }
             }
             .formStyle(.grouped)
@@ -245,10 +242,13 @@ private struct CreateProjectSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -256,7 +256,7 @@ private struct CreateProjectSheet: View {
                     onSave(WorkspaceProjectDraft(
                         name: name,
                         clientName: clientName,
-                        currencyCode: currencyCode,
+                        currencyCode: CurrencyTextFormatting.normalizedInput(currencyCode),
                         firstBucketName: firstBucketName,
                         hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
                     ))
@@ -264,6 +264,7 @@ private struct CreateProjectSheet: View {
                     Label("Create Project", systemImage: "folder.badge.plus")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(!canSave)
             }
             .padding(PikaSpacing.md)

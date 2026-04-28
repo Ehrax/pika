@@ -179,10 +179,13 @@ private struct CreateClientSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -197,6 +200,7 @@ private struct CreateClientSheet: View {
                     Label("Create Client", systemImage: "person.crop.circle.badge.plus")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(!canSave)
             }
             .padding(PikaSpacing.md)
@@ -282,6 +286,7 @@ private struct ClientDetailSurface: View {
                         } label: {
                             Label("Revert", systemImage: "arrow.uturn.backward")
                         }
+                        .buttonStyle(.pikaAction(.neutral))
                         .disabled(!hasChanges)
                         .help("Revert client changes")
 
@@ -290,6 +295,7 @@ private struct ClientDetailSurface: View {
                         } label: {
                             Label("Save", systemImage: "checkmark")
                         }
+                        .buttonStyle(.pikaAction(.primary))
                         .disabled(!hasChanges || !canSave)
                         .help("Save client")
 

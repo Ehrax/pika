@@ -31,7 +31,7 @@ struct SettingsView: View {
             }
 
             Section("Defaults") {
-                TextField("Currency", text: $draft.currencyCode)
+                CurrencyCodeField("Currency", text: $draft.currencyCode)
                 TextField("Payment terms", value: $draft.defaultTermsDays, format: .number)
             }
 

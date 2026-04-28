@@ -70,6 +70,12 @@ struct PikaScaffoldTests {
         #expect(formatter.string(fromMinorUnits: 12345) == "EUR 123.45")
     }
 
+    @Test func currencyTextFormattingSeparatesPastedAmountsFromCodes() {
+        #expect(CurrencyTextFormatting.normalizedInput("500EUR") == "500 EUR")
+        #expect(CurrencyTextFormatting.normalizedInput("50.00eur") == "50.00 EUR")
+        #expect(CurrencyTextFormatting.normalizedInput(" EUR ") == "EUR")
+    }
+
     @Test func projectRecordDefaultsArePikaSpecificAndFlexible() {
         let createdAt = Date(timeIntervalSince1970: 1_776_000_000)
         let project = ProjectRecord(title: "Client work", createdAt: createdAt)

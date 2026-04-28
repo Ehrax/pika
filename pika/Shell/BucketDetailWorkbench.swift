@@ -7,6 +7,7 @@ struct BucketDetailWorkbench: View {
     let canMarkReady: Bool
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
     let onAddFixedCost: () -> Void
+    let onDeleteEntry: (WorkspaceBucketEntryRowProjection) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: () -> Void
     let onOpenInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
@@ -40,7 +41,8 @@ struct BucketDetailWorkbench: View {
                     draftDate: draftDate,
                     showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked,
                     onAddFixedCost: onAddFixedCost,
-                    onAddEntry: onAddEntry
+                    onAddEntry: onAddEntry,
+                    onDeleteEntry: onDeleteEntry
                 )
 
                 if let invoiceRow {
@@ -86,9 +88,6 @@ private struct BucketWorkbenchHeader: View {
                 Text(projection.totalLabel)
                     .font(.system(size: 28, weight: .semibold).monospacedDigit())
                     .foregroundStyle(PikaColor.textPrimary)
-                Text("\(projection.billableSummary) · \(projection.nonBillableSummary)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(PikaColor.textMuted)
             }
         }
     }
@@ -163,7 +162,7 @@ private struct ActiveBucketSummary: View {
             } label: {
                 Label("Mark Ready", systemImage: "checkmark.circle")
             }
-            .buttonStyle(InvoiceSummaryButtonStyle(tone: .workflow))
+            .buttonStyle(.pikaAction(.success))
             .disabled(!canMarkReady)
             .help(canMarkReady ? "Mark ready for invoicing" : "Add billable value before invoicing")
         }
@@ -184,76 +183,16 @@ private struct InvoiceBucketActions: View {
             } label: {
                 Label("Open PDF", systemImage: "doc.text.magnifyingglass")
             }
-            .buttonStyle(InvoiceSummaryButtonStyle(tone: .document))
+            .buttonStyle(.pikaAction(.neutral))
 
             Button {
                 onExportPDF()
             } label: {
                 Label("Export", systemImage: "arrow.down.doc")
             }
-            .buttonStyle(InvoiceSummaryButtonStyle(tone: .document))
+            .buttonStyle(.pikaAction(.neutral))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct InvoiceSummaryButtonStyle: ButtonStyle {
-    enum Tone {
-        case document
-        case workflow
-        case destructive
-    }
-
-    let tone: Tone
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(PikaTypography.small.weight(.medium))
-            .labelStyle(.titleAndIcon)
-            .foregroundStyle(foreground.opacity(isEnabled ? 1 : 0.38))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(background.opacity(isEnabled ? 1 : 0.45))
-            .clipShape(RoundedRectangle(cornerRadius: PikaRadius.sm))
-            .overlay {
-                RoundedRectangle(cornerRadius: PikaRadius.sm)
-                    .stroke(border.opacity(isEnabled ? 1 : 0.5), lineWidth: 1)
-            }
-            .opacity(configuration.isPressed ? 0.78 : 1)
-    }
-
-    private var foreground: Color {
-        switch tone {
-        case .document:
-            .white
-        case .workflow:
-            PikaColor.actionAccent
-        case .destructive:
-            PikaColor.danger
-        }
-    }
-
-    private var background: Color {
-        switch tone {
-        case .document:
-            .white.opacity(0.07)
-        case .workflow:
-            PikaColor.actionAccentMuted
-        case .destructive:
-            PikaColor.dangerMuted
-        }
-    }
-
-    private var border: Color {
-        switch tone {
-        case .document:
-            .white.opacity(0.16)
-        case .workflow:
-            PikaColor.actionAccent.opacity(0.34)
-        case .destructive:
-            PikaColor.danger.opacity(0.34)
-        }
     }
 }
 
@@ -300,7 +239,7 @@ private struct ReadyBucketSummary: View {
             } label: {
                 Label("Create Invoice", systemImage: "doc.badge.plus")
             }
-            .buttonStyle(InvoiceSummaryButtonStyle(tone: .document))
+            .buttonStyle(.pikaAction(.primary))
         }
         .padding(PikaSpacing.md)
         .background(Color.black)

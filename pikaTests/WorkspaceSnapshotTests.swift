@@ -507,6 +507,89 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func inMemoryWorkspaceStoreRemovesArchivedBuckets() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000853")!
+        let archivedBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000853")!
+        let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000854")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Removal project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: archivedBucketID,
+                            name: "Old scope",
+                            status: .archived,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                        WorkspaceBucket(
+                            id: openBucketID,
+                            name: "Current scope",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+        let removeDate = Date.pikaDate(year: 2026, month: 4, day: 29)
+
+        try store.removeBucket(projectID: projectID, bucketID: archivedBucketID, occurredAt: removeDate)
+
+        #expect(store.workspace.projects.first?.buckets.map(\.id) == [openBucketID])
+        #expect(store.workspace.activity.map(\.message) == ["Old scope removed"])
+        #expect(store.workspace.activity.map(\.detail) == ["Removal project"])
+        #expect(store.workspace.activity.map(\.occurredAt) == [removeDate])
+    }
+
+    @Test func inMemoryWorkspaceStoreOnlyRemovesArchivedBuckets() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000854")!
+        let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000855")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Removal guard project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: openBucketID,
+                            name: "Current scope",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.open)) {
+            try store.removeBucket(projectID: projectID, bucketID: openBucketID)
+        }
+        #expect(store.workspace.projects.first?.buckets.map(\.id) == [openBucketID])
+        #expect(store.workspace.activity.isEmpty)
+    }
+
     @Test func inMemoryWorkspaceStoreUpdatesProjectMetadataWithoutRewritingHistory() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000861")!
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000861")!
@@ -1143,6 +1226,128 @@ struct WorkspaceSnapshotTests {
         #expect(bucket.effectiveFixedCostMinorUnits == 5_000)
         #expect(bucket.effectiveTotalMinorUnits == 25_000)
         #expect(store.workspace.activity.map(\.message) == ["Ready with costs cost added"])
+    }
+
+    @Test func deletingTimeEntryRemovesItFromOpenBucketTotals() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000804")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000804")!
+        let keptEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000804")!
+        let deletedEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000805")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Delete rows",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Open workbench",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: keptEntryID,
+                                    date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Kept polish",
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                                WorkspaceTimeEntry(
+                                    id: deletedEntryID,
+                                    date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                                    startTime: "10:00",
+                                    endTime: "12:00",
+                                    durationMinutes: 120,
+                                    description: "Removed polish",
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        try store.deleteEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: deletedEntryID,
+            kind: .time,
+            isBillable: true,
+            occurredAt: Date.pikaDate(year: 2026, month: 4, day: 27)
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.timeEntries.map(\.id) == [keptEntryID])
+        #expect(bucket.effectiveBillableMinutes == 60)
+        #expect(bucket.effectiveTotalMinorUnits == 10_000)
+        #expect(store.workspace.activity.map(\.message) == ["Open workbench entry deleted"])
+    }
+
+    @Test func deletingFixedCostEntryRemovesItFromReadyBucketAndReopensIt() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000805")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000805")!
+        let deletedEntryID = UUID(uuidString: "60000000-0000-0000-0000-000000000805")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            clients: WorkspaceSnapshot.sample.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Delete costs",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready workbench",
+                            status: .ready,
+                            totalMinorUnits: 20_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            fixedCostEntries: [
+                                WorkspaceFixedCostEntry(
+                                    id: deletedEntryID,
+                                    date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                                    description: "Prototype hosting",
+                                    amountMinorUnits: 5_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        try store.deleteEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: deletedEntryID,
+            kind: .fixedCost,
+            isBillable: true,
+            occurredAt: Date.pikaDate(year: 2026, month: 4, day: 27)
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.status == .open)
+        #expect(bucket.fixedCostEntries.isEmpty)
+        #expect(bucket.effectiveFixedCostMinorUnits == 0)
+        #expect(bucket.effectiveTotalMinorUnits == 0)
+        #expect(store.workspace.activity.map(\.message) == ["Ready workbench entry deleted"])
     }
 
     @Test func sampleWorkspaceExposesRecentActivityNewestFirst() {

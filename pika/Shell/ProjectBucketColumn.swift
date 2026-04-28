@@ -6,6 +6,8 @@ struct ProjectBucketColumn: View {
     let selectedBucketID: WorkspaceBucket.ID
     let onSelect: (WorkspaceBucket.ID) -> Void
     let onCreateBucket: () -> Void
+    let onArchiveBucket: (WorkspaceBucket.ID) -> Void
+    let onRemoveBucket: (WorkspaceBucket.ID) -> Void
 
     var body: some View {
         PikaSecondarySidebarColumn(
@@ -33,6 +35,38 @@ struct ProjectBucketColumn: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if !project.isArchived, row.status == .archived {
+                            Button(role: .destructive) {
+                                onRemoveBucket(row.id)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        } else if !project.isArchived, !row.status.isInvoiceLocked {
+                            Button {
+                                onArchiveBucket(row.id)
+                            } label: {
+                                Label("Archive", systemImage: "archivebox")
+                            }
+                            .tint(PikaColor.warning)
+                        }
+                    }
+                    .contextMenu {
+                        if !project.isArchived, row.status == .archived {
+                            Button(role: .destructive) {
+                                onRemoveBucket(row.id)
+                            } label: {
+                                Label("Remove Bucket", systemImage: "trash")
+                            }
+                        } else if !project.isArchived, !row.status.isInvoiceLocked {
+                            Button {
+                                onArchiveBucket(row.id)
+                            } label: {
+                                Label("Archive Bucket", systemImage: "archivebox")
+                            }
+                            .tint(PikaColor.warning)
+                        }
+                    }
                 }
             }
         }

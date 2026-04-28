@@ -90,12 +90,20 @@ enum AppTelemetry {
         projectLogger.info("bucket.restored bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }
 
+    static func bucketRemoved(bucketName: String, projectName: String) {
+        projectLogger.info("bucket.removed bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
+    }
+
     static func bucketTimeEntryAdded(bucketName: String, projectName: String) {
         projectLogger.info("bucket.time_entry_added bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }
 
     static func bucketFixedCostAdded(bucketName: String, projectName: String) {
         projectLogger.info("bucket.fixed_cost_added bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
+    }
+
+    static func bucketEntryDeleted(bucketName: String, projectName: String) {
+        projectLogger.info("bucket.entry_deleted bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }
 
     static func bucketFinalized(bucketName: String, projectName: String) {

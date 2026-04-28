@@ -22,7 +22,7 @@ struct ProjectEditorSheet: View {
         self.onSave = onSave
         _name = State(initialValue: project.name)
         _clientName = State(initialValue: project.clientName)
-        _currencyCode = State(initialValue: project.currencyCode)
+        _currencyCode = State(initialValue: CurrencyTextFormatting.normalizedInput(project.currencyCode))
     }
 
     var body: some View {
@@ -41,7 +41,7 @@ struct ProjectEditorSheet: View {
                         }
                     }
 
-                    TextField("Currency", text: $currencyCode)
+                    CurrencyCodeField("Currency", text: $currencyCode)
                 }
             }
             .formStyle(.grouped)
@@ -49,10 +49,13 @@ struct ProjectEditorSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -60,12 +63,13 @@ struct ProjectEditorSheet: View {
                     onSave(WorkspaceProjectUpdateDraft(
                         name: name,
                         clientName: clientName,
-                        currencyCode: currencyCode
+                        currencyCode: CurrencyTextFormatting.normalizedInput(currencyCode)
                     ))
                 } label: {
                     Label("Save Project", systemImage: "checkmark")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(!canSave)
             }
             .padding(PikaSpacing.md)

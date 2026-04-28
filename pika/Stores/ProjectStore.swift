@@ -123,6 +123,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case bucketLocked(BucketStatus)
     case invalidTimeEntry
     case invalidFixedCost
+    case entryNotFound
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
 }
 
@@ -234,7 +235,7 @@ final class WorkspaceStore {
         let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
         let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -257,7 +258,7 @@ final class WorkspaceStore {
             address: address,
             invoicePrefix: invoicePrefix.uppercased(),
             nextInvoiceNumber: draft.nextInvoiceNumber,
-            currencyCode: currencyCode.uppercased(),
+            currencyCode: currencyCode,
             paymentDetails: paymentDetails,
             taxNote: taxNote,
             defaultTermsDays: draft.defaultTermsDays
@@ -302,6 +303,29 @@ final class WorkspaceStore {
         )
     }
 
+    func removeBucket(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        occurredAt: Date = .now
+    ) throws {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard bucket.status == .archived else {
+            throw WorkspaceStoreError.bucketLocked(bucket.status)
+        }
+
+        workspace.projects[projectIndex].buckets.remove(at: bucketIndex)
+        appendActivity(
+            message: "\(bucket.name) removed",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.bucketRemoved(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
+    }
+
     @discardableResult
     func updateProject(
         projectID: WorkspaceProject.ID,
@@ -311,7 +335,7 @@ final class WorkspaceStore {
         let index = try projectIndex(projectID)
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
 
         guard !projectName.isEmpty, !clientName.isEmpty, !currencyCode.isEmpty else {
             throw WorkspaceStoreError.invalidProject
@@ -319,7 +343,7 @@ final class WorkspaceStore {
 
         workspace.projects[index].name = projectName
         workspace.projects[index].clientName = clientName
-        workspace.projects[index].currencyCode = currencyCode.uppercased()
+        workspace.projects[index].currencyCode = currencyCode
         let project = workspace.projects[index]
 
         appendActivity(
@@ -339,7 +363,7 @@ final class WorkspaceStore {
     ) throws -> WorkspaceProject {
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currencyCode = draft.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !projectName.isEmpty,
@@ -355,7 +379,7 @@ final class WorkspaceStore {
             id: UUID(),
             name: projectName,
             clientName: clientName,
-            currencyCode: currencyCode.uppercased(),
+            currencyCode: currencyCode,
             isArchived: false,
             buckets: [
                 WorkspaceBucket(
@@ -552,6 +576,40 @@ final class WorkspaceStore {
         try persistWorkspace()
     }
 
+    func deleteEntry(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        rowID: UUID,
+        kind: WorkspaceBucketEntryKind,
+        isBillable: Bool,
+        occurredAt: Date = .now
+    ) throws {
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard !bucket.status.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucket.status)
+        }
+
+        guard bucket.deleteEntry(rowID: rowID, kind: kind, isBillable: isBillable) else {
+            throw WorkspaceStoreError.entryNotFound
+        }
+
+        if bucket.status == .ready {
+            bucket.status = .open
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex] = bucket
+        appendActivity(
+            message: "\(bucket.name) entry deleted",
+            detail: workspace.projects[projectIndex].name,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.bucketEntryDeleted(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
+        try persistWorkspace()
+    }
+
     @discardableResult
     func finalizeInvoice(
         projectID: WorkspaceProject.ID,
@@ -590,7 +648,7 @@ final class WorkspaceStore {
             status: .finalized,
             totalMinorUnits: bucket.effectiveTotalMinorUnits,
             lineItems: lineItems,
-            currencyCode: draft.currencyCode,
+            currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
             note: draft.note.isEmpty ? nil : draft.note
         )
 
@@ -816,6 +874,54 @@ final class WorkspaceStore {
 }
 
 private extension WorkspaceBucket {
+    mutating func deleteEntry(rowID: UUID, kind: WorkspaceBucketEntryKind, isBillable: Bool) -> Bool {
+        let hadRowLevelEntries = hasRowLevelEntries
+
+        switch kind {
+        case .time:
+            if let index = timeEntries.firstIndex(where: { $0.id == rowID }) {
+                timeEntries.remove(at: index)
+                clearLegacyTotalsIfLastRowLevelEntryWasDeleted(hadRowLevelEntries: hadRowLevelEntries)
+                return true
+            }
+
+            guard !hasRowLevelEntries else { return false }
+            if isBillable, rowID == id, billableMinutes > 0 {
+                totalMinorUnits = fixedCostMinorUnits
+                billableMinutes = 0
+                return true
+            }
+
+            if !isBillable, nonBillableMinutes > 0 {
+                nonBillableMinutes = 0
+                return true
+            }
+
+            return false
+
+        case .fixedCost:
+            if let index = fixedCostEntries.firstIndex(where: { $0.id == rowID }) {
+                fixedCostEntries.remove(at: index)
+                clearLegacyTotalsIfLastRowLevelEntryWasDeleted(hadRowLevelEntries: hadRowLevelEntries)
+                return true
+            }
+
+            guard !hasRowLevelEntries, fixedCostMinorUnits > 0 else { return false }
+            totalMinorUnits = max(totalMinorUnits - fixedCostMinorUnits, 0)
+            fixedCostMinorUnits = 0
+            return true
+        }
+    }
+
+    mutating func clearLegacyTotalsIfLastRowLevelEntryWasDeleted(hadRowLevelEntries: Bool) {
+        guard hadRowLevelEntries, !hasRowLevelEntries else { return }
+
+        totalMinorUnits = 0
+        billableMinutes = 0
+        fixedCostMinorUnits = 0
+        nonBillableMinutes = 0
+    }
+
     mutating func backfillLegacyRowsForEditing(on date: Date) {
         guard !hasRowLevelEntries else { return }
 

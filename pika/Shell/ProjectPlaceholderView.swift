@@ -17,6 +17,8 @@ struct ProjectPlaceholderView: View {
     @State private var showsCreateBucket = false
     @State private var showsFixedCostSheet = false
     @State private var showsArchiveBucketConfirmation = false
+    @State private var showsRemoveBucketConfirmation = false
+    @State private var bucketPendingRemovalID: WorkspaceBucket.ID?
     @State private var showsEditProject = false
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
@@ -55,7 +57,16 @@ struct ProjectPlaceholderView: View {
                             selectedBucketID = bucketID
                             AppTelemetry.projectBucketSelected(projectName: project.name)
                         },
-                        onCreateBucket: { showsCreateBucket = true }
+                        onCreateBucket: { showsCreateBucket = true },
+                        onArchiveBucket: { bucketID in
+                            selectedBucketID = bucketID
+                            showsArchiveBucketConfirmation = true
+                        },
+                        onRemoveBucket: { bucketID in
+                            selectedBucketID = bucketID
+                            bucketPendingRemovalID = bucketID
+                            showsRemoveBucketConfirmation = true
+                        }
                     )
                 } detail: {
                     BucketDetailWorkbench(
@@ -71,6 +82,13 @@ struct ProjectPlaceholderView: View {
                             )
                         },
                         onAddFixedCost: { showsFixedCostSheet = true },
+                        onDeleteEntry: { row in
+                            deleteEntry(
+                                projectID: project.id,
+                                bucketID: projection.selectedBucket.id,
+                                row: row
+                            )
+                        },
                         onMarkReady: markSelectedBucketReady,
                         onCreateInvoice: {
                             prepareInvoiceDraft(
@@ -121,6 +139,21 @@ struct ProjectPlaceholderView: View {
         } message: {
             Text("Archived buckets stay in the project history, but are locked for new entries.")
         }
+        .confirmationDialog(
+            "Remove this bucket?",
+            isPresented: $showsRemoveBucketConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Bucket", role: .destructive) {
+                removePendingBucket()
+            }
+
+            Button("Cancel", role: .cancel) {
+                bucketPendingRemovalID = nil
+            }
+        } message: {
+            Text("Removed buckets are deleted from this project. This action cannot be undone.")
+        }
         .sheet(item: $invoiceDraft) { presentation in
             CreateInvoiceConfirmationSheet(
                 presentation: presentation,
@@ -143,6 +176,7 @@ struct ProjectPlaceholderView: View {
         .sheet(isPresented: $showsCreateBucket) {
             CreateBucketSheet(
                 defaultRateMinorUnits: selectedBucket?.hourlyRateMinorUnits ?? 8_000,
+                currencyCode: project?.currencyCode ?? "EUR",
                 onCancel: { showsCreateBucket = false },
                 onSave: createBucket
             )
@@ -150,6 +184,7 @@ struct ProjectPlaceholderView: View {
         .sheet(isPresented: $showsFixedCostSheet) {
             CreateFixedCostSheet(
                 date: currentDate,
+                currencyCode: project?.currencyCode ?? "EUR",
                 onCancel: { showsFixedCostSheet = false },
                 onSave: addFixedCost
             )
@@ -193,7 +228,7 @@ struct ProjectPlaceholderView: View {
         }
         .disabled(!canMarkSelectedBucketReady)
         .help("Mark the selected bucket ready for invoicing")
-        .tint(PikaColor.textPrimary)
+        .tint(PikaColor.success)
     }
 
     private var bucketActionsMenu: some View {
@@ -205,6 +240,7 @@ struct ProjectPlaceholderView: View {
                     Label("Mark Sent", systemImage: "paperplane")
                 }
                 .disabled(!invoiceRow.canMarkSent)
+                .tint(PikaColor.actionAccent)
 
                 Button {
                     markInvoicePaid(invoiceRow)
@@ -212,6 +248,7 @@ struct ProjectPlaceholderView: View {
                     Label("Mark Paid", systemImage: "checkmark.seal")
                 }
                 .disabled(!invoiceRow.canMarkPaid)
+                .tint(PikaColor.success)
 
                 Button(role: .destructive) {
                     cancelInvoice(invoiceRow)
@@ -236,6 +273,18 @@ struct ProjectPlaceholderView: View {
                 )
             }
             .disabled(!canArchiveOrRestoreSelectedBucket)
+            .tint(selectedBucket?.status == .archived ? PikaColor.success : PikaColor.warning)
+
+            if selectedBucket?.status == .archived {
+                Divider()
+
+                Button(role: .destructive) {
+                    prepareRemoveSelectedBucket()
+                } label: {
+                    Label("Remove Bucket", systemImage: "trash")
+                }
+                .disabled(!canRemoveSelectedBucket)
+            }
         } label: {
             Label("Bucket Actions", systemImage: "ellipsis.circle")
         }
@@ -313,6 +362,11 @@ struct ProjectPlaceholderView: View {
         return selectedBucket.status == .archived || !selectedBucket.status.isInvoiceLocked
     }
 
+    private var canRemoveSelectedBucket: Bool {
+        guard project?.isArchived == false, let selectedBucket else { return false }
+        return selectedBucket.status == .archived
+    }
+
     private func markSelectedBucketReady() {
         guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
 
@@ -359,6 +413,26 @@ struct ProjectPlaceholderView: View {
 
         do {
             try workspaceStore.restoreBucket(projectID: project.id, bucketID: bucketID)
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func prepareRemoveSelectedBucket() {
+        guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
+        bucketPendingRemovalID = bucketID
+        showsRemoveBucketConfirmation = true
+    }
+
+    private func removePendingBucket() {
+        guard let project, let bucketID = bucketPendingRemovalID ?? project.normalizedBucketID(selectedBucketID) else { return }
+
+        do {
+            try workspaceStore.removeBucket(projectID: project.id, bucketID: bucketID)
+            if selectedBucketID == bucketID {
+                selectedBucketID = nil
+            }
+            bucketPendingRemovalID = nil
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
         }
@@ -414,6 +488,24 @@ struct ProjectPlaceholderView: View {
                 projectID: projectID,
                 bucketID: bucketID,
                 draft: draft
+            )
+        } catch {
+            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+        }
+    }
+
+    private func deleteEntry(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        row: WorkspaceBucketEntryRowProjection
+    ) {
+        do {
+            try workspaceStore.deleteEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: row.id,
+                kind: row.kind,
+                isBillable: row.isBillable
             )
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
@@ -594,6 +686,7 @@ private struct InvoiceDraftPresentation: Identifiable {
 
 private struct CreateBucketSheet: View {
     let defaultRateMinorUnits: Int
+    let currencyCode: String
     let onCancel: () -> Void
     let onSave: (WorkspaceBucketDraft) -> Void
 
@@ -602,10 +695,12 @@ private struct CreateBucketSheet: View {
 
     init(
         defaultRateMinorUnits: Int,
+        currencyCode: String,
         onCancel: @escaping () -> Void,
         onSave: @escaping (WorkspaceBucketDraft) -> Void
     ) {
         self.defaultRateMinorUnits = defaultRateMinorUnits
+        self.currencyCode = currencyCode
         self.onCancel = onCancel
         self.onSave = onSave
         _hourlyRate = State(initialValue: Double(defaultRateMinorUnits) / 100)
@@ -616,8 +711,7 @@ private struct CreateBucketSheet: View {
             Form {
                 Section("Bucket") {
                     TextField("Bucket name", text: $name)
-                    TextField("Hourly rate", value: $hourlyRate, format: .number.precision(.fractionLength(0...2)))
-                        .monospacedDigit()
+                    CurrencyAmountField("Hourly rate", value: $hourlyRate, currencyCode: currencyCode)
                 }
             }
             .formStyle(.grouped)
@@ -625,10 +719,13 @@ private struct CreateBucketSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -641,6 +738,7 @@ private struct CreateBucketSheet: View {
                     Label("Create Bucket", systemImage: "tray.full")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(!canSave)
             }
             .padding(PikaSpacing.md)
@@ -655,6 +753,7 @@ private struct CreateBucketSheet: View {
 
 private struct CreateFixedCostSheet: View {
     let date: Date
+    let currencyCode: String
     let onCancel: () -> Void
     let onSave: (WorkspaceFixedCostDraft) -> Void
 
@@ -668,8 +767,7 @@ private struct CreateFixedCostSheet: View {
                     DatePicker("Date", selection: .constant(date), displayedComponents: .date)
                         .disabled(true)
                     TextField("Description", text: $description)
-                    TextField("Amount", value: $amount, format: .number.precision(.fractionLength(0...2)))
-                        .monospacedDigit()
+                    CurrencyAmountField("Amount", value: $amount, currencyCode: currencyCode)
                 }
             }
             .formStyle(.grouped)
@@ -677,10 +775,13 @@ private struct CreateFixedCostSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -694,6 +795,7 @@ private struct CreateFixedCostSheet: View {
                     Label("Add Cost", systemImage: "plus.square")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(!canSave)
             }
             .padding(PikaSpacing.md)
@@ -737,7 +839,7 @@ private struct CreateInvoiceConfirmationSheet: View {
                     TextField("Invoice number", text: $draft.invoiceNumber)
                     DatePicker("Issue date", selection: $draft.issueDate, displayedComponents: .date)
                     DatePicker("Due date", selection: $draft.dueDate, displayedComponents: .date)
-                    TextField("Currency", text: $draft.currencyCode)
+                    CurrencyCodeField("Currency", text: $draft.currencyCode)
                     TextField("Note", text: $draft.note, axis: .vertical)
                         .lineLimit(2...5)
                 }
@@ -770,10 +872,13 @@ private struct CreateInvoiceConfirmationSheet: View {
             Divider()
 
             HStack {
-                Button("Cancel") {
+                Button {
                     onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
 
                 Spacer()
 
@@ -783,6 +888,7 @@ private struct CreateInvoiceConfirmationSheet: View {
                     Label("Save as finalized", systemImage: "checkmark.circle")
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
                 .disabled(draft.invoiceNumber.isEmpty || draft.recipientName.isEmpty)
             }
             .padding(PikaSpacing.md)
