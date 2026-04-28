@@ -4,8 +4,8 @@ import Testing
 
 struct WorkspaceSnapshotTests {
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
-        let workspace = WorkspaceSnapshot.sample
-        let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
+        let workspace = WorkspaceFixtures.demoWorkspace
+        let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
 
         #expect(summary.outstandingMinorUnits == 245_000)
         #expect(summary.overdueMinorUnits == 125_000)
@@ -21,15 +21,15 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func dashboardRevenueHistoryOnlyIncludesPaidInvoices() {
-        let workspace = WorkspaceSnapshot.sample
-        let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
+        let workspace = WorkspaceFixtures.demoWorkspace
+        let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
 
         #expect(summary.revenueHistory.isEmpty)
         #expect(summary.thisMonthMinorUnits == 0)
     }
 
     @Test func dashboardRevenueHistoryReflectsPaidInvoicesByIssueMonth() {
-        var workspace = WorkspaceSnapshot.sample
+        var workspace = WorkspaceFixtures.demoWorkspace
         let projectIndex = workspace.projects.firstIndex { $0.name == "Launch sprint" }!
 
         workspace.projects[projectIndex].invoices.append(
@@ -59,7 +59,7 @@ struct WorkspaceSnapshotTests {
             )
         )
 
-        let summary = workspace.dashboardSummary(on: WorkspaceSnapshot.sampleToday)
+        let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
 
         #expect(summary.revenueHistory.map(\.label) == ["EHX-2026-902"])
         #expect(summary.revenueHistory.map(\.amountMinorUnits) == [95_000])
@@ -75,7 +75,7 @@ struct WorkspaceSnapshotTests {
 
         let visiblePoints = DashboardRevenueRange.sevenDays.visiblePoints(
             from: points,
-            endingAt: WorkspaceSnapshot.sampleToday
+            endingAt: WorkspaceFixtures.today
         )
 
         #expect(visiblePoints.map(\.label) == [
@@ -107,7 +107,7 @@ struct WorkspaceSnapshotTests {
 
         let visiblePoints = DashboardRevenueRange.all.visiblePoints(
             from: points,
-            endingAt: WorkspaceSnapshot.sampleToday
+            endingAt: WorkspaceFixtures.today
         )
 
         #expect(DashboardRevenueRange.all.rawValue == "All")
@@ -117,7 +117,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func sampleWorkspaceExposesProjectCountsForProjectsSurface() throws {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
 
         #expect(workspace.activeProjects.map(\.name) == [
             "Launch sprint",
@@ -130,18 +130,18 @@ struct WorkspaceSnapshotTests {
         let launchSprint = try #require(workspace.project(named: "Launch sprint"))
         #expect(launchSprint.bucketCount == 3)
         #expect(launchSprint.readyBucketCount == 1)
-        #expect(launchSprint.overdueInvoiceCount(on: WorkspaceSnapshot.sampleToday) == 0)
+        #expect(launchSprint.overdueInvoiceCount(on: WorkspaceFixtures.today) == 0)
         #expect(launchSprint.readyToInvoiceMinorUnits == 250_000)
 
         let brandRefresh = try #require(workspace.project(named: "Brand refresh"))
-        #expect(brandRefresh.overdueInvoiceCount(on: WorkspaceSnapshot.sampleToday) == 1)
+        #expect(brandRefresh.overdueInvoiceCount(on: WorkspaceFixtures.today) == 1)
     }
 
     @Test func sampleWorkspaceStoreProvidesBusinessProfileForSettings() {
-        let store = WorkspaceStore(seed: .sample)
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
         let workspace = store.workspace
 
-        #expect(workspace.businessProfile.businessName == "Ehrax Studio")
+        #expect(workspace.businessProfile.businessName == WorkspaceFixtures.demoBusinessProfile.businessName)
         #expect(workspace.businessProfile.invoicePrefix == "EHX")
         #expect(workspace.businessProfile.nextInvoiceNumber == 5)
         #expect(workspace.businessProfile.currencyCode == "EUR")
@@ -153,7 +153,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func bikeparkWorkspaceSeedContainsRealProjectAndWorklog() throws {
-        let workspace = WorkspaceSnapshot.bikeparkThunersee
+        let workspace = WorkspaceFixtures.bikeparkWorkspace
         let project = try #require(workspace.project(named: "Play Bikepark"))
         let bucket = try #require(project.buckets.first)
 
@@ -177,8 +177,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000501")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000501")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -219,7 +219,7 @@ struct WorkspaceSnapshotTests {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000601")!
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000601")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000601")!
-        var businessProfile = WorkspaceSnapshot.sample.businessProfile
+        var businessProfile = WorkspaceFixtures.demoWorkspace.businessProfile
         businessProfile.nextInvoiceNumber = 9
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: businessProfile,
@@ -287,7 +287,7 @@ struct WorkspaceSnapshotTests {
         #expect(invoice.number == "EHX-2026-009")
         #expect(updatedBucket.status == .finalized)
         #expect(store.workspace.businessProfile.nextInvoiceNumber == 10)
-        #expect(storedInvoice.businessSnapshot?.businessName == "Ehrax Studio")
+        #expect(storedInvoice.businessSnapshot?.businessName == businessProfile.businessName)
         #expect(storedInvoice.clientSnapshot?.billingAddress == "1 Snapshot Way")
         #expect(storedInvoice.projectName == "Snapshot Project")
         #expect(storedInvoice.bucketName == "Ready Snapshot")
@@ -368,7 +368,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreAppliesInvoiceStatusTransitionsAndRejectsInvalidOnes() throws {
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000701")!
-        var workspace = WorkspaceSnapshot.sample
+        var workspace = WorkspaceFixtures.demoWorkspace
         workspace.projects = [
             WorkspaceProject(
                 id: UUID(uuidString: "20000000-0000-0000-0000-000000000701")!,
@@ -425,8 +425,8 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreCreatesProjectWithStarterBucket() throws {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [],
             activity: []
         ))
@@ -454,8 +454,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000852")!
         let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000852")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -507,8 +507,8 @@ struct WorkspaceSnapshotTests {
     @Test func inMemoryWorkspaceStoreArchivesAndRestoresProjects() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000851")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -548,8 +548,8 @@ struct WorkspaceSnapshotTests {
         let archivedProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000855")!
         let activeProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000856")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: archivedProjectID,
@@ -585,8 +585,8 @@ struct WorkspaceSnapshotTests {
     @Test func inMemoryWorkspaceStoreOnlyRemovesArchivedProjects() throws {
         let activeProjectID = UUID(uuidString: "20000000-0000-0000-0000-000000000857")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: activeProjectID,
@@ -612,8 +612,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000852")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000852")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -659,8 +659,8 @@ struct WorkspaceSnapshotTests {
         let archivedBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000853")!
         let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000854")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -705,8 +705,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000854")!
         let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000855")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -742,8 +742,8 @@ struct WorkspaceSnapshotTests {
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000861")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000861")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -803,7 +803,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreCreatesClientAndRecordsActivity() throws {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [],
             projects: [],
             activity: []
@@ -831,7 +831,7 @@ struct WorkspaceSnapshotTests {
     @Test func inMemoryWorkspaceStoreUpdatesClientAndProjectReferences() throws {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000811")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [
                 WorkspaceClient(
                     id: clientID,
@@ -901,7 +901,7 @@ struct WorkspaceSnapshotTests {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000821")!
         let store = WorkspaceStore(
             seed: WorkspaceSnapshot(
-                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
                 clients: [
                     WorkspaceClient(
                         id: clientID,
@@ -937,7 +937,7 @@ struct WorkspaceSnapshotTests {
             )
         )
 
-        let relaunchedStore = WorkspaceStore(seed: .sample, persistenceURL: persistenceURL)
+        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, persistenceURL: persistenceURL)
         #expect(relaunchedStore.workspace.clients.first?.name == "Stored Client Updated")
         #expect(relaunchedStore.workspace.clients.first?.email == "billing@updated.example")
         #expect(relaunchedStore.workspace.clients.first?.billingAddress == "9 Updated Lane")
@@ -948,7 +948,7 @@ struct WorkspaceSnapshotTests {
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientUpdatesWithoutMutation() {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000831")!
         let originalWorkspace = WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [
                 WorkspaceClient(
                     id: clientID,
@@ -1014,7 +1014,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientDrafts() {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [],
             projects: [],
             activity: []
@@ -1052,7 +1052,7 @@ struct WorkspaceSnapshotTests {
 
         let initialStore = WorkspaceStore(
             seed: WorkspaceSnapshot(
-                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
                 clients: [],
                 projects: [],
                 activity: []
@@ -1068,7 +1068,7 @@ struct WorkspaceSnapshotTests {
         ))
 
         let relaunchedStore = WorkspaceStore(
-            seed: WorkspaceSnapshot.sample,
+            seed: WorkspaceFixtures.demoWorkspace,
             persistenceURL: persistenceURL
         )
 
@@ -1089,7 +1089,7 @@ struct WorkspaceSnapshotTests {
         let issueDate = Date.pikaDate(year: 2026, month: 5, day: 4)
         let store = WorkspaceStore(
             seed: WorkspaceSnapshot(
-                businessProfile: WorkspaceSnapshot.sample.businessProfile,
+                businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
                 clients: [],
                 projects: [
                     WorkspaceProject(
@@ -1135,7 +1135,7 @@ struct WorkspaceSnapshotTests {
             bucketID: bucketID,
             issueDate: issueDate
         )
-        let relaunchedStore = WorkspaceStore(seed: .sample, persistenceURL: persistenceURL)
+        let relaunchedStore = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, persistenceURL: persistenceURL)
 
         #expect(store.workspace.businessProfile.businessName == "North Coast Studio")
         #expect(store.workspace.businessProfile.email == "invoices@north.example")
@@ -1156,7 +1156,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreRejectsInvalidBusinessProfileDrafts() {
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [],
             projects: [],
             activity: []
@@ -1215,7 +1215,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
-        let store = WorkspaceStore(seed: .sample)
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
         let project = try #require(store.workspace.project(named: "Launch sprint"))
         let date = Date.pikaDate(year: 2026, month: 4, day: 27)
 
@@ -1240,8 +1240,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000811")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000811")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1289,8 +1289,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000801")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000801")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1341,8 +1341,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000802")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000802")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1389,8 +1389,8 @@ struct WorkspaceSnapshotTests {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000803")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000803")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1440,8 +1440,8 @@ struct WorkspaceSnapshotTests {
         let keptEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000804")!
         let deletedEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000805")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1506,8 +1506,8 @@ struct WorkspaceSnapshotTests {
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000805")!
         let deletedEntryID = UUID(uuidString: "60000000-0000-0000-0000-000000000805")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: projectID,
@@ -1557,7 +1557,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func sampleWorkspaceExposesRecentActivityNewestFirst() {
-        var workspace = WorkspaceSnapshot.sample
+        var workspace = WorkspaceFixtures.demoWorkspace
         workspace.activity = [
             WorkspaceActivity(message: "Older bucket marked ready", detail: "Launch sprint", occurredAt: Date(timeIntervalSince1970: 86_400)),
             WorkspaceActivity(message: "Newest invoice finalized", detail: "Northstar Labs", occurredAt: Date(timeIntervalSince1970: 259_200)),
@@ -1575,8 +1575,8 @@ struct WorkspaceSnapshotTests {
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000011")!
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000011")!
         let repeatedTitleWorkspace = WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: UUID(uuidString: "20000000-0000-0000-0000-000000000011")!,
@@ -1669,13 +1669,13 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func projectCardsSelectTheMatchingProjectShellDestination() throws {
-        let project = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
+        let project = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
 
         #expect(PikaShellDestination.projectDestination(for: project) == .project(project.id))
     }
 
     @Test func projectDetailProjectionSelectsDefaultBucketAndFormatsRows() throws {
-        let project = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
+        let project = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
         let projection = try #require(project.detailProjection(formatter: formatter))
@@ -1731,15 +1731,15 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func projectNormalizesUnknownBucketSelectionToFirstBucket() throws {
-        let launchSprint = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
-        let mobileQA = try #require(WorkspaceSnapshot.sample.project(named: "Mobile QA"))
+        let launchSprint = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
+        let mobileQA = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Mobile QA"))
 
         #expect(launchSprint.normalizedBucketID(mobileQA.buckets[0].id) == launchSprint.buckets[0].id)
         #expect(launchSprint.normalizedBucketID(launchSprint.buckets[1].id) == launchSprint.buckets[1].id)
     }
 
     @Test func bucketDetailProjectionSummarizesBillableNonBillableAndFixedCosts() throws {
-        let project = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
+        let project = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
         let projection = try #require(project.detailProjection(formatter: formatter))
@@ -1758,7 +1758,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func bucketDetailProjectionUsesRowLevelEntriesWhenPresent() throws {
-        let project = try #require(WorkspaceSnapshot.sample.project(named: "Launch sprint"))
+        let project = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
         let projection = try #require(project.detailProjection(formatter: formatter))
@@ -1841,10 +1841,10 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func invoicePreviewProjectionSelectsNewestInvoiceAndMarksOverdueRows() throws {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
 
         #expect(projection.selectedInvoice.number == "EHX-2026-004")
         #expect(projection.rows.map(\.number) == [
@@ -1859,9 +1859,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func invoicePreviewProjectionIncludesRecipientAddressForPDFPreview() throws {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
 
         #expect(projection.rows[0].clientName == "Northstar Labs")
         #expect(projection.rows[0].billingAddress == "12 Polaris Yard, Berlin")
@@ -1870,9 +1870,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func invoicePreviewProjectionIncludesInvoiceSnapshotContextForPDFs() throws {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
 
         #expect(projection.rows[0].projectName == "Mobile QA")
         #expect(projection.rows[0].bucketName == "Regression pass")
@@ -1899,8 +1899,8 @@ struct WorkspaceSnapshotTests {
     @Test func invoicePreviewProjectionUsesStableFallbackLineItemForLegacyInvoices() throws {
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000301")!
         let workspace = WorkspaceSnapshot(
-            businessProfile: WorkspaceSnapshot.sample.businessProfile,
-            clients: WorkspaceSnapshot.sample.clients,
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
             projects: [
                 WorkspaceProject(
                     id: UUID(uuidString: "20000000-0000-0000-0000-000000000301")!,
@@ -1926,8 +1926,8 @@ struct WorkspaceSnapshotTests {
         )
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
-        let first = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
-        let second = try #require(workspace.invoicePreviewProjection(on: WorkspaceSnapshot.sampleToday, formatter: formatter))
+        let first = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+        let second = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
 
         #expect(first.rows[0].lineItems.first?.id == second.rows[0].lineItems.first?.id)
         #expect(first.rows[0].lineItems.first?.id == invoiceID)
@@ -1936,10 +1936,10 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func projectOverviewSummaryTotalsActiveProjects() {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.projectOverviewSummary(
             for: workspace.activeProjects,
-            on: WorkspaceSnapshot.sampleToday
+            on: WorkspaceFixtures.today
         )
 
         #expect(summary.projectCount == 2)

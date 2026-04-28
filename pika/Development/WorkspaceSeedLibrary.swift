@@ -1,8 +1,8 @@
 import Foundation
 
 #if DEBUG
-extension WorkspaceSnapshot {
-    static let sample = WorkspaceSnapshot(
+enum WorkspaceSeedLibrary {
+    static let demoWorkspace = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "ehrax.dev",
             personName: "Alexander Raspuitn",

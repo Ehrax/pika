@@ -19,22 +19,22 @@ struct InvoicePDFServiceTests {
         1
         SCT
         NTSBDEB1XXX
-        Ehrax Studio
+        EHRAX STUDIO
         DE32100110012141144452
         EUR1200.00
 
 
-        Rechnung EHX-2026-004
+        RECHNUNG EHX-2026-004
         """)
     }
 
     @Test func renderInvoiceReturnsPDFDataAndInvoiceMetadata() throws {
-        let workspace = WorkspaceSnapshot.sample
+        let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
         let projection = try #require(
             workspace.invoicePreviewProjection(
                 selectedInvoiceID: UUID(uuidString: "40000000-0000-0000-0000-000000000001")!,
-                on: WorkspaceSnapshot.sampleToday,
+                on: WorkspaceFixtures.today,
                 formatter: formatter
             )
         )
@@ -83,13 +83,13 @@ struct InvoicePDFServiceTests {
             invoice: invoice,
             projectName: "Mobile QA",
             billingAddress: "12 Polaris Yard, Berlin",
-            on: WorkspaceSnapshot.sampleToday,
+            on: WorkspaceFixtures.today,
             formatter: formatter
         )
         let service = InvoicePDFService.placeholder()
 
         let rendered = try service.renderInvoice(
-            profile: WorkspaceSnapshot.sample.businessProfile,
+            profile: WorkspaceFixtures.demoWorkspace.businessProfile,
             row: row
         )
 

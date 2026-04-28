@@ -153,101 +153,73 @@ struct PikaScaffoldTests {
     }
 
     @Test func appLaunchConfigurationCanExplicitlyUseEmptyWorkspace() {
-        let namedConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "empty"],
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--empty"],
             environment: [:]
         )
-        let bareConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--empty"],
-            environment: ["PIKA_WORKSPACE_SEED": "demo"]
-        )
 
-        #expect(namedConfiguration.workspaceSeed == .empty)
-        #expect(namedConfiguration.initialWorkspace == .empty)
-        #expect(bareConfiguration.workspaceSeed == .empty)
-        #expect(bareConfiguration.initialWorkspace == .empty)
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.initialWorkspace == .empty)
     }
 
-    @Test func appLaunchConfigurationLegacySeedWorkspaceParsesDemoSeed() {
-        let argumentConfiguration = AppLaunchConfiguration(
+    @Test func appLaunchConfigurationParsesDemoWorkspaceSeed() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "sample"],
+            environment: [:]
+        )
+
+        #expect(configuration.workspaceSeed == .sample)
+    }
+
+    @Test func appLaunchConfigurationParsesLegacyDemoWorkspaceSeedFlag() {
+        let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-seed-workspace"],
             environment: [:]
         )
-        let environmentConfiguration = AppLaunchConfiguration(
-            arguments: ["pika"],
-            environment: ["PIKA_SEED_WORKSPACE": "1"]
-        )
 
-        #expect(argumentConfiguration.workspaceSeed == .demo)
-        #expect(environmentConfiguration.workspaceSeed == .demo)
+        #expect(configuration.workspaceSeed == .sample)
     }
 
-    @Test func appLaunchConfigurationParsesNamedWorkspaceSeeds() {
-        let emptyConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "empty"],
-            environment: [:]
-        )
-        let demoConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "demo"],
-            environment: [:]
-        )
-        let bikeparkConfiguration = AppLaunchConfiguration(
+    @Test func appLaunchConfigurationParsesBikeparkWorkspaceSeed() {
+        let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
             environment: [:]
         )
 
-        #expect(emptyConfiguration.workspaceSeed == .empty)
-        #expect(emptyConfiguration.initialWorkspace == .empty)
-        #expect(demoConfiguration.workspaceSeed == .demo)
-        #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
+        #expect(configuration.workspaceSeed == .bikeparkThunersee)
     }
 
-    @Test func appLaunchConfigurationParsesBikeparkWorkspaceSeed() {
-        let argumentConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-seed-bikepark-thunersee"],
-            environment: [:]
-        )
-        let environmentConfiguration = AppLaunchConfiguration(
+    @Test func appLaunchConfigurationParsesEnvironmentWorkspaceSeed() {
+        let configuration = AppLaunchConfiguration(
             arguments: ["pika"],
-            environment: ["PIKA_SEED_WORKSPACE": "bikepark-thunersee"]
+            environment: ["PIKA_WORKSPACE_SEED": "sample"]
         )
 
-        #expect(argumentConfiguration.workspaceSeed == .bikeparkThunersee)
-        #expect(environmentConfiguration.workspaceSeed == .bikeparkThunersee)
+        #expect(configuration.workspaceSeed == .sample)
     }
 
 #if DEBUG
     @Test func appLaunchConfigurationResolvesDemoWorkspaceSeedForDevelopment() {
-        let argumentConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-seed-workspace"],
-            environment: [:]
-        )
-        let namedConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "demo"],
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "sample"],
             environment: [:]
         )
 
-        #expect(argumentConfiguration.initialWorkspace == .sample)
-        #expect(namedConfiguration.initialWorkspace == .sample)
+        #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.demoWorkspace)
     }
 
     @Test func appLaunchConfigurationResolvesBikeparkWorkspaceSeedForDevelopment() {
-        let argumentConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-seed-bikepark-thunersee"],
-            environment: [:]
-        )
-        let namedConfiguration = AppLaunchConfiguration(
+        let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
             environment: [:]
         )
 
-        #expect(argumentConfiguration.initialWorkspace == .bikeparkThunersee)
-        #expect(namedConfiguration.initialWorkspace == .bikeparkThunersee)
+        #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.bikeparkThunersee)
     }
 #else
     @Test func appLaunchConfigurationFallsBackToEmptyForDevelopmentOnlySeedsInRelease() {
         let demoConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "demo"],
+            arguments: ["pika", "--pika-workspace-seed", "sample"],
             environment: [:]
         )
         let bikeparkConfiguration = AppLaunchConfiguration(
@@ -255,7 +227,7 @@ struct PikaScaffoldTests {
             environment: [:]
         )
 
-        #expect(demoConfiguration.workspaceSeed == .demo)
+        #expect(demoConfiguration.workspaceSeed == .sample)
         #expect(demoConfiguration.initialWorkspace == .empty)
         #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
         #expect(bikeparkConfiguration.initialWorkspace == .empty)

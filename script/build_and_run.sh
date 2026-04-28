@@ -15,8 +15,8 @@ while [[ $# -gt 0 ]]; do
     run|--verify|verify)
       MODE="$1"
       ;;
-    --seeded|seeded|--preseeded|preseeded|--demo|demo)
-      WORKSPACE_SEED="demo"
+    --seeded|seeded|--preseeded|preseeded|--sample|sample|--demo|demo)
+      WORKSPACE_SEED="sample"
       ;;
     --bikepark|bikepark|--bikepark-thunersee|bikepark-thunersee)
       WORKSPACE_SEED="bikepark-thunersee"
@@ -25,11 +25,11 @@ while [[ $# -gt 0 ]]; do
       WORKSPACE_SEED="empty"
       ;;
     -h|--help)
-      echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--sample|--demo|--seeded|--bikepark]" >&2
       exit 0
       ;;
     *)
-      echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--empty|--sample|--demo|--seeded|--bikepark]" >&2
       exit 2
       ;;
   esac
@@ -88,13 +88,7 @@ find_app_bundle() {
 
 launch_app() {
   local app_bundle="$1"
-  local workspace_name="empty"
-
-  if [[ "$WORKSPACE_SEED" == "demo" ]]; then
-    workspace_name="demo"
-  elif [[ "$WORKSPACE_SEED" == "bikepark-thunersee" ]]; then
-    workspace_name="bikepark-thunersee"
-  fi
+  local workspace_name="$WORKSPACE_SEED"
 
   local workspace_dir="$RUN_DATA_DIR/$workspace_name"
   local workspace_path="$workspace_dir/workspace.json"
@@ -134,7 +128,7 @@ case "$MODE" in
     fi
     ;;
   *)
-    echo "usage: $0 [run|--verify] [--empty|--demo|--seeded|--bikepark]" >&2
+    echo "usage: $0 [run|--verify] [--empty|--sample|--demo|--seeded|--bikepark]" >&2
     exit 2
     ;;
 esac

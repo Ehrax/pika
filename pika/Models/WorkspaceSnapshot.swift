@@ -1,7 +1,6 @@
 import Foundation
 
 struct WorkspaceSnapshot: Codable, Equatable {
-    static let sampleToday = Date.pikaDate(year: 2026, month: 4, day: 27)
     static let empty = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
             businessName: "",
