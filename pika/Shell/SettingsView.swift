@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var draft: WorkspaceBusinessProfileDraft
     @State private var savedDraft: WorkspaceBusinessProfileDraft
     @State private var address = BusinessAddressComponents()
+    @State private var paymentDetails = PaymentDetailsComponents()
     @State private var saveFailure: SettingsSaveFailure?
 
     init(profile: BusinessProfileProjection, workspaceStore: WorkspaceStore? = nil) {
@@ -16,6 +17,7 @@ struct SettingsView: View {
         _draft = State(initialValue: draft)
         _savedDraft = State(initialValue: draft)
         _address = State(initialValue: BusinessAddressComponents(rawAddress: draft.address))
+        _paymentDetails = State(initialValue: PaymentDetailsComponents(rawValue: draft.paymentDetails))
     }
 
     var body: some View {
@@ -102,8 +104,14 @@ struct SettingsView: View {
                 }
 
                 settingsSection(title: "Payment details", detail: "Invoice footer") {
-                    SettingsEditableFieldRow(label: "Payment details", alignment: .top) {
-                        TextField("Payment details", text: $draft.paymentDetails)
+                    SettingsEditableFieldRow(label: "IBAN") {
+                        TextField("IBAN", text: $paymentDetails.iban)
+                            .textFieldStyle(.roundedBorder)
+                            .controlSize(.small)
+                    }
+                    SettingsDivider()
+                    SettingsEditableFieldRow(label: "BIC") {
+                        TextField("BIC", text: $paymentDetails.bic)
                             .textFieldStyle(.roundedBorder)
                             .controlSize(.small)
                     }
@@ -151,10 +159,14 @@ struct SettingsView: View {
             if !wasDirty {
                 draft = updatedDraft
                 address = BusinessAddressComponents(rawAddress: updatedDraft.address)
+                paymentDetails = PaymentDetailsComponents(rawValue: updatedDraft.paymentDetails)
             }
         }
         .onChange(of: address) { _, newAddress in
             draft.address = newAddress.singleString
+        }
+        .onChange(of: paymentDetails) { _, newPaymentDetails in
+            draft.paymentDetails = newPaymentDetails.rawValue
         }
         .accessibilityIdentifier("SettingsView")
     }
@@ -186,6 +198,7 @@ struct SettingsView: View {
             draft = updatedDraft
             savedDraft = updatedDraft
             address = BusinessAddressComponents(rawAddress: updatedDraft.address)
+            paymentDetails = PaymentDetailsComponents(rawValue: updatedDraft.paymentDetails)
             saveFailure = nil
         } catch WorkspaceStoreError.invalidBusinessProfile {
             saveFailure = SettingsSaveFailure(
@@ -199,6 +212,7 @@ struct SettingsView: View {
     private func revertChanges() {
         draft = savedDraft
         address = BusinessAddressComponents(rawAddress: savedDraft.address)
+        paymentDetails = PaymentDetailsComponents(rawValue: savedDraft.paymentDetails)
         saveFailure = nil
     }
 }
@@ -331,6 +345,63 @@ private struct BusinessAddressComponents: Equatable {
             street = prefix.isEmpty ? fallbackStreet : prefix
         } else if street.isEmpty {
             street = prefix
+        }
+    }
+}
+
+private struct PaymentDetailsComponents: Equatable {
+    var iban: String = ""
+    var bic: String = ""
+
+    init() {}
+
+    init(rawValue: String) {
+        let words = rawValue
+            .replacingOccurrences(of: ":", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+            .split(separator: " ")
+            .map(String.init)
+
+        iban = Self.value(after: "IBAN", in: words).map(Self.formattedIBAN) ?? ""
+        bic = Self.value(after: "BIC", in: words)?.uppercased() ?? ""
+    }
+
+    var rawValue: String {
+        var lines: [String] = []
+        let normalizedIBAN = Self.formattedIBAN(iban)
+        if !normalizedIBAN.isEmpty {
+            lines.append("IBAN \(normalizedIBAN)")
+        }
+
+        let normalizedBIC = bic.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if !normalizedBIC.isEmpty {
+            lines.append("BIC \(normalizedBIC)")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private static func value(after label: String, in words: [String]) -> String? {
+        guard let labelIndex = words.firstIndex(where: { $0.caseInsensitiveCompare(label) == .orderedSame }) else {
+            return nil
+        }
+
+        let valueWords = words[(labelIndex + 1)...]
+            .prefix { word in
+                word.caseInsensitiveCompare("IBAN") != .orderedSame
+                    && word.caseInsensitiveCompare("BIC") != .orderedSame
+            }
+        let value = valueWords.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private static func formattedIBAN(_ value: String) -> String {
+        let cleanValue = value.filter { !$0.isWhitespace }.uppercased()
+        return cleanValue.enumerated().reduce(into: "") { result, pair in
+            if pair.offset > 0, pair.offset.isMultiple(of: 4) {
+                result.append(" ")
+            }
+            result.append(pair.element)
         }
     }
 }

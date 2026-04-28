@@ -4,7 +4,7 @@ import Foundation
 extension WorkspaceSnapshot {
     static let sample = WorkspaceSnapshot(
         businessProfile: BusinessProfileProjection(
-            businessName: "Ehrax Studio",
+            businessName: "ALEXANDER RASPUTIN",
             email: "alex@ehrax.dev",
             phone: "+49 151 44231139",
             address: "Donaustr. 52\n73529 Schwäbisch Gmünd",
@@ -12,7 +12,7 @@ extension WorkspaceSnapshot {
             invoicePrefix: "EHX",
             nextInvoiceNumber: 5,
             currencyCode: "EUR",
-            paymentDetails: "IBAN DE32 1001 1001 2141 1444 52\nBIC NTSBDEB1XXX",
+            paymentDetails: "IBAN DE02 1001 1001 2125 8144 33\nBIC NTSBDEB1XXX",
             taxNote: "VAT reverse charge where applicable.",
             defaultTermsDays: 14
         ),
