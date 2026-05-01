@@ -10,7 +10,10 @@ extension WorkspaceStore {
         let project = try project(projectID)
         _ = try bucket(bucketID, in: project)
         let client = workspace.clients.firstMatching(id: project.clientID, name: project.clientName)
-        let termsDays = client?.defaultTermsDays ?? workspace.businessProfile.defaultTermsDays
+        let hasClientSpecificTerms = client.map(Self.clientHasExplicitInvoiceDefaults) ?? false
+        let termsDays = hasClientSpecificTerms
+            ? client?.defaultTermsDays ?? workspace.businessProfile.defaultTermsDays
+            : workspace.businessProfile.defaultTermsDays
         let dueDate = Calendar.pikaStoreGregorian.date(
             byAdding: .day,
             value: termsDays,

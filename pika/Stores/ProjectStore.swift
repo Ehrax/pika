@@ -1253,8 +1253,10 @@ final class WorkspaceStore {
     ) -> WorkspaceClient {
         let matchedClient = workspace.clients.firstMatching(id: clientID, name: clientName)
         let resolvedClientID = matchedClient?.id ?? clientID ?? UUID()
-        let termsDays = matchedClient?.defaultTermsDays
-            ?? workspace.businessProfile.defaultTermsDays
+        let hasClientSpecificTerms = matchedClient.map(Self.clientHasExplicitInvoiceDefaults) ?? false
+        let termsDays = hasClientSpecificTerms
+            ? matchedClient?.defaultTermsDays ?? workspace.businessProfile.defaultTermsDays
+            : workspace.businessProfile.defaultTermsDays
 
         return WorkspaceClient(
             id: resolvedClientID,
@@ -1264,6 +1266,12 @@ final class WorkspaceStore {
             defaultTermsDays: termsDays,
             isArchived: false
         )
+    }
+
+    static func clientHasExplicitInvoiceDefaults(_ client: WorkspaceClient) -> Bool {
+        let email = client.email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let billingAddress = client.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !email.isEmpty || !billingAddress.isEmpty
     }
 
     func defaultServicePeriod(for bucket: WorkspaceBucket?) -> String {
