@@ -62,37 +62,14 @@ final class WorkspaceStore {
         }
     }
 
-    static func defaultStoreURL() -> URL? {
-        FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first?
-            .appendingPathComponent("Pika", isDirectory: true)
-            .appendingPathComponent("workspace.store")
-    }
-
     static func makeModelContainer(
-        mode: AppPersistenceMode
-    ) throws -> ModelContainer {
-        try PikaApp.makeModelContainer(mode: mode)
-    }
-
-    static func makeModelContainer(
-        inMemory: Bool,
+        mode: AppPersistenceMode,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        if inMemory {
-            return try makeModelContainer(mode: .inMemory)
-        }
-
-        if let storeURL {
-            return try PikaApp.makeModelContainer(
-                mode: .local,
-                overrideStoreURL: storeURL
-            )
-        }
-
-        return try makeModelContainer(mode: .local)
+        try PikaApp.makeModelContainer(
+            mode: mode,
+            overrideStoreURL: storeURL
+        )
     }
 
     private static func makeDefaultModelContext() -> ModelContext {

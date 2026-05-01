@@ -8,8 +8,32 @@ struct WorkspaceSnapshotTests {
         let storeURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
             .appendingPathComponent("workspace.store")
-        let container = try WorkspaceStore.makeModelContainer(inMemory: false, storeURL: storeURL)
+        let container = try WorkspaceStore.makeModelContainer(mode: .local, storeURL: storeURL)
         return (ModelContext(container), storeURL)
+    }
+
+    @Test func workspaceStoreLocalPersistenceModeSupportsDiskBackedTestContainers() throws {
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-mode-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.store")
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let container = try WorkspaceStore.makeModelContainer(mode: .local, storeURL: storeURL)
+        let context = ModelContext(container)
+        let recordID = UUID(uuidString: "8C2E6FE9-EA65-4D16-91A0-CF1220195B79")!
+        context.insert(WorkspaceStorageRecord(id: recordID, payload: Data([0x01, 0x02, 0x03])))
+        try context.save()
+
+        var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
+            predicate: #Predicate { $0.id == recordID }
+        )
+        descriptor.fetchLimit = 1
+
+        let fetched = try context.fetch(descriptor)
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.payload == Data([0x01, 0x02, 0x03]))
     }
 
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
