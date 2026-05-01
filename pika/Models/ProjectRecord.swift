@@ -3,22 +3,22 @@ import SwiftData
 
 @Model
 final class BusinessProfileRecord {
-    var id: UUID
-    var businessName: String
-    var personName: String
-    var email: String
-    var phone: String
-    var address: String
-    var taxIdentifier: String
-    var economicIdentifier: String
-    var invoicePrefix: String
-    var nextInvoiceNumber: Int
-    var currencyCode: String
-    var paymentDetails: String
-    var taxNote: String
-    var defaultTermsDays: Int
-    var createdAt: Date
-    var updatedAt: Date
+    var id: UUID = UUID()
+    var businessName: String = ""
+    var personName: String = ""
+    var email: String = ""
+    var phone: String = ""
+    var address: String = ""
+    var taxIdentifier: String = ""
+    var economicIdentifier: String = ""
+    var invoicePrefix: String = "INV"
+    var nextInvoiceNumber: Int = 1
+    var currencyCode: String = "EUR"
+    var paymentDetails: String = ""
+    var taxNote: String = ""
+    var defaultTermsDays: Int = 14
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(
         id: UUID = UUID(),
@@ -59,14 +59,14 @@ final class BusinessProfileRecord {
 
 @Model
 final class ClientRecord {
-    var id: UUID
-    var name: String
-    var email: String
-    var billingAddress: String
-    var defaultTermsDays: Int
-    var isArchived: Bool
-    var createdAt: Date
-    var updatedAt: Date
+    var id: UUID = UUID()
+    var name: String = ""
+    var email: String = ""
+    var billingAddress: String = ""
+    var defaultTermsDays: Int = 14
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(
         id: UUID = UUID(),
@@ -91,14 +91,14 @@ final class ClientRecord {
 
 @Model
 final class ProjectRecord {
-    var id: UUID
-    var clientID: UUID
-    var name: String
-    var currencyCode: String
-    var isArchived: Bool
-    var createdAt: Date
-    var updatedAt: Date
-    var client: ClientRecord?
+    var id: UUID = UUID()
+    var clientID: UUID = UUID()
+    var name: String = ""
+    var currencyCode: String = "EUR"
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var client: ClientRecord? = nil
 
     init(
         id: UUID = UUID(),
@@ -123,13 +123,13 @@ final class ProjectRecord {
 
 @Model
 final class BucketRecord {
-    var id: UUID
-    var projectID: UUID
-    var name: String
-    var statusRaw: String
-    var createdAt: Date
-    var updatedAt: Date
-    var project: ProjectRecord?
+    var id: UUID = UUID()
+    var projectID: UUID = UUID()
+    var name: String = ""
+    var statusRaw: String = BucketStatus.open.rawValue
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var project: ProjectRecord? = nil
 
     var status: BucketStatus {
         get { BucketStatus(rawValue: statusRaw) ?? .open }
@@ -157,18 +157,18 @@ final class BucketRecord {
 
 @Model
 final class TimeEntryRecord {
-    var id: UUID
-    var bucketID: UUID
-    var workDate: Date
+    var id: UUID = UUID()
+    var bucketID: UUID = UUID()
+    var workDate: Date = Date()
     var startMinuteOfDay: Int?
     var endMinuteOfDay: Int?
-    var durationMinutes: Int
-    var descriptionText: String
-    var isBillable: Bool
-    var hourlyRateMinorUnits: Int
-    var createdAt: Date
-    var updatedAt: Date
-    var bucket: BucketRecord?
+    var durationMinutes: Int = 0
+    var descriptionText: String = ""
+    var isBillable: Bool = true
+    var hourlyRateMinorUnits: Int = 0
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var bucket: BucketRecord? = nil
 
     init(
         id: UUID = UUID(),
@@ -201,16 +201,16 @@ final class TimeEntryRecord {
 
 @Model
 final class FixedCostRecord {
-    var id: UUID
-    var bucketID: UUID
-    var date: Date
-    var descriptionText: String
-    var quantity: Int
-    var unitPriceMinorUnits: Int
-    var isBillable: Bool
-    var createdAt: Date
-    var updatedAt: Date
-    var bucket: BucketRecord?
+    var id: UUID = UUID()
+    var bucketID: UUID = UUID()
+    var date: Date = Date()
+    var descriptionText: String = ""
+    var quantity: Int = 1
+    var unitPriceMinorUnits: Int = 0
+    var isBillable: Bool = true
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var bucket: BucketRecord? = nil
 
     init(
         id: UUID = UUID(),
@@ -239,36 +239,36 @@ final class FixedCostRecord {
 
 @Model
 final class InvoiceRecord {
-    var id: UUID
-    var projectID: UUID
-    var bucketID: UUID
-    var number: String
-    var templateRaw: String
-    var issueDate: Date
-    var dueDate: Date
-    var servicePeriod: String
-    var statusRaw: String
-    var totalMinorUnits: Int
-    var currencyCode: String
-    var note: String
-    var businessName: String
-    var businessPersonName: String
-    var businessEmail: String
-    var businessPhone: String
-    var businessAddress: String
-    var businessTaxIdentifier: String
-    var businessEconomicIdentifier: String
-    var businessPaymentDetails: String
-    var businessTaxNote: String
-    var clientName: String
-    var clientEmail: String
-    var clientBillingAddress: String
-    var projectName: String
-    var bucketName: String
-    var createdAt: Date
-    var updatedAt: Date
-    var project: ProjectRecord?
-    var bucket: BucketRecord?
+    var id: UUID = UUID()
+    var projectID: UUID = UUID()
+    var bucketID: UUID = UUID()
+    var number: String = ""
+    var templateRaw: String = InvoiceTemplate.kleinunternehmerClassic.rawValue
+    var issueDate: Date = Date()
+    var dueDate: Date = Date()
+    var servicePeriod: String = ""
+    var statusRaw: String = InvoiceStatus.finalized.rawValue
+    var totalMinorUnits: Int = 0
+    var currencyCode: String = "EUR"
+    var note: String = ""
+    var businessName: String = ""
+    var businessPersonName: String = ""
+    var businessEmail: String = ""
+    var businessPhone: String = ""
+    var businessAddress: String = ""
+    var businessTaxIdentifier: String = ""
+    var businessEconomicIdentifier: String = ""
+    var businessPaymentDetails: String = ""
+    var businessTaxNote: String = ""
+    var clientName: String = ""
+    var clientEmail: String = ""
+    var clientBillingAddress: String = ""
+    var projectName: String = ""
+    var bucketName: String = ""
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var project: ProjectRecord? = nil
+    var bucket: BucketRecord? = nil
 
     var template: InvoiceTemplate {
         get { InvoiceTemplate(rawValue: templateRaw) ?? .kleinunternehmerClassic }
@@ -347,15 +347,15 @@ final class InvoiceRecord {
 
 @Model
 final class InvoiceLineItemRecord {
-    var id: UUID
-    var invoiceID: UUID
-    var sortOrder: Int
-    var descriptionText: String
-    var quantityLabel: String
-    var amountMinorUnits: Int
-    var createdAt: Date
-    var updatedAt: Date
-    var invoice: InvoiceRecord?
+    var id: UUID = UUID()
+    var invoiceID: UUID = UUID()
+    var sortOrder: Int = 0
+    var descriptionText: String = ""
+    var quantityLabel: String = ""
+    var amountMinorUnits: Int = 0
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var invoice: InvoiceRecord? = nil
 
     init(
         id: UUID = UUID(),
@@ -377,5 +377,43 @@ final class InvoiceLineItemRecord {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.invoice = invoice
+    }
+}
+
+@Model
+final class WorkspaceStorageRecord {
+    var id: UUID = UUID()
+    var payload: Data = Data()
+    var updatedAt: Date = Date()
+
+    init(
+        id: UUID = UUID(),
+        payload: Data,
+        updatedAt: Date = .now
+    ) {
+        self.id = id
+        self.payload = payload
+        self.updatedAt = updatedAt
+    }
+
+    func apply(payload: Data) {
+        self.payload = payload
+        updatedAt = .now
+    }
+}
+
+enum PikaPersistenceSchema {
+    static func makeSchema() -> Schema {
+        Schema([
+            BusinessProfileRecord.self,
+            ClientRecord.self,
+            ProjectRecord.self,
+            BucketRecord.self,
+            TimeEntryRecord.self,
+            FixedCostRecord.self,
+            InvoiceRecord.self,
+            InvoiceLineItemRecord.self,
+            WorkspaceStorageRecord.self,
+        ])
     }
 }

@@ -12,28 +12,6 @@ struct NoopProjectStore: ProjectStore {
     }
 }
 
-@Model
-final class WorkspaceStorageRecord {
-    var id: UUID
-    var payload: Data
-    var updatedAt: Date
-
-    init(
-        id: UUID = UUID(),
-        payload: Data,
-        updatedAt: Date = .now
-    ) {
-        self.id = id
-        self.payload = payload
-        self.updatedAt = updatedAt
-    }
-
-    func apply(payload: Data) {
-        self.payload = payload
-        updatedAt = .now
-    }
-}
-
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
@@ -97,17 +75,7 @@ final class WorkspaceStore {
         inMemory: Bool,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        let schema = Schema([
-            BusinessProfileRecord.self,
-            ClientRecord.self,
-            ProjectRecord.self,
-            BucketRecord.self,
-            TimeEntryRecord.self,
-            FixedCostRecord.self,
-            InvoiceRecord.self,
-            InvoiceLineItemRecord.self,
-            WorkspaceStorageRecord.self,
-        ])
+        let schema = PikaPersistenceSchema.makeSchema()
 
         let configuration: ModelConfiguration
         if inMemory {
