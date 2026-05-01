@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 extension WorkspaceStore {
     func archiveProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
