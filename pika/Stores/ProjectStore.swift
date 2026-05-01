@@ -54,6 +54,7 @@ final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
     let modelContext: ModelContext
+    private let usesNormalizedPersistence: Bool
     private static let deterministicImportTimestamp = Date(timeIntervalSince1970: 0)
 
     private struct ClientRecordLookup {
@@ -71,10 +72,17 @@ final class WorkspaceStore {
         modelContext: ModelContext? = nil,
         resetForSeedImport: Bool = false
     ) {
+        usesNormalizedPersistence = modelContext != nil
         if let modelContext {
             self.modelContext = modelContext
         } else {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
+        }
+
+        guard usesNormalizedPersistence else {
+            workspace = seed
+            workspace.normalizeMissingHourlyRates()
+            return
         }
 
         if resetForSeedImport {
@@ -1045,7 +1053,7 @@ final class WorkspaceStore {
     }
 
     func isUsingNormalizedWorkspacePersistence() -> Bool {
-        Self.loadNormalizedWorkspace(from: modelContext) != nil
+        usesNormalizedPersistence && Self.loadNormalizedWorkspace(from: modelContext) != nil
     }
 
     func clientRecord(_ id: WorkspaceClient.ID) throws -> ClientRecord? {
@@ -1153,7 +1161,7 @@ final class WorkspaceStore {
             throw WorkspaceStoreError.invalidBusinessProfile
         }
 
-        workspace.businessProfile = BusinessProfileProjection(
+        let profile = BusinessProfileProjection(
             businessName: businessName,
             personName: personName,
             email: email,
@@ -1168,8 +1176,66 @@ final class WorkspaceStore {
             taxNote: taxNote,
             defaultTermsDays: draft.defaultTermsDays
         )
+
+        if isUsingNormalizedWorkspacePersistence() {
+            let now = Date.now
+            let record = try latestBusinessProfileRecord() ?? {
+                let insertedRecord = BusinessProfileRecord(
+                    businessName: profile.businessName,
+                    personName: profile.personName,
+                    email: profile.email,
+                    phone: profile.phone,
+                    address: profile.address,
+                    taxIdentifier: profile.taxIdentifier,
+                    economicIdentifier: profile.economicIdentifier,
+                    invoicePrefix: profile.invoicePrefix,
+                    nextInvoiceNumber: profile.nextInvoiceNumber,
+                    currencyCode: profile.currencyCode,
+                    paymentDetails: profile.paymentDetails,
+                    taxNote: profile.taxNote,
+                    defaultTermsDays: profile.defaultTermsDays,
+                    createdAt: now,
+                    updatedAt: now
+                )
+                modelContext.insert(insertedRecord)
+                return insertedRecord
+            }()
+
+            record.businessName = profile.businessName
+            record.personName = profile.personName
+            record.email = profile.email
+            record.phone = profile.phone
+            record.address = profile.address
+            record.taxIdentifier = profile.taxIdentifier
+            record.economicIdentifier = profile.economicIdentifier
+            record.invoicePrefix = profile.invoicePrefix
+            record.nextInvoiceNumber = profile.nextInvoiceNumber
+            record.currencyCode = profile.currencyCode
+            record.paymentDetails = profile.paymentDetails
+            record.taxNote = profile.taxNote
+            record.defaultTermsDays = profile.defaultTermsDays
+            record.updatedAt = now
+
+            try saveAndReloadNormalizedWorkspacePreservingActivity()
+        } else {
+            workspace.businessProfile = profile
+        }
+
         AppTelemetry.settingsSaved()
         try persistWorkspace()
+    }
+
+    private func latestBusinessProfileRecord() throws -> BusinessProfileRecord? {
+        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
+        return records.max {
+            if $0.updatedAt != $1.updatedAt {
+                return $0.updatedAt < $1.updatedAt
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt < $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
+        }
     }
 
     func nextInvoiceNumber(issueDate: Date) -> String {
