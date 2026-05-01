@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 extension WorkspaceStore {
     func archiveBucket(
