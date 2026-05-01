@@ -1204,6 +1204,71 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.activity.isEmpty)
     }
 
+    @Test func explicitSeedResetReplacesExistingLocalRecordsWithDeterministicNormalizedImport() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let baselineStore = WorkspaceStore(
+            seed: WorkspaceSnapshot(
+                businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+                clients: [
+                    WorkspaceClient(
+                        id: UUID(uuidString: "10000000-0000-0000-0000-000000009511")!,
+                        name: "Legacy local client",
+                        email: "legacy@example.com",
+                        billingAddress: "1 Legacy Road",
+                        defaultTermsDays: 14
+                    ),
+                ],
+                projects: [],
+                activity: []
+            ),
+            modelContext: modelContext
+        )
+
+        #expect(baselineStore.workspace.clients.map(\.name) == ["Legacy local client"])
+
+        let seededSample = WorkspaceStore(
+            seed: WorkspaceFixtures.demoWorkspace,
+            modelContext: modelContext,
+            resetForSeedImport: true
+        )
+
+        let sampleClients = try modelContext.fetch(FetchDescriptor<ClientRecord>())
+        let sampleProjects = try modelContext.fetch(FetchDescriptor<ProjectRecord>())
+        let sampleBuckets = try modelContext.fetch(FetchDescriptor<BucketRecord>())
+        let sampleEntries = try modelContext.fetch(FetchDescriptor<TimeEntryRecord>())
+        let sampleFixedCosts = try modelContext.fetch(FetchDescriptor<FixedCostRecord>())
+        let sampleInvoices = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
+        let sampleInvoiceLineItems = try modelContext.fetch(FetchDescriptor<InvoiceLineItemRecord>())
+
+        #expect(seededSample.workspace.clients.map(\.name).contains("Legacy local client") == false)
+        #expect(seededSample.workspace.clients.map(\.name) == WorkspaceFixtures.demoWorkspace.clients.map(\.name))
+        #expect(sampleClients.count == WorkspaceFixtures.demoWorkspace.clients.count)
+        #expect(sampleProjects.count == WorkspaceFixtures.demoWorkspace.projects.count)
+        #expect(sampleBuckets.count > 0)
+        #expect(sampleEntries.count > 0)
+        #expect(sampleFixedCosts.count > 0)
+        #expect(sampleInvoices.count > 0)
+        #expect(sampleInvoiceLineItems.count > 0)
+
+        let seededBikepark = WorkspaceStore(
+            seed: WorkspaceFixtures.bikeparkWorkspace,
+            modelContext: modelContext,
+            resetForSeedImport: true
+        )
+        let bikeparkClients = try modelContext.fetch(FetchDescriptor<ClientRecord>())
+        let bikeparkProjects = try modelContext.fetch(FetchDescriptor<ProjectRecord>())
+        let bikeparkEntries = try modelContext.fetch(FetchDescriptor<TimeEntryRecord>())
+
+        #expect(seededBikepark.workspace.projects.map(\.name) == WorkspaceFixtures.bikeparkWorkspace.projects.map(\.name))
+        #expect(bikeparkClients.count == WorkspaceFixtures.bikeparkWorkspace.clients.count)
+        #expect(bikeparkProjects.count == WorkspaceFixtures.bikeparkWorkspace.projects.count)
+        #expect(bikeparkEntries.count == WorkspaceFixtures.bikeparkWorkspace.projects.flatMap(\.buckets).flatMap(\.timeEntries).count)
+    }
+
     @Test func persistentWorkspaceStoreBuildsProjectionFromNormalizedRecords() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {

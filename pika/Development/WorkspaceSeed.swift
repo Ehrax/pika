@@ -70,6 +70,15 @@ enum WorkspaceSeed: String, CaseIterable, Equatable {
         }
     }
 
+    var requiresDeterministicResetImport: Bool {
+        switch self {
+        case .empty:
+            false
+        case .sample, .bikeparkThunersee:
+            true
+        }
+    }
+
     nonisolated private static func seedValue(after argument: String, in arguments: [String]) -> String? {
         guard let argumentIndex = arguments.firstIndex(of: argument) else {
             return nil

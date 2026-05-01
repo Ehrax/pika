@@ -68,7 +68,8 @@ private struct PikaDependencyModifier: ViewModifier {
         _workspaceStore = State(
             initialValue: WorkspaceStore(
                 seed: configuration.initialWorkspace,
-                modelContext: ModelContext(modelContainer)
+                modelContext: ModelContext(modelContainer),
+                resetForSeedImport: configuration.workspaceSeed.requiresDeterministicResetImport
             )
         )
     }
