@@ -420,11 +420,17 @@ struct PikaScaffoldTests {
         let project = try String(contentsOf: projectURL, encoding: .utf8)
         let telemetry = try String(contentsOf: telemetryURL, encoding: .utf8)
         let projectStore = try String(contentsOf: projectStoreURL, encoding: .utf8)
+        let remoteNotificationBackgroundModeSettings = [
+            #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";"#,
+            #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";"#,
+        ]
 
         #expect(entitlements.contains("<key>com.apple.developer.icloud-container-identifiers</key>"))
         #expect(entitlements.contains("<string>iCloud.ehrax.dev.pika</string>"))
         #expect(entitlements.contains("<string>CloudKit</string>"))
-        #expect(project.contains("INFOPLIST_KEY_UIBackgroundModes = \"remote-notification\";"))
+        for setting in remoteNotificationBackgroundModeSettings {
+            #expect(project.contains(setting))
+        }
         #expect(telemetry.contains("persistence.container_configured"))
         #expect(telemetry.contains("persistence.save_failed"))
         #expect(telemetry.contains("persistence.projection_reload_failed"))

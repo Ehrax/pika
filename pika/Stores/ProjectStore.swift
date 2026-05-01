@@ -121,25 +121,28 @@ final class WorkspaceStore {
     }
 
     private func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
-        do {
+        try performPersistentWorkspaceWrite(operation: "replace_persistent_workspace_with_seed_import") {
             try Self.clearWorkspaceRecords(from: modelContext)
             try Self.persistNormalizedWorkspace(snapshot, into: modelContext)
             try modelContext.save()
-        } catch {
-            AppTelemetry.persistenceSaveFailed(
-                operation: "replace_persistent_workspace_with_seed_import",
-                message: String(describing: error)
-            )
-            throw WorkspaceStoreError.persistenceFailed
         }
     }
 
     func persistWorkspace() throws {
-        do {
+        try performPersistentWorkspaceWrite(operation: "persist_workspace") {
             try modelContext.save()
+        }
+    }
+
+    private func performPersistentWorkspaceWrite(
+        operation: String,
+        _ write: () throws -> Void
+    ) throws {
+        do {
+            try write()
         } catch {
             AppTelemetry.persistenceSaveFailed(
-                operation: "persist_workspace",
+                operation: operation,
                 message: String(describing: error)
             )
             throw WorkspaceStoreError.persistenceFailed
@@ -1132,14 +1135,8 @@ final class WorkspaceStore {
     }
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
-        do {
+        try performPersistentWorkspaceWrite(operation: "save_and_reload_normalized_workspace") {
             try modelContext.save()
-        } catch {
-            AppTelemetry.persistenceSaveFailed(
-                operation: "save_and_reload_normalized_workspace",
-                message: String(describing: error)
-            )
-            throw WorkspaceStoreError.persistenceFailed
         }
         guard var reloadedWorkspace = Self.loadNormalizedWorkspace(from: modelContext) else {
             AppTelemetry.persistenceProjectionReloadFailed(
