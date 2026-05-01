@@ -97,7 +97,17 @@ final class WorkspaceStore {
         inMemory: Bool,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        let schema = Schema([WorkspaceStorageRecord.self])
+        let schema = Schema([
+            BusinessProfileRecord.self,
+            ClientRecord.self,
+            ProjectRecord.self,
+            BucketRecord.self,
+            TimeEntryRecord.self,
+            FixedCostRecord.self,
+            InvoiceRecord.self,
+            InvoiceLineItemRecord.self,
+            WorkspaceStorageRecord.self,
+        ])
 
         let configuration: ModelConfiguration
         if inMemory {

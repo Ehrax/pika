@@ -76,26 +76,79 @@ struct PikaScaffoldTests {
         #expect(CurrencyTextFormatting.normalizedInput(" EUR ") == "EUR")
     }
 
-    @Test func projectRecordDefaultsArePikaSpecificAndFlexible() {
-        let createdAt = Date(timeIntervalSince1970: 1_776_000_000)
-        let project = ProjectRecord(title: "Client work", createdAt: createdAt)
+    @Test func normalizedPersistenceRecordsUseCloudKitFriendlyDefaultsAndTypedEnums() {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000501")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000501")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000501")!
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000501")!
+        let lineItemID = UUID(uuidString: "50000000-0000-0000-0000-000000000501")!
 
-        #expect(project.title == "Client work")
-        #expect(project.createdAt == createdAt)
+        let profile = BusinessProfileRecord()
+        let client = ClientRecord(id: clientID, name: "Northstar Labs")
+        let project = ProjectRecord(clientID: clientID, name: "Client work")
+        let bucket = BucketRecord(projectID: projectID, name: "April sprint")
+        let entry = TimeEntryRecord(bucketID: bucketID)
+        let cost = FixedCostRecord(bucketID: bucketID)
+        let invoice = InvoiceRecord(
+            id: invoiceID,
+            projectID: projectID,
+            bucketID: bucketID,
+            templateRaw: "classic",
+            statusRaw: "unknown"
+        )
+        let lineItem = InvoiceLineItemRecord(id: lineItemID, invoiceID: invoiceID)
+
+        #expect(profile.invoicePrefix == "INV")
+        #expect(profile.nextInvoiceNumber == 1)
+        #expect(profile.defaultTermsDays == 14)
+        #expect(client.defaultTermsDays == 14)
+        #expect(project.clientID == clientID)
+        #expect(project.client == nil)
+        #expect(project.currencyCode == "EUR")
         #expect(project.isArchived == false)
-        #expect(project.id.uuidString.isEmpty == false)
+        #expect(bucket.projectID == projectID)
+        #expect(bucket.project == nil)
+        #expect(bucket.status == .open)
+        #expect(entry.bucketID == bucketID)
+        #expect(entry.bucket == nil)
+        #expect(cost.bucketID == bucketID)
+        #expect(cost.bucket == nil)
+        #expect(cost.quantity == 1)
+        #expect(invoice.projectID == projectID)
+        #expect(invoice.bucketID == bucketID)
+        #expect(invoice.project == nil)
+        #expect(invoice.bucket == nil)
+        #expect(invoice.status == .finalized)
+        #expect(invoice.template == .kleinunternehmerClassic)
+        #expect(lineItem.invoiceID == invoiceID)
+        #expect(lineItem.invoice == nil)
+        #expect(lineItem.sortOrder == 0)
+
+        bucket.status = .ready
+        invoice.status = .paid
+        invoice.template = .kleinunternehmerClassic
+
+        #expect(bucket.statusRaw == BucketStatus.ready.rawValue)
+        #expect(invoice.statusRaw == InvoiceStatus.paid.rawValue)
+        #expect(invoice.templateRaw == InvoiceTemplate.kleinunternehmerClassic.rawValue)
     }
 
-    @Test func appModelContainerCanBeCreatedInMemory() throws {
+    @Test func appModelContainerCanPersistNormalizedRecordsInMemory() throws {
         let container = try PikaApp.makeModelContainer(inMemory: true)
 
         let context = ModelContext(container)
-        let project = ProjectRecord(title: "Preview project")
+        let client = ClientRecord(name: "Preview client", email: "billing@preview.example", billingAddress: "1 Preview Way")
+        let project = ProjectRecord(clientID: client.id, name: "Preview project")
+        project.client = client
+        context.insert(client)
         context.insert(project)
         try context.save()
 
+        let clients = try context.fetch(FetchDescriptor<ClientRecord>())
         let records = try context.fetch(FetchDescriptor<ProjectRecord>())
-        #expect(records.map(\.title) == ["Preview project"])
+        #expect(clients.map(\.name) == ["Preview client"])
+        #expect(records.map(\.name) == ["Preview project"])
+        #expect(records.first?.clientID == clients.first?.id)
     }
 
     @Test func macOSLaunchWindowPolicyStartsWithRoomForSidebarAndContent() {
