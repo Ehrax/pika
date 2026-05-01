@@ -318,7 +318,7 @@ final class WorkspaceStore {
             nonBillableMinutes: nonBillableMinutes,
             defaultHourlyRateMinorUnits: timeEntries
                 .first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?
-                .hourlyRateMinorUnits ?? (record.defaultHourlyRateMinorUnits > 0 ? record.defaultHourlyRateMinorUnits : nil),
+                .hourlyRateMinorUnits ?? positiveMinorUnits(record.defaultHourlyRateMinorUnits),
             timeEntries: timeEntries,
             fixedCostEntries: fixedCostEntries
         )
@@ -501,6 +501,11 @@ final class WorkspaceStore {
             return String(format: "%.1fh", locale: Locale(identifier: "en_US_POSIX"), Double(minutes) / 60)
         }
         return "\(minutes)m"
+    }
+
+    private static func positiveMinorUnits(_ minorUnits: Int) -> Int? {
+        guard minorUnits > 0 else { return nil }
+        return minorUnits
     }
 
     private static func sortedClients(_ records: [ClientRecord]) -> [ClientRecord] {
