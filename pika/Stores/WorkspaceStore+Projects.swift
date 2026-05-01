@@ -203,6 +203,7 @@ extension WorkspaceStore {
         let bucketRecord = BucketRecord(
             projectID: projectID,
             name: bucketName,
+            defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits,
             createdAt: now,
             updatedAt: now,
             project: projectRecord

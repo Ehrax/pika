@@ -1060,6 +1060,454 @@ struct WorkspaceSnapshotTests {
         #expect(relaunchedStore.workspace.projects.first?.clientName == "Replacement Client Renamed")
     }
 
+    @Test func persistentWorkspaceStoreMutatesNormalizedBucketEntriesAndReopensReadyBucketsOnEdit() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000871")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000871")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000871")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+        let fixedCostDate = Date.pikaDate(year: 2026, month: 4, day: 29)
+        let rangeEntryDate = Date.pikaDate(year: 2026, month: 4, day: 30)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Mutation rewrite",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint 2",
+            statusRaw: BucketStatus.open.rawValue,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceTimeEntryDraft(
+                date: createdAt,
+                timeInput: "1h",
+                description: "Planning",
+                isBillable: false
+            )
+        )
+        try store.addFixedCost(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceFixedCostDraft(
+                date: fixedCostDate,
+                description: "Prototype hosting",
+                amountMinorUnits: 5_000
+            )
+        )
+        try store.markBucketReady(
+            projectID: projectID,
+            bucketID: bucketID
+        )
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceTimeEntryDraft(
+                date: rangeEntryDate,
+                timeInput: "13:15-14:45",
+                description: "QA handoff",
+                isBillable: false
+            )
+        )
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first)
+        let reloadedBucket = try #require(reloadedProject.buckets.first)
+
+        #expect(reloadedBucket.status == .open)
+        #expect(reloadedBucket.timeEntries.map(\.description) == ["Planning", "QA handoff"])
+        #expect(reloadedBucket.timeEntries.map(\.durationMinutes) == [60, 90])
+        #expect(reloadedBucket.timeEntries.map(\.timeRangeLabel) == ["1h", "13:15-14:45"])
+        #expect(reloadedBucket.effectiveNonBillableMinutes == 150)
+        #expect(reloadedBucket.effectiveFixedCostMinorUnits == 5_000)
+        #expect(reloadedBucket.effectiveTotalMinorUnits == 5_000)
+
+        let persistedTimeEntries = try reloadedStore.timeEntryRecords(for: bucketID)
+            .sorted(by: { $0.createdAt < $1.createdAt })
+        let durationOnly = try #require(persistedTimeEntries.first(where: { $0.descriptionText == "Planning" }))
+        let rangeEntry = try #require(persistedTimeEntries.first(where: { $0.descriptionText == "QA handoff" }))
+
+        #expect(durationOnly.startMinuteOfDay == nil)
+        #expect(durationOnly.endMinuteOfDay == nil)
+        #expect(durationOnly.durationMinutes == 60)
+        #expect(durationOnly.isBillable == false)
+        #expect(rangeEntry.startMinuteOfDay == 13 * 60 + 15)
+        #expect(rangeEntry.endMinuteOfDay == 14 * 60 + 45)
+        #expect(rangeEntry.durationMinutes == 90)
+        #expect(rangeEntry.isBillable == false)
+
+        let fixedCosts = try reloadedStore.fixedCostRecords(for: bucketID)
+        let fixedCost = try #require(fixedCosts.first(where: { $0.descriptionText == "Prototype hosting" }))
+        #expect(fixedCost.quantity == 1)
+        #expect(fixedCost.unitPriceMinorUnits == 5_000)
+        #expect(fixedCost.isBillable)
+    }
+
+    @Test func persistentWorkspaceStoreRejectsNormalizedEntryMutationsWhenBucketRecordBecomesLocked() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000874")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000874")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000874")!
+        let timeEntryID = UUID(uuidString: "70000000-0000-0000-0000-000000000874")!
+        let fixedCostID = UUID(uuidString: "80000000-0000-0000-0000-000000000874")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Bucket lock guard",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint 3",
+            statusRaw: BucketStatus.open.rawValue,
+            defaultHourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        let timeEntry = TimeEntryRecord(
+            id: timeEntryID,
+            bucketID: bucketID,
+            workDate: createdAt,
+            durationMinutes: 60,
+            descriptionText: "Existing time",
+            isBillable: true,
+            hourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        )
+        let fixedCost = FixedCostRecord(
+            id: fixedCostID,
+            bucketID: bucketID,
+            date: createdAt,
+            descriptionText: "Existing cost",
+            quantity: 1,
+            unitPriceMinorUnits: 1_000,
+            isBillable: true,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        modelContext.insert(fixedCost)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        #expect(store.workspace.projects.first?.buckets.first?.status == .open)
+
+        let lockedAt = Date.pikaDate(year: 2026, month: 4, day: 29)
+        let bucketRecord = try #require(try store.bucketRecord(bucketID))
+        bucketRecord.status = .archived
+        bucketRecord.updatedAt = lockedAt
+        try modelContext.save()
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.addTimeEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: WorkspaceTimeEntryDraft(
+                    date: lockedAt,
+                    timeInput: "1h",
+                    description: "Should fail",
+                    isBillable: true
+                )
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.addFixedCost(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: WorkspaceFixedCostDraft(
+                    date: lockedAt,
+                    description: "Should fail",
+                    amountMinorUnits: 2_500
+                )
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.deleteEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: timeEntryID,
+                kind: .time,
+                isBillable: true
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.deleteEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: fixedCostID,
+                kind: .fixedCost,
+                isBillable: true
+            )
+        }
+
+        #expect((try store.timeEntryRecords(for: bucketID)).count == 1)
+        #expect((try store.fixedCostRecords(for: bucketID)).count == 1)
+    }
+
+    @Test func persistentWorkspaceStoreMutatesNormalizedBucketLifecycleRecords() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000872")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000872")!
+        let existingBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000872")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Bucket lifecycle",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let existingBucket = BucketRecord(
+            id: existingBucketID,
+            projectID: projectID,
+            name: "Existing",
+            statusRaw: BucketStatus.open.rawValue,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(existingBucket)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let createdBucket = try store.createBucket(
+            projectID: projectID,
+            WorkspaceBucketDraft(name: "May sprint", hourlyRateMinorUnits: 9_000)
+        )
+        let updatedBucket = try store.updateBucket(
+            projectID: projectID,
+            bucketID: createdBucket.id,
+            WorkspaceBucketDraft(name: "June sprint", hourlyRateMinorUnits: 9_000)
+        )
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.open)) {
+            try store.removeBucket(projectID: projectID, bucketID: updatedBucket.id)
+        }
+
+        try store.archiveBucket(projectID: projectID, bucketID: updatedBucket.id)
+        try store.restoreBucket(projectID: projectID, bucketID: updatedBucket.id)
+        try store.archiveBucket(projectID: projectID, bucketID: updatedBucket.id)
+        try store.removeBucket(projectID: projectID, bucketID: updatedBucket.id)
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first)
+        #expect(reloadedProject.buckets.map(\.id) == [existingBucketID])
+        #expect(reloadedProject.buckets.map(\.name) == ["Existing"])
+        #expect(reloadedStore.workspace.activity.map(\.message).contains("June sprint removed"))
+
+        let persistedBucketRecords = try reloadedStore.bucketRecords(for: projectID)
+        #expect(persistedBucketRecords.count == 1)
+        #expect(persistedBucketRecords.first?.id == existingBucketID)
+    }
+
+    @Test func persistentWorkspaceStorePersistsNormalizedBucketDefaultRateAcrossCreateAndUpdate() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000873")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000873")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Bucket rate persistence",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let bucket = try store.createBucket(
+            projectID: projectID,
+            WorkspaceBucketDraft(name: "Rate bucket", hourlyRateMinorUnits: 9_000)
+        )
+        _ = try store.updateBucket(
+            projectID: projectID,
+            bucketID: bucket.id,
+            WorkspaceBucketDraft(name: "Rate bucket", hourlyRateMinorUnits: 11_000)
+        )
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucket.id,
+            draft: WorkspaceTimeEntryDraft(
+                date: createdAt,
+                timeInput: "1h",
+                description: "Billable polish",
+                isBillable: true
+            )
+        )
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first)
+        let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucket.id }))
+        let reloadedEntry = try #require(reloadedBucket.timeEntries.first(where: { $0.description == "Billable polish" }))
+
+        #expect(reloadedBucket.hourlyRateMinorUnits == 11_000)
+        #expect(reloadedEntry.hourlyRateMinorUnits == 11_000)
+    }
+
+    @Test func persistentWorkspaceStoreUsesPersistedBucketDefaultRateForStaleProjectionTimeEntryMutation() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000875")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000875")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000875")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Stale projection rate",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint 4",
+            statusRaw: BucketStatus.open.rawValue,
+            defaultHourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+
+        let persistedBucketRecord = try #require(try store.bucketRecord(bucketID))
+        persistedBucketRecord.defaultHourlyRateMinorUnits = 12_500
+        persistedBucketRecord.updatedAt = Date.pikaDate(year: 2026, month: 4, day: 29)
+        try modelContext.save()
+
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: WorkspaceTimeEntryDraft(
+                date: createdAt,
+                timeInput: "1h",
+                description: "Rate should come from persisted default",
+                isBillable: true
+            )
+        )
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let persistedEntries = try reloadedStore.timeEntryRecords(for: bucketID)
+        let persistedEntry = try #require(persistedEntries.first)
+        #expect(persistedEntry.hourlyRateMinorUnits == 12_500)
+
+        let projectedBucket = try #require(reloadedStore.workspace.projects.first?.buckets.first)
+        let projectedEntry = try #require(projectedBucket.timeEntries.first)
+        #expect(projectedEntry.hourlyRateMinorUnits == 12_500)
+    }
+
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientUpdatesWithoutMutation() {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000831")!
         let originalWorkspace = WorkspaceSnapshot(
