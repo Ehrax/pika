@@ -100,7 +100,10 @@ final class WorkspaceStore {
         from context: ModelContext,
         recordID: UUID
     ) -> WorkspaceSnapshot? {
-        if let normalizedWorkspace = loadNormalizedWorkspace(from: context) {
+        if var normalizedWorkspace = loadNormalizedWorkspace(from: context) {
+            if let legacyWorkspace = loadLegacyWorkspace(from: context, recordID: recordID) {
+                normalizedWorkspace.activity = legacyWorkspace.activity
+            }
             return normalizedWorkspace
         }
 
