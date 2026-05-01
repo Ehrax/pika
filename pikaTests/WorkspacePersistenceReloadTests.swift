@@ -507,12 +507,50 @@ struct WorkspacePersistenceReloadTests {
         let projectBID = UUID(uuidString: "20000000-0000-0000-0000-000000009422")!
         let createdAt = Date.pikaDate(year: 2026, month: 4, day: 22)
 
-        modelContext.insert(ClientRecord(id: clientBID, name: "Zeta Client", email: "zeta@example.com", billingAddress: "2 Zeta Way", createdAt: createdAt, updatedAt: createdAt))
-        modelContext.insert(ClientRecord(id: clientAID, name: "Alpha Client", email: "alpha@example.com", billingAddress: "1 Alpha Way", createdAt: createdAt, updatedAt: createdAt))
-        modelContext.insert(ProjectRecord(id: projectBID, clientID: clientBID, name: "Zeta Project", createdAt: createdAt, updatedAt: createdAt))
-        modelContext.insert(ProjectRecord(id: projectAID, clientID: clientAID, name: "Alpha Project", createdAt: createdAt, updatedAt: createdAt))
-        modelContext.insert(BucketRecord(id: UUID(uuidString: "30000000-0000-0000-0000-000000009422")!, projectID: projectAID, name: "Zeta Bucket", createdAt: createdAt, updatedAt: createdAt))
-        modelContext.insert(BucketRecord(id: UUID(uuidString: "30000000-0000-0000-0000-000000009421")!, projectID: projectAID, name: "Alpha Bucket", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(ClientRecord(
+            id: clientBID,
+            name: "Zeta Client",
+            email: "zeta@example.com",
+            billingAddress: "2 Zeta Way",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(ClientRecord(
+            id: clientAID,
+            name: "Alpha Client",
+            email: "alpha@example.com",
+            billingAddress: "1 Alpha Way",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(ProjectRecord(
+            id: projectBID,
+            clientID: clientBID,
+            name: "Zeta Project",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(ProjectRecord(
+            id: projectAID,
+            clientID: clientAID,
+            name: "Alpha Project",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(BucketRecord(
+            id: UUID(uuidString: "30000000-0000-0000-0000-000000009422")!,
+            projectID: projectAID,
+            name: "Zeta Bucket",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(BucketRecord(
+            id: UUID(uuidString: "30000000-0000-0000-0000-000000009421")!,
+            projectID: projectAID,
+            name: "Alpha Bucket",
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
         try modelContext.save()
 
         let first = WorkspaceStore(seed: .empty, modelContext: modelContext).workspace
@@ -523,5 +561,4 @@ struct WorkspacePersistenceReloadTests {
         #expect(first.projects.first?.buckets.map(\.name) == ["Alpha Bucket", "Zeta Bucket"])
         #expect(first == second)
     }
-
 }

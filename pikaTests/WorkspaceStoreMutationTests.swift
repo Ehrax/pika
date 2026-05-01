@@ -1227,7 +1227,9 @@ struct WorkspaceStoreMutationTests {
         let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
         let reloadedProject = try #require(reloadedStore.workspace.projects.first)
         let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucket.id }))
-        let reloadedEntry = try #require(reloadedBucket.timeEntries.first(where: { $0.description == "Billable polish" }))
+        let reloadedEntry = try #require(reloadedBucket.timeEntries.first {
+            $0.description == "Billable polish"
+        })
 
         #expect(reloadedBucket.hourlyRateMinorUnits == 11_000)
         #expect(reloadedEntry.hourlyRateMinorUnits == 11_000)

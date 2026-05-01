@@ -17,7 +17,10 @@ struct WorkspaceProjectionTests {
             "Happ.ines launch sprint ready to invoice",
         ])
         #expect(summary.needsAttention.map(\.target).count == 3)
-        #expect(summary.needsAttention.first?.target == .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000002")!))
+        #expect(
+            summary.needsAttention.first?.target ==
+                .invoice(UUID(uuidString: "40000000-0000-0000-0000-000000000002")!)
+        )
     }
 
     @Test func dashboardRevenueHistoryOnlyIncludesPaidInvoices() {
@@ -69,8 +72,16 @@ struct WorkspaceProjectionTests {
     @Test func dashboardRevenueRangeSevenDaysUsesDailyBucketsEndingOnCurrentDate() {
         let points = [
             RevenuePoint(date: Date.pikaDate(year: 2026, month: 3, day: 16), label: "March", amountMinorUnits: 125_000),
-            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 23), label: "April first", amountMinorUnits: 80_000),
-            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 26), label: "April second", amountMinorUnits: 120_000),
+            RevenuePoint(
+                date: Date.pikaDate(year: 2026, month: 4, day: 23),
+                label: "April first",
+                amountMinorUnits: 80_000
+            ),
+            RevenuePoint(
+                date: Date.pikaDate(year: 2026, month: 4, day: 26),
+                label: "April second",
+                amountMinorUnits: 120_000
+            ),
         ]
 
         let visiblePoints = DashboardRevenueRange.sevenDays.visiblePoints(
@@ -101,8 +112,16 @@ struct WorkspaceProjectionTests {
     @Test func dashboardRevenueRangeAllGroupsEveryInvoiceMonth() {
         let points = [
             RevenuePoint(date: Date.pikaDate(year: 2026, month: 3, day: 16), label: "March", amountMinorUnits: 125_000),
-            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 23), label: "April first", amountMinorUnits: 80_000),
-            RevenuePoint(date: Date.pikaDate(year: 2026, month: 4, day: 26), label: "April second", amountMinorUnits: 120_000),
+            RevenuePoint(
+                date: Date.pikaDate(year: 2026, month: 4, day: 23),
+                label: "April first",
+                amountMinorUnits: 80_000
+            ),
+            RevenuePoint(
+                date: Date.pikaDate(year: 2026, month: 4, day: 26),
+                label: "April second",
+                amountMinorUnits: 120_000
+            ),
         ]
 
         let visiblePoints = DashboardRevenueRange.all.visiblePoints(
@@ -155,9 +174,21 @@ struct WorkspaceProjectionTests {
     @Test func sampleWorkspaceExposesRecentActivityNewestFirst() {
         var workspace = WorkspaceFixtures.demoWorkspace
         workspace.activity = [
-            WorkspaceActivity(message: "Older bucket marked ready", detail: "Launch sprint", occurredAt: Date(timeIntervalSince1970: 86_400)),
-            WorkspaceActivity(message: "Newest invoice finalized", detail: "Northstar Labs", occurredAt: Date(timeIntervalSince1970: 259_200)),
-            WorkspaceActivity(message: "Middle entry logged", detail: "Mobile QA", occurredAt: Date(timeIntervalSince1970: 172_800)),
+            WorkspaceActivity(
+                message: "Older bucket marked ready",
+                detail: "Launch sprint",
+                occurredAt: Date(timeIntervalSince1970: 86_400)
+            ),
+            WorkspaceActivity(
+                message: "Newest invoice finalized",
+                detail: "Northstar Labs",
+                occurredAt: Date(timeIntervalSince1970: 259_200)
+            ),
+            WorkspaceActivity(
+                message: "Middle entry logged",
+                detail: "Mobile QA",
+                occurredAt: Date(timeIntervalSince1970: 172_800)
+            ),
         ]
 
         #expect(workspace.recentActivity.map(\.message) == [
@@ -440,7 +471,10 @@ struct WorkspaceProjectionTests {
         let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(
+            on: WorkspaceFixtures.today,
+            formatter: formatter
+        ))
 
         #expect(projection.selectedInvoice.number == "EHX-2026-004")
         #expect(projection.rows.map(\.number) == [
@@ -457,7 +491,10 @@ struct WorkspaceProjectionTests {
     @Test func invoicePreviewProjectionIncludesRecipientAddressForPDFPreview() throws {
         let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(
+            on: WorkspaceFixtures.today,
+            formatter: formatter
+        ))
 
         #expect(projection.rows[0].clientName == "Northstar Labs")
         #expect(projection.rows[0].billingAddress == "12 Polaris Yard, Berlin")
@@ -468,7 +505,10 @@ struct WorkspaceProjectionTests {
     @Test func invoicePreviewProjectionIncludesInvoiceSnapshotContextForPDFs() throws {
         let workspace = WorkspaceFixtures.demoWorkspace
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
-        let projection = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+        let projection = try #require(workspace.invoicePreviewProjection(
+            on: WorkspaceFixtures.today,
+            formatter: formatter
+        ))
 
         #expect(projection.rows[0].projectName == "Mobile QA")
         #expect(projection.rows[0].bucketName == "Regression pass")
@@ -588,7 +628,10 @@ struct WorkspaceProjectionTests {
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
         let project = try #require(workspace.projects.first)
         let detail = try #require(project.detailProjection(formatter: formatter))
-        let preview = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+        let preview = try #require(workspace.invoicePreviewProjection(
+            on: WorkspaceFixtures.today,
+            formatter: formatter
+        ))
 
         #expect(detail.bucketRows.first?.statusTitle == "Finalized")
         #expect(preview.rows.first?.clientName == "Old Client Name")

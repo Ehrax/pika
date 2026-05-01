@@ -84,10 +84,15 @@ struct WorkspaceSeedImportTests {
         let bikeparkProjects = try modelContext.fetch(FetchDescriptor<ProjectRecord>())
         let bikeparkEntries = try modelContext.fetch(FetchDescriptor<TimeEntryRecord>())
 
-        #expect(seededBikepark.workspace.projects.map(\.name) == WorkspaceFixtures.bikeparkWorkspace.projects.map(\.name))
+        #expect(
+            seededBikepark.workspace.projects.map(\.name) ==
+                WorkspaceFixtures.bikeparkWorkspace.projects.map(\.name)
+        )
         #expect(bikeparkClients.count == WorkspaceFixtures.bikeparkWorkspace.clients.count)
         #expect(bikeparkProjects.count == WorkspaceFixtures.bikeparkWorkspace.projects.count)
-        #expect(bikeparkEntries.count == WorkspaceFixtures.bikeparkWorkspace.projects.flatMap(\.buckets).flatMap(\.timeEntries).count)
+        #expect(
+            bikeparkEntries.count ==
+                WorkspaceFixtures.bikeparkWorkspace.projects.flatMap(\.buckets).flatMap(\.timeEntries).count
+        )
     }
-
 }
