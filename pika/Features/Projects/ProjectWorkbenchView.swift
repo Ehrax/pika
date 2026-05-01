@@ -292,8 +292,12 @@ struct ProjectWorkbenchView: View {
 
         let invoice = project.invoices
             .filter { invoice in
-                let invoiceProjectName = invoice.projectName.isEmpty ? project.name : invoice.projectName
-                return invoiceProjectName == project.name && invoice.bucketName == projection.selectedBucket.name
+                let projectMatches = invoice.projectID == project.id || {
+                    let invoiceProjectName = invoice.projectName.isEmpty ? project.name : invoice.projectName
+                    return invoiceProjectName == project.name
+                }()
+                let bucketMatches = invoice.bucketID == projection.selectedBucket.id || invoice.bucketName == projection.selectedBucket.name
+                return projectMatches && bucketMatches
             }
             .sorted { left, right in
                 if left.issueDate == right.issueDate {
@@ -309,7 +313,13 @@ struct ProjectWorkbenchView: View {
         return WorkspaceInvoiceRowProjection(
             invoice: invoice,
             projectName: project.name,
-            billingAddress: workspaceStore.workspace.clients.first { $0.name == invoice.clientName }?.billingAddress ?? "",
+            billingAddress: workspaceStore.workspace.clients.first { client in
+                if let invoiceClientID = invoice.clientID {
+                    return client.id == invoiceClientID
+                }
+
+                return client.name == invoice.clientName
+            }?.billingAddress ?? "",
             on: currentDate,
             formatter: formatter
         )

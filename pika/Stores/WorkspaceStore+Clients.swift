@@ -72,7 +72,11 @@ extension WorkspaceStore {
 
         workspace.clients[clientIndex] = client
         if originalName != client.name {
-            for projectIndex in workspace.projects.indices where workspace.projects[projectIndex].clientName == originalName {
+            for projectIndex in workspace.projects.indices where
+                workspace.projects[projectIndex].clientID == clientID ||
+                workspace.projects[projectIndex].clientName == originalName
+            {
+                workspace.projects[projectIndex].clientID = clientID
                 workspace.projects[projectIndex].clientName = client.name
             }
         }
@@ -104,7 +108,9 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.clientNotArchived
         }
 
-        let hasLinkedProjects = workspace.projects.contains { $0.clientName == client.name }
+        let hasLinkedProjects = workspace.projects.contains {
+            $0.clientID == clientID || $0.clientName == client.name
+        }
         guard !hasLinkedProjects else {
             throw WorkspaceStoreError.clientHasLinkedProjects
         }

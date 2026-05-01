@@ -44,7 +44,9 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.invalidProject
         }
 
+        let resolvedClientID = workspace.clients.first { $0.name == clientName }?.id
         workspace.projects[index].name = projectName
+        workspace.projects[index].clientID = resolvedClientID
         workspace.projects[index].clientName = clientName
         workspace.projects[index].currencyCode = currencyCode
         let project = workspace.projects[index]
@@ -78,8 +80,10 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.invalidProject
         }
 
+        let resolvedClientID = workspace.clients.first { $0.name == clientName }?.id
         let project = WorkspaceProject(
             id: UUID(),
+            clientID: resolvedClientID,
             name: projectName,
             clientName: clientName,
             currencyCode: currencyCode,

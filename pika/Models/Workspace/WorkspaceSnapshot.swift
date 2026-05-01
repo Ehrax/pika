@@ -292,6 +292,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
 
 struct WorkspaceProject: Codable, Equatable, Identifiable {
     let id: UUID
+    var clientID: UUID? = nil
     var name: String
     var clientName: String
     var currencyCode: String
@@ -377,8 +378,12 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
     private func latestInvoice(for bucket: WorkspaceBucket) -> WorkspaceInvoice? {
         invoices
             .filter { invoice in
-                let invoiceProjectName = invoice.projectName.isEmpty ? name : invoice.projectName
-                return invoiceProjectName == name && invoice.bucketName == bucket.name
+                let projectMatches = invoice.projectID == id || {
+                    let invoiceProjectName = invoice.projectName.isEmpty ? name : invoice.projectName
+                    return invoiceProjectName == name
+                }()
+                let bucketMatches = invoice.bucketID == bucket.id || invoice.bucketName == bucket.name
+                return projectMatches && bucketMatches
             }
             .sorted { left, right in
                 if left.issueDate == right.issueDate {
@@ -542,8 +547,11 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     var number: String
     var businessSnapshot: BusinessProfileProjection? = nil
     var clientSnapshot: WorkspaceClient? = nil
+    var clientID: UUID? = nil
     var clientName: String
+    var projectID: UUID? = nil
     var projectName: String = ""
+    var bucketID: UUID? = nil
     var bucketName: String = ""
     var template: InvoiceTemplate = .kleinunternehmerClassic
     var issueDate: Date
@@ -560,8 +568,11 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         case number
         case businessSnapshot
         case clientSnapshot
+        case clientID
         case clientName
+        case projectID
         case projectName
+        case bucketID
         case bucketName
         case template
         case issueDate
@@ -579,8 +590,11 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         number: String,
         businessSnapshot: BusinessProfileProjection? = nil,
         clientSnapshot: WorkspaceClient? = nil,
+        clientID: UUID? = nil,
         clientName: String,
+        projectID: UUID? = nil,
         projectName: String = "",
+        bucketID: UUID? = nil,
         bucketName: String = "",
         template: InvoiceTemplate = .kleinunternehmerClassic,
         issueDate: Date,
@@ -596,8 +610,11 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         self.number = number
         self.businessSnapshot = businessSnapshot
         self.clientSnapshot = clientSnapshot
+        self.clientID = clientID
         self.clientName = clientName
+        self.projectID = projectID
         self.projectName = projectName
+        self.bucketID = bucketID
         self.bucketName = bucketName
         self.template = template
         self.issueDate = issueDate
@@ -616,8 +633,11 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         number = try container.decode(String.self, forKey: .number)
         businessSnapshot = try container.decodeIfPresent(BusinessProfileProjection.self, forKey: .businessSnapshot)
         clientSnapshot = try container.decodeIfPresent(WorkspaceClient.self, forKey: .clientSnapshot)
+        clientID = try container.decodeIfPresent(UUID.self, forKey: .clientID)
         clientName = try container.decode(String.self, forKey: .clientName)
+        projectID = try container.decodeIfPresent(UUID.self, forKey: .projectID)
         projectName = try container.decodeIfPresent(String.self, forKey: .projectName) ?? ""
+        bucketID = try container.decodeIfPresent(UUID.self, forKey: .bucketID)
         bucketName = try container.decodeIfPresent(String.self, forKey: .bucketName) ?? ""
         template = try container.decodeIfPresent(InvoiceTemplate.self, forKey: .template) ?? .kleinunternehmerClassic
         issueDate = try container.decode(Date.self, forKey: .issueDate)
@@ -879,8 +899,11 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
     let id: WorkspaceInvoice.ID
     let number: String
     let businessProfile: BusinessProfileProjection?
+    let clientID: UUID?
     let clientName: String
+    let projectID: UUID?
     let projectName: String
+    let bucketID: UUID?
     let bucketName: String
     let template: InvoiceTemplate
     let issueDate: Date
@@ -904,8 +927,11 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         id = invoice.id
         number = invoice.number
         businessProfile = invoice.businessSnapshot
+        clientID = invoice.clientID
         clientName = invoice.clientSnapshot?.name ?? invoice.clientName
+        projectID = invoice.projectID
         self.projectName = invoice.projectName.isEmpty ? projectName : invoice.projectName
+        bucketID = invoice.bucketID
         bucketName = invoice.bucketName.isEmpty ? "Project services" : invoice.bucketName
         template = invoice.template
         issueDate = invoice.issueDate
@@ -1044,10 +1070,17 @@ extension WorkspaceSnapshot {
                 return left.invoice.issueDate > right.invoice.issueDate
             }
             .map { projectName, invoice in
+                let client = clients.first { client in
+                    if let invoiceClientID = invoice.clientID {
+                        return client.id == invoiceClientID
+                    }
+
+                    return client.name == invoice.clientName
+                }
                 WorkspaceInvoiceRowProjection(
                     invoice: invoice,
                     projectName: projectName,
-                    billingAddress: clients.first { $0.name == invoice.clientName }?.billingAddress ?? "",
+                    billingAddress: client?.billingAddress ?? "",
                     on: date,
                     formatter: formatter
                 )

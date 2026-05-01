@@ -8,7 +8,13 @@ extension WorkspaceStore {
     ) throws -> InvoiceFinalizationDraft {
         let project = try project(projectID)
         _ = try bucket(bucketID, in: project)
-        let client = workspace.clients.first { $0.name == project.clientName }
+        let client = workspace.clients.first { client in
+            if let clientID = project.clientID {
+                return client.id == clientID
+            }
+
+            return client.name == project.clientName
+        }
         let termsDays = client?.defaultTermsDays ?? workspace.businessProfile.defaultTermsDays
         let dueDate = Calendar.pikaStoreGregorian.date(
             byAdding: .day,
@@ -52,6 +58,7 @@ extension WorkspaceStore {
         }
 
         let clientSnapshot = snapshotClient(
+            id: project.clientID,
             named: project.clientName,
             draft: draft
         )
@@ -60,8 +67,11 @@ extension WorkspaceStore {
             number: draft.invoiceNumber,
             businessSnapshot: workspace.businessProfile,
             clientSnapshot: clientSnapshot,
+            clientID: project.clientID ?? clientSnapshot.id,
             clientName: draft.recipientName,
+            projectID: project.id,
             projectName: project.name,
+            bucketID: bucket.id,
             bucketName: bucket.name,
             template: draft.template,
             issueDate: draft.issueDate,

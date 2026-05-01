@@ -1066,6 +1066,206 @@ struct WorkspaceSnapshotTests {
         #expect(relaunchedStore.workspace.activity.map(\.message) == ["Persistent Client client created"])
     }
 
+    @Test func freshPersistentWorkspaceProjectionStartsWithBlankDefaultProfile() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+
+        #expect(store.workspace.businessProfile == WorkspaceSnapshot.empty.businessProfile)
+        #expect(store.workspace.clients.isEmpty)
+        #expect(store.workspace.projects.isEmpty)
+        #expect(store.workspace.activity.isEmpty)
+    }
+
+    @Test func persistentWorkspaceStoreBuildsProjectionFromNormalizedRecords() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009401")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009401")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009401")!
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000009401")!
+        let lineItemID = UUID(uuidString: "50000000-0000-0000-0000-000000009401")!
+        let workDate = Date.pikaDate(year: 2026, month: 4, day: 20)
+        let issueDate = Date.pikaDate(year: 2026, month: 4, day: 25)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 9)
+
+        let profile = BusinessProfileRecord(
+            id: UUID(uuidString: "60000000-0000-0000-0000-000000009401")!,
+            businessName: "North Coast Studio",
+            personName: "Avery North",
+            email: "billing@northcoast.example",
+            phone: "+49 555 0100",
+            address: "1 Harbour Way",
+            taxIdentifier: "DE123",
+            economicIdentifier: "ECO123",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 12,
+            currencyCode: "EUR",
+            paymentDetails: "IBAN DE00 1234",
+            taxNote: "VAT exempt",
+            defaultTermsDays: 21,
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let client = ClientRecord(
+            id: clientID,
+            name: "Summit Labs",
+            email: "finance@summit.example",
+            billingAddress: "9 Market Street",
+            defaultTermsDays: 30,
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "API Delivery",
+            currencyCode: "EUR",
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint 1",
+            statusRaw: BucketStatus.ready.rawValue,
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let timeEntry = TimeEntryRecord(
+            id: UUID(uuidString: "70000000-0000-0000-0000-000000009401")!,
+            bucketID: bucketID,
+            workDate: workDate,
+            startMinuteOfDay: 9 * 60,
+            endMinuteOfDay: 11 * 60,
+            durationMinutes: 120,
+            descriptionText: "Build endpoints",
+            isBillable: true,
+            hourlyRateMinorUnits: 6_000,
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let fixedCost = FixedCostRecord(
+            id: UUID(uuidString: "80000000-0000-0000-0000-000000009401")!,
+            bucketID: bucketID,
+            date: workDate,
+            descriptionText: "API credits",
+            quantity: 2,
+            unitPriceMinorUnits: 5_000,
+            isBillable: true,
+            createdAt: workDate,
+            updatedAt: workDate
+        )
+        let invoice = InvoiceRecord(
+            id: invoiceID,
+            projectID: projectID,
+            bucketID: bucketID,
+            number: "NCS-2026-011",
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "Apr 2026",
+            statusRaw: InvoiceStatus.finalized.rawValue,
+            totalMinorUnits: 22_000,
+            currencyCode: "EUR",
+            note: "Thanks",
+            businessName: "North Coast Studio",
+            businessPersonName: "Avery North",
+            businessEmail: "billing@northcoast.example",
+            businessPhone: "+49 555 0100",
+            businessAddress: "1 Harbour Way",
+            businessTaxIdentifier: "DE123",
+            businessEconomicIdentifier: "ECO123",
+            businessPaymentDetails: "IBAN DE00 1234",
+            businessTaxNote: "VAT exempt",
+            clientName: "",
+            clientEmail: "",
+            clientBillingAddress: "",
+            projectName: "",
+            bucketName: "",
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let lineItem = InvoiceLineItemRecord(
+            id: lineItemID,
+            invoiceID: invoiceID,
+            sortOrder: 1,
+            descriptionText: "Sprint 1 services",
+            quantityLabel: "2h",
+            amountMinorUnits: 12_000,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+
+        modelContext.insert(profile)
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        modelContext.insert(fixedCost)
+        modelContext.insert(invoice)
+        modelContext.insert(lineItem)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace, modelContext: modelContext)
+        let projectedProject = try #require(store.workspace.projects.first)
+        let projectedBucket = try #require(projectedProject.buckets.first)
+        let projectedInvoice = try #require(projectedProject.invoices.first)
+
+        #expect(store.workspace.businessProfile.businessName == "North Coast Studio")
+        #expect(store.workspace.clients.map(\.name) == ["Summit Labs"])
+        #expect(projectedProject.name == "API Delivery")
+        #expect(projectedProject.clientID == clientID)
+        #expect(projectedProject.clientName == "Summit Labs")
+        #expect(projectedBucket.name == "Sprint 1")
+        #expect(projectedBucket.billableMinutes == 120)
+        #expect(projectedBucket.fixedCostMinorUnits == 10_000)
+        #expect(projectedBucket.totalMinorUnits == 22_000)
+        #expect(projectedInvoice.number == "NCS-2026-011")
+        #expect(projectedInvoice.clientID == clientID)
+        #expect(projectedInvoice.projectID == projectID)
+        #expect(projectedInvoice.bucketID == bucketID)
+        #expect(projectedInvoice.clientName == "Summit Labs")
+        #expect(projectedInvoice.projectName == "API Delivery")
+        #expect(projectedInvoice.bucketName == "Sprint 1")
+        #expect(projectedInvoice.lineItems.map(\.id) == [lineItemID])
+        #expect(store.workspace.activity.isEmpty)
+    }
+
+    @Test func persistentWorkspaceProjectionSortingIsDeterministic() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientAID = UUID(uuidString: "10000000-0000-0000-0000-000000009421")!
+        let clientBID = UUID(uuidString: "10000000-0000-0000-0000-000000009422")!
+        let projectAID = UUID(uuidString: "20000000-0000-0000-0000-000000009421")!
+        let projectBID = UUID(uuidString: "20000000-0000-0000-0000-000000009422")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 22)
+
+        modelContext.insert(ClientRecord(id: clientBID, name: "Zeta Client", email: "zeta@example.com", billingAddress: "2 Zeta Way", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(ClientRecord(id: clientAID, name: "Alpha Client", email: "alpha@example.com", billingAddress: "1 Alpha Way", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(ProjectRecord(id: projectBID, clientID: clientBID, name: "Zeta Project", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(ProjectRecord(id: projectAID, clientID: clientAID, name: "Alpha Project", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(BucketRecord(id: UUID(uuidString: "30000000-0000-0000-0000-000000009422")!, projectID: projectAID, name: "Zeta Bucket", createdAt: createdAt, updatedAt: createdAt))
+        modelContext.insert(BucketRecord(id: UUID(uuidString: "30000000-0000-0000-0000-000000009421")!, projectID: projectAID, name: "Alpha Bucket", createdAt: createdAt, updatedAt: createdAt))
+        try modelContext.save()
+
+        let first = WorkspaceStore(seed: .empty, modelContext: modelContext).workspace
+        let second = WorkspaceStore(seed: .empty, modelContext: modelContext).workspace
+
+        #expect(first.clients.map(\.name) == ["Alpha Client", "Zeta Client"])
+        #expect(first.projects.map(\.name) == ["Alpha Project", "Zeta Project"])
+        #expect(first.projects.first?.buckets.map(\.name) == ["Alpha Bucket", "Zeta Bucket"])
+        #expect(first == second)
+    }
+
     @Test func persistentWorkspaceStoreUpdatesBusinessProfileAndInvoiceDefaults() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
@@ -1920,6 +2120,70 @@ struct WorkspaceSnapshotTests {
         #expect(first.rows[0].lineItems.first?.id == invoiceID)
         #expect(first.rows[0].lineItems.first?.description == "Services rendered")
         #expect(first.rows[0].lineItems.first?.amountLabel == "EUR 420.00")
+    }
+
+    @Test func projectionJoinsPreferStableIDsOverRenamedDisplayNames() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009501")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009501")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009501")!
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000009501")!
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Renamed Client",
+                    email: "billing@client.example",
+                    billingAddress: "42 Stable ID Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Renamed Project",
+                    clientName: "Renamed Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Renamed Bucket",
+                            status: .finalized,
+                            totalMinorUnits: 24_000,
+                            billableMinutes: 120,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: [
+                        WorkspaceInvoice(
+                            id: invoiceID,
+                            number: "EHX-2026-951",
+                            clientID: clientID,
+                            clientName: "Old Client Name",
+                            projectID: projectID,
+                            projectName: "Old Project Name",
+                            bucketID: bucketID,
+                            bucketName: "Old Bucket Name",
+                            issueDate: Date.pikaDate(year: 2026, month: 4, day: 20),
+                            dueDate: Date.pikaDate(year: 2026, month: 5, day: 4),
+                            status: .finalized,
+                            totalMinorUnits: 24_000
+                        ),
+                    ]
+                ),
+            ],
+            activity: []
+        )
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let project = try #require(workspace.projects.first)
+        let detail = try #require(project.detailProjection(formatter: formatter))
+        let preview = try #require(workspace.invoicePreviewProjection(on: WorkspaceFixtures.today, formatter: formatter))
+
+        #expect(detail.bucketRows.first?.statusTitle == "Finalized")
+        #expect(preview.rows.first?.clientName == "Old Client Name")
+        #expect(preview.rows.first?.billingAddress == "42 Stable ID Way")
     }
 
     @Test func projectOverviewSummaryTotalsActiveProjects() {
