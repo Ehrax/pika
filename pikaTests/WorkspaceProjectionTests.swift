@@ -608,4 +608,3 @@ struct WorkspaceProjectionTests {
         #expect(summary.overdueMinorUnits == 0)
     }
 }
-}
