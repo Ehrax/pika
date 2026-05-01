@@ -127,6 +127,7 @@ final class BucketRecord {
     var projectID: UUID = UUID()
     var name: String = ""
     var statusRaw: String = BucketStatus.open.rawValue
+    var defaultHourlyRateMinorUnits: Int = 0
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var project: ProjectRecord? = nil
@@ -141,6 +142,7 @@ final class BucketRecord {
         projectID: UUID,
         name: String = "",
         statusRaw: String = BucketStatus.open.rawValue,
+        defaultHourlyRateMinorUnits: Int = 0,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         project: ProjectRecord? = nil
@@ -149,6 +151,7 @@ final class BucketRecord {
         self.projectID = projectID
         self.name = name
         self.statusRaw = statusRaw
+        self.defaultHourlyRateMinorUnits = defaultHourlyRateMinorUnits
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.project = project

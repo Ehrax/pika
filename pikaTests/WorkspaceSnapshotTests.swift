@@ -1247,6 +1247,68 @@ struct WorkspaceSnapshotTests {
         #expect(persistedBucketRecords.first?.id == existingBucketID)
     }
 
+    @Test func persistentWorkspaceStorePersistsNormalizedBucketDefaultRateAcrossCreateAndUpdate() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000873")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000873")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Bucket rate persistence",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let bucket = try store.createBucket(
+            projectID: projectID,
+            WorkspaceBucketDraft(name: "Rate bucket", hourlyRateMinorUnits: 9_000)
+        )
+        _ = try store.updateBucket(
+            projectID: projectID,
+            bucketID: bucket.id,
+            WorkspaceBucketDraft(name: "Rate bucket", hourlyRateMinorUnits: 11_000)
+        )
+        try store.addTimeEntry(
+            projectID: projectID,
+            bucketID: bucket.id,
+            draft: WorkspaceTimeEntryDraft(
+                date: createdAt,
+                timeInput: "1h",
+                description: "Billable polish",
+                isBillable: true
+            )
+        )
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first)
+        let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucket.id }))
+        let reloadedEntry = try #require(reloadedBucket.timeEntries.first(where: { $0.description == "Billable polish" }))
+
+        #expect(reloadedBucket.hourlyRateMinorUnits == 11_000)
+        #expect(reloadedEntry.hourlyRateMinorUnits == 11_000)
+    }
+
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientUpdatesWithoutMutation() {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000831")!
         let originalWorkspace = WorkspaceSnapshot(

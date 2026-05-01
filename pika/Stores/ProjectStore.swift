@@ -315,7 +315,7 @@ final class WorkspaceStore {
             nonBillableMinutes: nonBillableMinutes,
             defaultHourlyRateMinorUnits: timeEntries
                 .first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?
-                .hourlyRateMinorUnits,
+                .hourlyRateMinorUnits ?? (record.defaultHourlyRateMinorUnits > 0 ? record.defaultHourlyRateMinorUnits : nil),
             timeEntries: timeEntries,
             fixedCostEntries: fixedCostEntries
         )

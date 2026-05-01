@@ -242,6 +242,7 @@ extension WorkspaceStore {
             projectID: projectID,
             name: bucketName,
             statusRaw: BucketStatus.open.rawValue,
+            defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits,
             createdAt: now,
             updatedAt: now,
             project: projectRecord
@@ -284,6 +285,7 @@ extension WorkspaceStore {
         }
 
         bucketRecord.name = bucketName
+        bucketRecord.defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
         bucketRecord.updatedAt = .now
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
