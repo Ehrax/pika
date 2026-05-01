@@ -33,10 +33,7 @@ struct PikaApp: App {
     }
 
     static func makeModelContainer(inMemory: Bool) throws -> ModelContainer {
-        let schema = Schema([
-            ProjectRecord.self,
-            WorkspaceStorageRecord.self,
-        ])
+        let schema = PikaPersistenceSchema.makeSchema()
         let configuration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: inMemory,
