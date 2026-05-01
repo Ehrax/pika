@@ -371,7 +371,7 @@ final class WorkspaceStore {
             let durationMinutes = normalizedDurationMinutes(for: record)
             let startTime = timeLabel(minuteOfDay: record.startMinuteOfDay)
             let endTime = timeLabel(minuteOfDay: record.endMinuteOfDay)
-            WorkspaceTimeEntry(
+            return WorkspaceTimeEntry(
                 id: record.id,
                 date: record.workDate,
                 startTime: startTime.isEmpty && endTime.isEmpty ? durationInputLabel(minutes: durationMinutes) : startTime,
