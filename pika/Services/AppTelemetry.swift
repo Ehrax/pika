@@ -179,19 +179,15 @@ enum AppTelemetry {
         settingsLogger.info("settings.saved")
     }
 
-    static func persistenceContainerRecoveryAttempted(storePath: String, reason: String) {
-        persistenceLogger.warning(
-            "persistence.recovery_attempted store=\(storePath, privacy: .public) reason=\(reason, privacy: .public)"
+    static func persistenceContainerConfigured(mode: String, cloudKitEnabled: Bool) {
+        persistenceLogger.info(
+            "persistence.container_configured mode=\(mode, privacy: .public) cloudkit_enabled=\(cloudKitEnabled, privacy: .public)"
         )
     }
 
-    static func persistenceContainerRecovered(storePath: String) {
-        persistenceLogger.info("persistence.recovered store=\(storePath, privacy: .public)")
-    }
-
-    static func persistenceContainerRecoveryFailed(storePath: String, message: String) {
+    static func persistenceContainerCreationFailed(mode: String, cloudKitEnabled: Bool, message: String) {
         persistenceLogger.error(
-            "persistence.recovery_failed store=\(storePath, privacy: .public) error=\(message, privacy: .private)"
+            "persistence.container_creation_failed mode=\(mode, privacy: .public) cloudkit_enabled=\(cloudKitEnabled, privacy: .public) error=\(message, privacy: .private)"
         )
     }
 }

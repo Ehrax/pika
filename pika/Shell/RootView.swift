@@ -145,6 +145,8 @@ enum PikaShellDestination: Hashable {
 }
 
 #Preview {
+    let container = try! PreviewSupport.makeModelContainer()
     RootView()
-        .pikaDependencies()
+        .modelContainer(container)
+        .pikaDependencies(modelContainer: container)
 }

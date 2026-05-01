@@ -134,7 +134,7 @@ struct PikaScaffoldTests {
     }
 
     @Test func appModelContainerCanPersistNormalizedRecordsInMemory() throws {
-        let container = try PikaApp.makeModelContainer(inMemory: true)
+        let container = try PikaApp.makeModelContainer(mode: .inMemory)
 
         let context = ModelContext(container)
         let client = ClientRecord(name: "Preview client", email: "billing@preview.example", billingAddress: "1 Preview Way")
@@ -190,30 +190,54 @@ struct PikaScaffoldTests {
     }
 
     @Test func appLaunchConfigurationUsesEmptyWorkspaceByDefault() {
-        let configuration = AppLaunchConfiguration(arguments: ["pika"], environment: [:])
-
-        #expect(configuration.workspaceSeed == .empty)
-        #expect(configuration.initialWorkspace == .empty)
-    }
-
-    @Test func appLaunchConfigurationMapsLegacyWorkspacePathArgumentToSwiftDataStorePath() {
         let configuration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-path", "/tmp/pika-empty-workspace.json"],
-            environment: [:]
+            arguments: ["pika"],
+            environment: [:],
+            isRunningTests: false
         )
 
         #expect(configuration.workspaceSeed == .empty)
         #expect(configuration.initialWorkspace == .empty)
-        #expect(configuration.workspaceStoreURL?.path == "/tmp/pika-empty-workspace.store")
+        #expect(configuration.persistenceMode == .cloudKitPrivate)
     }
 
-    @Test func appLaunchConfigurationSupportsExplicitWorkspaceStorePathArgument() {
+    @Test func appLaunchConfigurationIgnoresLegacyWorkspaceStorePathArguments() {
         let configuration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-store-path", "/tmp/pika-bikepark.store"],
-            environment: [:]
+            arguments: [
+                "pika",
+                "--pika-workspace-path", "/tmp/pika-empty-workspace.json",
+                "--pika-workspace-store-path", "/tmp/pika-bikepark.store",
+            ],
+            environment: [
+                "PIKA_WORKSPACE_STORE_PATH": "/tmp/pika-environment.store",
+            ],
+            isRunningTests: false
         )
 
-        #expect(configuration.workspaceStoreURL?.path == "/tmp/pika-bikepark.store")
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.initialWorkspace == .empty)
+        #expect(configuration.persistenceMode == .cloudKitPrivate)
+    }
+
+    @Test func appLaunchConfigurationUsesLocalModeForExplicitSeedResets() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "sample"],
+            environment: [:],
+            isRunningTests: false
+        )
+
+        #expect(configuration.workspaceSeed == .sample)
+        #expect(configuration.persistenceMode == .local)
+    }
+
+    @Test func appLaunchConfigurationUsesInMemoryModeDuringTests() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-workspace-seed", "sample"],
+            environment: [:],
+            isRunningTests: true
+        )
+
+        #expect(configuration.persistenceMode == .inMemory)
     }
 
     @Test func appLaunchConfigurationCanExplicitlyUseEmptyWorkspace() {

@@ -72,84 +72,32 @@ final class WorkspaceStore {
     }
 
     static func makeModelContainer(
+        mode: AppPersistenceMode
+    ) throws -> ModelContainer {
+        try PikaApp.makeModelContainer(mode: mode)
+    }
+
+    static func makeModelContainer(
         inMemory: Bool,
         storeURL: URL? = nil
     ) throws -> ModelContainer {
-        let schema = PikaPersistenceSchema.makeSchema()
-
-        let configuration: ModelConfiguration
         if inMemory {
-            configuration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: true,
-                cloudKitDatabase: .none
-            )
-        } else if let storeURL {
-            removeLegacyWorkspaceJSON(near: storeURL)
-            configuration = ModelConfiguration(
-                schema: schema,
-                url: storeURL,
-                cloudKitDatabase: .none
-            )
-        } else {
-            configuration = ModelConfiguration(
-                schema: schema,
-                cloudKitDatabase: .none
+            return try makeModelContainer(mode: .inMemory)
+        }
+
+        if let storeURL {
+            return try PikaApp.makeModelContainer(
+                mode: .local,
+                overrideStoreURL: storeURL
             )
         }
 
-        do {
-            return try ModelContainer(for: schema, configurations: [configuration])
-        } catch {
-            guard !inMemory, let storeURL else {
-                throw error
-            }
-
-            AppTelemetry.persistenceContainerRecoveryAttempted(
-                storePath: storeURL.path,
-                reason: String(describing: error)
-            )
-            do {
-                try removeStoreArtifacts(at: storeURL)
-                let recovered = try ModelContainer(for: schema, configurations: [configuration])
-                AppTelemetry.persistenceContainerRecovered(storePath: storeURL.path)
-                return recovered
-            } catch {
-                AppTelemetry.persistenceContainerRecoveryFailed(
-                    storePath: storeURL.path,
-                    message: String(describing: error)
-                )
-                throw error
-            }
-        }
-    }
-
-    private static func removeStoreArtifacts(at storeURL: URL) throws {
-        let fileManager = FileManager.default
-        let directory = storeURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-
-        let artifacts = [
-            storeURL,
-            URL(fileURLWithPath: storeURL.path + "-shm"),
-            URL(fileURLWithPath: storeURL.path + "-wal"),
-        ]
-
-        for artifact in artifacts where fileManager.fileExists(atPath: artifact.path) {
-            try fileManager.removeItem(at: artifact)
-        }
-    }
-
-    private static func removeLegacyWorkspaceJSON(near storeURL: URL) {
-        let legacyURL = storeURL.deletingLastPathComponent().appendingPathComponent("workspace.json")
-        let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: legacyURL.path) else { return }
-        try? fileManager.removeItem(at: legacyURL)
+        return try makeModelContainer(mode: .local)
     }
 
     private static func makeDefaultModelContext() -> ModelContext {
         do {
-            let container = try makeModelContainer(inMemory: true)
+            let container = try makeModelContainer(mode: .inMemory)
             return ModelContext(container)
         } catch {
             fatalError("Could not create WorkspaceStore ModelContext: \(error)")

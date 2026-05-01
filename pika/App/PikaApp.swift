@@ -5,13 +5,23 @@ import SwiftUI
 struct PikaApp: App {
     static let defaultLaunchWindowSize = CGSize(width: 1_408, height: 813)
 
+    let launchConfiguration: AppLaunchConfiguration
     let sharedModelContainer: ModelContainer
 
     init() {
-        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        launchConfiguration = AppLaunchConfiguration()
         do {
-            sharedModelContainer = try Self.makeModelContainer(inMemory: isRunningTests)
+            sharedModelContainer = try Self.makeModelContainer(mode: launchConfiguration.persistenceMode)
+            AppTelemetry.persistenceContainerConfigured(
+                mode: launchConfiguration.persistenceMode.telemetryName,
+                cloudKitEnabled: launchConfiguration.persistenceMode.cloudKitEnabled
+            )
         } catch {
+            AppTelemetry.persistenceContainerCreationFailed(
+                mode: launchConfiguration.persistenceMode.telemetryName,
+                cloudKitEnabled: launchConfiguration.persistenceMode.cloudKitEnabled,
+                message: String(describing: error)
+            )
             fatalError("Could not create ModelContainer: \(error)")
         }
     }
@@ -19,7 +29,10 @@ struct PikaApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .pikaDependencies()
+                .pikaDependencies(
+                    configuration: launchConfiguration,
+                    modelContainer: sharedModelContainer
+                )
                 .font(PikaTypography.body)
                 .tint(PikaColor.accent)
 #if os(macOS)
@@ -32,15 +45,91 @@ struct PikaApp: App {
 #endif
     }
 
-    static func makeModelContainer(inMemory: Bool) throws -> ModelContainer {
+    static func makeModelContainer(
+        mode: AppPersistenceMode,
+        overrideStoreURL: URL? = nil
+    ) throws -> ModelContainer {
         let schema = PikaPersistenceSchema.makeSchema()
-        let configuration = ModelConfiguration(
+        try prepareStoreDirectoryIfNeeded(mode: mode, overrideStoreURL: overrideStoreURL)
+        let configuration = mode.makeModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: .none
+            overrideStoreURL: overrideStoreURL
         )
 
         return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    private static func prepareStoreDirectoryIfNeeded(
+        mode: AppPersistenceMode,
+        overrideStoreURL: URL?
+    ) throws {
+        guard mode == .local, let overrideStoreURL else { return }
+
+        let directory = overrideStoreURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+    }
+}
+
+enum AppPersistenceMode: Equatable {
+    static let cloudKitContainerIdentifier = "iCloud.ehrax.dev.pika"
+
+    case cloudKitPrivate
+    case local
+    case inMemory
+
+    var telemetryName: String {
+        switch self {
+        case .cloudKitPrivate:
+            "cloudkit_private"
+        case .local:
+            "local"
+        case .inMemory:
+            "in_memory"
+        }
+    }
+
+    var cloudKitEnabled: Bool {
+        switch self {
+        case .cloudKitPrivate:
+            true
+        case .local, .inMemory:
+            false
+        }
+    }
+
+    func makeModelConfiguration(
+        schema: Schema,
+        overrideStoreURL: URL? = nil
+    ) -> ModelConfiguration {
+        switch self {
+        case .cloudKitPrivate:
+            ModelConfiguration(
+                schema: schema,
+                cloudKitDatabase: .private(Self.cloudKitContainerIdentifier)
+            )
+        case .local:
+            if let overrideStoreURL {
+                return ModelConfiguration(
+                    schema: schema,
+                    url: overrideStoreURL,
+                    cloudKitDatabase: .none
+                )
+            } else {
+                return ModelConfiguration(
+                    schema: schema,
+                    cloudKitDatabase: .none
+                )
+            }
+        case .inMemory:
+            return ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+        }
     }
 }
 
