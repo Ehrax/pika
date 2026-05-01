@@ -126,6 +126,10 @@ final class WorkspaceStore {
             try Self.persistNormalizedWorkspace(snapshot, into: modelContext)
             try modelContext.save()
         } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: "replace_persistent_workspace_with_seed_import",
+                message: String(describing: error)
+            )
             throw WorkspaceStoreError.persistenceFailed
         }
     }
@@ -134,6 +138,10 @@ final class WorkspaceStore {
         do {
             try modelContext.save()
         } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: "persist_workspace",
+                message: String(describing: error)
+            )
             throw WorkspaceStoreError.persistenceFailed
         }
     }
@@ -1124,8 +1132,19 @@ final class WorkspaceStore {
     }
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
-        try modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: "save_and_reload_normalized_workspace",
+                message: String(describing: error)
+            )
+            throw WorkspaceStoreError.persistenceFailed
+        }
         guard var reloadedWorkspace = Self.loadNormalizedWorkspace(from: modelContext) else {
+            AppTelemetry.persistenceProjectionReloadFailed(
+                operation: "save_and_reload_normalized_workspace"
+            )
             throw WorkspaceStoreError.persistenceFailed
         }
         reloadedWorkspace.normalizeMissingHourlyRates()

@@ -190,4 +190,16 @@ enum AppTelemetry {
             "persistence.container_creation_failed mode=\(mode, privacy: .public) cloudkit_enabled=\(cloudKitEnabled, privacy: .public) error=\(message, privacy: .private)"
         )
     }
+
+    static func persistenceSaveFailed(operation: String, message: String) {
+        persistenceLogger.error(
+            "persistence.save_failed operation=\(operation, privacy: .public) error=\(message, privacy: .private)"
+        )
+    }
+
+    static func persistenceProjectionReloadFailed(operation: String) {
+        persistenceLogger.error(
+            "persistence.projection_reload_failed operation=\(operation, privacy: .public)"
+        )
+    }
 }

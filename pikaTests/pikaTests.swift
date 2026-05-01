@@ -406,4 +406,29 @@ struct PikaScaffoldTests {
             try service.renderDraftPDF()
         }
     }
+
+    @Test func cloudKitSyncConfigurationIncludesRequiredCapabilitiesAndPersistenceTelemetryHooks() throws {
+        let repositoryRoot = URL(filePath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let entitlementsURL = repositoryRoot.appendingPathComponent("pika/pika.entitlements")
+        let projectURL = repositoryRoot.appendingPathComponent("pika.xcodeproj/project.pbxproj")
+        let telemetryURL = repositoryRoot.appendingPathComponent("pika/Services/AppTelemetry.swift")
+        let projectStoreURL = repositoryRoot.appendingPathComponent("pika/Stores/ProjectStore.swift")
+
+        let entitlements = try String(contentsOf: entitlementsURL, encoding: .utf8)
+        let project = try String(contentsOf: projectURL, encoding: .utf8)
+        let telemetry = try String(contentsOf: telemetryURL, encoding: .utf8)
+        let projectStore = try String(contentsOf: projectStoreURL, encoding: .utf8)
+
+        #expect(entitlements.contains("<key>com.apple.developer.icloud-container-identifiers</key>"))
+        #expect(entitlements.contains("<string>iCloud.ehrax.dev.pika</string>"))
+        #expect(entitlements.contains("<string>CloudKit</string>"))
+        #expect(project.contains("INFOPLIST_KEY_UIBackgroundModes = \"remote-notification\";"))
+        #expect(telemetry.contains("persistence.container_configured"))
+        #expect(telemetry.contains("persistence.save_failed"))
+        #expect(telemetry.contains("persistence.projection_reload_failed"))
+        #expect(projectStore.contains("AppTelemetry.persistenceSaveFailed("))
+        #expect(projectStore.contains("AppTelemetry.persistenceProjectionReloadFailed("))
+    }
 }
