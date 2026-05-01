@@ -5,7 +5,6 @@ MODE="run"
 WORKSPACE_SEED="empty"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
-RUN_DATA_DIR="$ROOT_DIR/.build/RunData"
 PROJECT_FILE="$ROOT_DIR/pika.xcodeproj"
 SCHEME="pika"
 DESTINATION="platform=macOS"
@@ -88,15 +87,8 @@ find_app_bundle() {
 
 launch_app() {
   local app_bundle="$1"
-  local workspace_name="$WORKSPACE_SEED"
-
-  local workspace_dir="$RUN_DATA_DIR/$workspace_name"
-  local workspace_store_path="$workspace_dir/workspace.store"
-  mkdir -p "$workspace_dir"
-  rm -f "$workspace_store_path" "$workspace_store_path-shm" "$workspace_store_path-wal"
 
   /usr/bin/open -n "$app_bundle" --args \
-    --pika-workspace-store-path "$workspace_store_path" \
     --pika-workspace-seed "$WORKSPACE_SEED"
 }
 

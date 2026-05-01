@@ -201,16 +201,13 @@ struct PikaScaffoldTests {
         #expect(configuration.persistenceMode == .cloudKitPrivate)
     }
 
-    @Test func appLaunchConfigurationIgnoresLegacyWorkspaceStorePathArguments() {
+    @Test func appLaunchConfigurationIgnoresUnknownArguments() {
         let configuration = AppLaunchConfiguration(
             arguments: [
                 "pika",
-                "--pika-workspace-path", "/tmp/pika-empty-workspace.json",
-                "--pika-workspace-store-path", "/tmp/pika-bikepark.store",
+                "--not-a-real-argument", "unexpected-value",
             ],
-            environment: [
-                "PIKA_WORKSPACE_STORE_PATH": "/tmp/pika-environment.store",
-            ],
+            environment: [:],
             isRunningTests: false
         )
 
@@ -238,6 +235,17 @@ struct PikaScaffoldTests {
         )
 
         #expect(configuration.persistenceMode == .inMemory)
+    }
+
+    @Test func buildAndRunScriptDoesNotUseLegacyWorkspaceStorePathOverrides() throws {
+        let repositoryRoot = URL(filePath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let scriptURL = repositoryRoot.appendingPathComponent("script/build_and_run.sh")
+        let script = try String(contentsOf: scriptURL, encoding: .utf8)
+
+        #expect(script.contains("--pika-workspace-store-path") == false)
+        #expect(script.contains("PIKA_WORKSPACE_STORE_PATH") == false)
     }
 
     @Test func appLaunchConfigurationUsesInMemoryModeForExplicitUITestEnvironment() {
