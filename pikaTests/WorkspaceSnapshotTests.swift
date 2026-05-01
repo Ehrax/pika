@@ -1249,7 +1249,7 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.projects.first?.buckets.first?.status == .open)
 
         let lockedAt = Date.pikaDate(year: 2026, month: 4, day: 29)
-        let bucketRecord = try #require(store.bucketRecord(bucketID))
+        let bucketRecord = try #require(try store.bucketRecord(bucketID))
         bucketRecord.status = .archived
         bucketRecord.updatedAt = lockedAt
         try modelContext.save()
