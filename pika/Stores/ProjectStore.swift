@@ -54,10 +54,12 @@ final class WorkspaceStore {
 
     private let modelContext: ModelContext
     private let storageRecordID: UUID
+    private static let deterministicImportTimestamp = Date(timeIntervalSince1970: 0)
 
     init(
         seed: WorkspaceSnapshot = .empty,
         modelContext: ModelContext? = nil,
+        resetForSeedImport: Bool = false,
         storageRecordID: UUID = UUID(uuidString: "8C2E6FE9-EA65-4D16-91A0-CF1220195B79")!
     ) {
         self.storageRecordID = storageRecordID
@@ -66,6 +68,13 @@ final class WorkspaceStore {
             self.modelContext = modelContext
         } else {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
+        }
+
+        if resetForSeedImport {
+            workspace = seed
+            workspace.normalizeMissingHourlyRates()
+            try? replacePersistentWorkspaceWithSeedImport(workspace)
+            return
         }
 
         let persistedWorkspace = Self.loadWorkspace(from: self.modelContext, recordID: storageRecordID)
@@ -123,24 +132,30 @@ final class WorkspaceStore {
         return decodeWorkspace(from: record.payload)
     }
 
+    private func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        do {
+            try Self.clearWorkspaceRecords(from: modelContext)
+            try Self.persistNormalizedWorkspace(snapshot, into: modelContext)
+            let payload = try Self.encodeWorkspace(snapshot)
+            try Self.upsertLegacyWorkspaceStorageRecord(
+                payload: payload,
+                recordID: storageRecordID,
+                in: modelContext
+            )
+            try modelContext.save()
+        } catch {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+    }
+
     func persistWorkspace() throws {
         do {
             let payload = try Self.encodeWorkspace(workspace)
-            var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
-                predicate: #Predicate { $0.id == storageRecordID }
+            try Self.upsertLegacyWorkspaceStorageRecord(
+                payload: payload,
+                recordID: storageRecordID,
+                in: modelContext
             )
-            descriptor.fetchLimit = 1
-
-            if let existingRecord = try modelContext.fetch(descriptor).first {
-                existingRecord.apply(payload: payload)
-            } else {
-                let record = WorkspaceStorageRecord(
-                    id: storageRecordID,
-                    payload: payload
-                )
-                modelContext.insert(record)
-            }
-
             try modelContext.save()
         } catch {
             throw WorkspaceStoreError.persistenceFailed
@@ -155,6 +170,329 @@ final class WorkspaceStore {
 
     private static func decodeWorkspace(from payload: Data) -> WorkspaceSnapshot? {
         try? PropertyListDecoder().decode(WorkspaceSnapshot.self, from: payload)
+    }
+
+    private static func upsertLegacyWorkspaceStorageRecord(
+        payload: Data,
+        recordID: UUID,
+        in context: ModelContext
+    ) throws {
+        var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
+            predicate: #Predicate { $0.id == recordID }
+        )
+        descriptor.fetchLimit = 1
+
+        if let existingRecord = try context.fetch(descriptor).first {
+            existingRecord.apply(payload: payload)
+        } else {
+            context.insert(WorkspaceStorageRecord(
+                id: recordID,
+                payload: payload
+            ))
+        }
+    }
+
+    private static func clearWorkspaceRecords(from context: ModelContext) throws {
+        try deleteAll(FetchDescriptor<BusinessProfileRecord>(), from: context)
+        try deleteAll(FetchDescriptor<ClientRecord>(), from: context)
+        try deleteAll(FetchDescriptor<ProjectRecord>(), from: context)
+        try deleteAll(FetchDescriptor<BucketRecord>(), from: context)
+        try deleteAll(FetchDescriptor<TimeEntryRecord>(), from: context)
+        try deleteAll(FetchDescriptor<FixedCostRecord>(), from: context)
+        try deleteAll(FetchDescriptor<InvoiceLineItemRecord>(), from: context)
+        try deleteAll(FetchDescriptor<InvoiceRecord>(), from: context)
+        try deleteAll(FetchDescriptor<WorkspaceStorageRecord>(), from: context)
+    }
+
+    private static func deleteAll<Record: PersistentModel>(
+        _ descriptor: FetchDescriptor<Record>,
+        from context: ModelContext
+    ) throws {
+        let records = try context.fetch(descriptor)
+        for record in records {
+            context.delete(record)
+        }
+    }
+
+    private static func persistNormalizedWorkspace(_ snapshot: WorkspaceSnapshot, into context: ModelContext) throws {
+        let importedAt = deterministicImportTimestamp
+
+        let profile = snapshot.businessProfile
+        context.insert(BusinessProfileRecord(
+            businessName: profile.businessName,
+            personName: profile.personName,
+            email: profile.email,
+            phone: profile.phone,
+            address: profile.address,
+            taxIdentifier: profile.taxIdentifier,
+            economicIdentifier: profile.economicIdentifier,
+            invoicePrefix: profile.invoicePrefix,
+            nextInvoiceNumber: profile.nextInvoiceNumber,
+            currencyCode: profile.currencyCode,
+            paymentDetails: profile.paymentDetails,
+            taxNote: profile.taxNote,
+            defaultTermsDays: profile.defaultTermsDays,
+            createdAt: importedAt,
+            updatedAt: importedAt
+        ))
+
+        var clientRecordsByID: [UUID: ClientRecord] = [:]
+        var clientRecordsByName: [String: ClientRecord] = [:]
+        for client in snapshot.clients {
+            let record = ClientRecord(
+                id: client.id,
+                name: client.name,
+                email: client.email,
+                billingAddress: client.billingAddress,
+                defaultTermsDays: client.defaultTermsDays,
+                isArchived: client.isArchived,
+                createdAt: importedAt,
+                updatedAt: importedAt
+            )
+            context.insert(record)
+            clientRecordsByID[record.id] = record
+            clientRecordsByName[normalizedNameKey(client.name)] = record
+        }
+
+        for project in snapshot.projects {
+            let normalizedClientName = normalizedNameKey(project.clientName)
+            let resolvedClientRecord: ClientRecord
+            if let clientID = project.clientID,
+               let existing = clientRecordsByID[clientID] {
+                resolvedClientRecord = existing
+            } else if let existing = clientRecordsByName[normalizedClientName] {
+                resolvedClientRecord = existing
+            } else {
+                let synthesizedClientID = project.clientID ?? project.id
+                let synthesizedClient = ClientRecord(
+                    id: synthesizedClientID,
+                    name: project.clientName,
+                    email: "",
+                    billingAddress: "",
+                    defaultTermsDays: profile.defaultTermsDays,
+                    isArchived: false,
+                    createdAt: importedAt,
+                    updatedAt: importedAt
+                )
+                context.insert(synthesizedClient)
+                clientRecordsByID[synthesizedClientID] = synthesizedClient
+                clientRecordsByName[normalizedClientName] = synthesizedClient
+                resolvedClientRecord = synthesizedClient
+            }
+
+            let projectRecord = ProjectRecord(
+                id: project.id,
+                clientID: resolvedClientRecord.id,
+                name: project.name,
+                currencyCode: project.currencyCode,
+                isArchived: project.isArchived,
+                createdAt: importedAt,
+                updatedAt: importedAt,
+                client: resolvedClientRecord
+            )
+            context.insert(projectRecord)
+
+            var bucketIDsByName: [String: UUID] = [:]
+            for bucket in project.buckets {
+                let bucketRecord = BucketRecord(
+                    id: bucket.id,
+                    projectID: project.id,
+                    name: bucket.name,
+                    statusRaw: bucket.status.rawValue,
+                    createdAt: importedAt,
+                    updatedAt: importedAt,
+                    project: projectRecord
+                )
+                context.insert(bucketRecord)
+                bucketIDsByName[normalizedNameKey(bucket.name)] = bucket.id
+
+                if bucket.hasRowLevelEntries {
+                    for entry in bucket.timeEntries {
+                        context.insert(TimeEntryRecord(
+                            id: entry.id,
+                            bucketID: bucket.id,
+                            workDate: entry.date,
+                            startMinuteOfDay: minuteOfDay(from: entry.startTime),
+                            endMinuteOfDay: minuteOfDay(from: entry.endTime),
+                            durationMinutes: max(entry.durationMinutes, 0),
+                            descriptionText: entry.description,
+                            isBillable: entry.isBillable,
+                            hourlyRateMinorUnits: max(entry.hourlyRateMinorUnits, 0),
+                            createdAt: entry.date,
+                            updatedAt: entry.date,
+                            bucket: bucketRecord
+                        ))
+                    }
+
+                    for fixedCost in bucket.fixedCostEntries {
+                        context.insert(FixedCostRecord(
+                            id: fixedCost.id,
+                            bucketID: bucket.id,
+                            date: fixedCost.date,
+                            descriptionText: fixedCost.description,
+                            quantity: 1,
+                            unitPriceMinorUnits: max(fixedCost.amountMinorUnits, 0),
+                            isBillable: true,
+                            createdAt: fixedCost.date,
+                            updatedAt: fixedCost.date,
+                            bucket: bucketRecord
+                        ))
+                    }
+                } else {
+                    persistLegacyAggregateRows(
+                        for: bucket,
+                        bucketRecord: bucketRecord,
+                        importedAt: importedAt,
+                        into: context
+                    )
+                }
+            }
+
+            for invoice in project.invoices {
+                let resolvedBucketID =
+                    invoice.bucketID
+                    ?? bucketIDsByName[normalizedNameKey(invoice.bucketName)]
+                    ?? project.buckets.first?.id
+                    ?? UUID()
+                let fallbackClient = invoice.clientSnapshot
+                let invoiceRecord = InvoiceRecord(
+                    id: invoice.id,
+                    projectID: project.id,
+                    bucketID: resolvedBucketID,
+                    number: invoice.number,
+                    templateRaw: invoice.template.rawValue,
+                    issueDate: invoice.issueDate,
+                    dueDate: invoice.dueDate,
+                    servicePeriod: invoice.servicePeriod,
+                    statusRaw: invoice.status.rawValue,
+                    totalMinorUnits: invoice.totalMinorUnits,
+                    currencyCode: invoice.currencyCode.isEmpty ? project.currencyCode : invoice.currencyCode,
+                    note: invoice.note ?? "",
+                    businessName: invoice.businessSnapshot?.businessName ?? "",
+                    businessPersonName: invoice.businessSnapshot?.personName ?? "",
+                    businessEmail: invoice.businessSnapshot?.email ?? "",
+                    businessPhone: invoice.businessSnapshot?.phone ?? "",
+                    businessAddress: invoice.businessSnapshot?.address ?? "",
+                    businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
+                    businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
+                    businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
+                    businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
+                    clientName: fallbackClient?.name.isEmpty == false ? (fallbackClient?.name ?? "") : invoice.clientName,
+                    clientEmail: fallbackClient?.email ?? "",
+                    clientBillingAddress: fallbackClient?.billingAddress ?? "",
+                    projectName: invoice.projectName.isEmpty ? project.name : invoice.projectName,
+                    bucketName: invoice.bucketName,
+                    createdAt: invoice.issueDate,
+                    updatedAt: invoice.issueDate
+                )
+                invoiceRecord.project = projectRecord
+                invoiceRecord.bucket = nil
+                context.insert(invoiceRecord)
+
+                for (lineItemIndex, lineItem) in invoice.lineItems.enumerated() {
+                    context.insert(InvoiceLineItemRecord(
+                        id: derivedUUID(from: invoice.id, variant: UInt8((lineItemIndex + 1) % 255)),
+                        invoiceID: invoice.id,
+                        sortOrder: lineItemIndex,
+                        descriptionText: lineItem.description,
+                        quantityLabel: lineItem.quantityLabel,
+                        amountMinorUnits: lineItem.amountMinorUnits,
+                        createdAt: invoice.issueDate,
+                        updatedAt: invoice.issueDate,
+                        invoice: invoiceRecord
+                    ))
+                }
+            }
+        }
+    }
+
+    private static func persistLegacyAggregateRows(
+        for bucket: WorkspaceBucket,
+        bucketRecord: BucketRecord,
+        importedAt: Date,
+        into context: ModelContext
+    ) {
+        let billableMinorUnits = max(bucket.totalMinorUnits - bucket.fixedCostMinorUnits, 0)
+        if bucket.billableMinutes > 0 {
+            let inferredRate = bucket.hourlyRateMinorUnits
+                ?? (bucket.billableMinutes > 0 ? (billableMinorUnits * 60 / bucket.billableMinutes) : 0)
+            context.insert(TimeEntryRecord(
+                id: derivedUUID(from: bucket.id, variant: 1),
+                bucketID: bucket.id,
+                workDate: importedAt,
+                startMinuteOfDay: nil,
+                endMinuteOfDay: nil,
+                durationMinutes: bucket.billableMinutes,
+                descriptionText: "Imported billable time",
+                isBillable: true,
+                hourlyRateMinorUnits: max(inferredRate, 0),
+                createdAt: importedAt,
+                updatedAt: importedAt,
+                bucket: bucketRecord
+            ))
+        }
+
+        if bucket.nonBillableMinutes > 0 {
+            context.insert(TimeEntryRecord(
+                id: derivedUUID(from: bucket.id, variant: 2),
+                bucketID: bucket.id,
+                workDate: importedAt,
+                startMinuteOfDay: nil,
+                endMinuteOfDay: nil,
+                durationMinutes: bucket.nonBillableMinutes,
+                descriptionText: "Imported non-billable time",
+                isBillable: false,
+                hourlyRateMinorUnits: max(bucket.hourlyRateMinorUnits ?? 0, 0),
+                createdAt: importedAt,
+                updatedAt: importedAt,
+                bucket: bucketRecord
+            ))
+        }
+
+        if bucket.fixedCostMinorUnits > 0 {
+            context.insert(FixedCostRecord(
+                id: derivedUUID(from: bucket.id, variant: 3),
+                bucketID: bucket.id,
+                date: importedAt,
+                descriptionText: "Imported fixed costs",
+                quantity: 1,
+                unitPriceMinorUnits: bucket.fixedCostMinorUnits,
+                isBillable: true,
+                createdAt: importedAt,
+                updatedAt: importedAt,
+                bucket: bucketRecord
+            ))
+        }
+    }
+
+    private static func minuteOfDay(from label: String) -> Int? {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count == 5 else { return nil }
+
+        let components = trimmed.split(separator: ":")
+        guard components.count == 2,
+              let hours = Int(components[0]),
+              let minutes = Int(components[1]),
+              (0...23).contains(hours),
+              (0...59).contains(minutes)
+        else {
+            return nil
+        }
+
+        return hours * 60 + minutes
+    }
+
+    private static func normalizedNameKey(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func derivedUUID(from base: UUID, variant: UInt8) -> UUID {
+        var raw = base.uuid
+        withUnsafeMutableBytes(of: &raw) { bytes in
+            bytes[15] ^= variant
+            bytes[14] ^= 0xA5
+        }
+        return UUID(uuid: raw)
     }
 
     private static func loadNormalizedWorkspace(from context: ModelContext) -> WorkspaceSnapshot? {
