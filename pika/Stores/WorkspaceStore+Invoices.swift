@@ -69,26 +69,13 @@ extension WorkspaceStore {
             named: project.clientName,
             draft: draft
         )
-        let invoice = WorkspaceInvoice(
-            id: UUID(),
-            number: invoiceNumber,
-            businessSnapshot: workspace.businessProfile,
+        let invoice = finalizedInvoiceSnapshot(
+            invoiceNumber: invoiceNumber,
+            project: project,
+            bucket: bucket,
+            draft: draft,
             clientSnapshot: clientSnapshot,
-            clientID: project.clientID ?? clientSnapshot.id,
-            clientName: draft.recipientName,
-            projectID: project.id,
-            projectName: project.name,
-            bucketID: bucket.id,
-            bucketName: bucket.name,
-            template: draft.template,
-            issueDate: draft.issueDate,
-            dueDate: draft.dueDate,
-            servicePeriod: draft.servicePeriod.trimmingCharacters(in: .whitespacesAndNewlines),
-            status: .finalized,
-            totalMinorUnits: bucket.effectiveTotalMinorUnits,
-            lineItems: lineItems,
-            currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
-            note: draft.taxNote.isEmpty ? nil : draft.taxNote
+            lineItems: lineItems
         )
 
         workspace.projects[projectIndex].buckets[bucketIndex].status = .finalized
@@ -198,78 +185,23 @@ extension WorkspaceStore {
         )
         let profileRecord = try existingBusinessProfileRecord()
         let now = Date.now
-        let invoiceID = UUID()
-        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
-        let note = draft.taxNote.isEmpty ? nil : draft.taxNote
 
-        let invoice = WorkspaceInvoice(
-            id: invoiceID,
-            number: invoiceNumber,
-            businessSnapshot: workspace.businessProfile,
+        let invoice = finalizedInvoiceSnapshot(
+            invoiceNumber: invoiceNumber,
+            project: project,
+            bucket: bucket,
+            draft: draft,
             clientSnapshot: clientSnapshot,
-            clientID: project.clientID ?? clientSnapshot.id,
-            clientName: draft.recipientName,
-            projectID: project.id,
-            projectName: project.name,
-            bucketID: bucket.id,
-            bucketName: bucket.name,
-            template: draft.template,
-            issueDate: draft.issueDate,
-            dueDate: draft.dueDate,
-            servicePeriod: draft.servicePeriod.trimmingCharacters(in: .whitespacesAndNewlines),
-            status: .finalized,
-            totalMinorUnits: bucket.effectiveTotalMinorUnits,
-            lineItems: lineItems,
-            currencyCode: currencyCode,
-            note: note
+            lineItems: lineItems
         )
-        let invoiceRecord = InvoiceRecord(
-            id: invoice.id,
+        let invoiceRecord = insertInvoiceRecord(
+            for: invoice,
             projectID: projectID,
             bucketID: bucketID,
-            number: invoice.number,
-            templateRaw: invoice.template.rawValue,
-            issueDate: invoice.issueDate,
-            dueDate: invoice.dueDate,
-            servicePeriod: invoice.servicePeriod,
-            statusRaw: invoice.status.rawValue,
-            totalMinorUnits: invoice.totalMinorUnits,
-            currencyCode: currencyCode,
-            note: note ?? "",
-            businessName: invoice.businessSnapshot?.businessName ?? "",
-            businessPersonName: invoice.businessSnapshot?.personName ?? "",
-            businessEmail: invoice.businessSnapshot?.email ?? "",
-            businessPhone: invoice.businessSnapshot?.phone ?? "",
-            businessAddress: invoice.businessSnapshot?.address ?? "",
-            businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
-            businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
-            businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
-            businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
-            clientName: invoice.clientSnapshot?.name ?? invoice.clientName,
-            clientEmail: invoice.clientSnapshot?.email ?? "",
-            clientBillingAddress: invoice.clientSnapshot?.billingAddress ?? "",
-            projectName: invoice.projectName,
-            bucketName: invoice.bucketName,
-            createdAt: invoice.issueDate,
             updatedAt: now,
             project: projectRecord,
             bucket: bucketRecord
         )
-        modelContext.insert(invoiceRecord)
-
-        for (lineItemIndex, lineItem) in lineItems.enumerated() {
-            modelContext.insert(InvoiceLineItemRecord(
-                id: lineItem.id,
-                invoiceID: invoice.id,
-                sortOrder: lineItemIndex,
-                descriptionText: lineItem.description,
-                quantityLabel: lineItem.quantityLabel,
-                amountMinorUnits: lineItem.amountMinorUnits,
-                createdAt: invoice.issueDate,
-                updatedAt: now,
-                invoice: invoiceRecord
-            ))
-        }
 
         bucketRecord.status = .finalized
         bucketRecord.updatedAt = now
@@ -277,7 +209,7 @@ extension WorkspaceStore {
         profileRecord.updatedAt = now
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let indices = try invoiceIndices(invoiceID)
+        let indices = try invoiceIndices(invoice.id)
         let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
         appendActivity(
             message: "\(persistedInvoice.number) finalized",
@@ -329,6 +261,96 @@ extension WorkspaceStore {
         }
 
         try persistWorkspace()
+    }
+
+    private func finalizedInvoiceSnapshot(
+        invoiceNumber: String,
+        project: WorkspaceProject,
+        bucket: WorkspaceBucket,
+        draft: InvoiceFinalizationDraft,
+        clientSnapshot: WorkspaceClient,
+        lineItems: [WorkspaceInvoiceLineItemSnapshot]
+    ) -> WorkspaceInvoice {
+        WorkspaceInvoice(
+            id: UUID(),
+            number: invoiceNumber,
+            businessSnapshot: workspace.businessProfile,
+            clientSnapshot: clientSnapshot,
+            clientID: project.clientID ?? clientSnapshot.id,
+            clientName: draft.recipientName,
+            projectID: project.id,
+            projectName: project.name,
+            bucketID: bucket.id,
+            bucketName: bucket.name,
+            template: draft.template,
+            issueDate: draft.issueDate,
+            dueDate: draft.dueDate,
+            servicePeriod: draft.servicePeriod.trimmingCharacters(in: .whitespacesAndNewlines),
+            status: .finalized,
+            totalMinorUnits: bucket.effectiveTotalMinorUnits,
+            lineItems: lineItems,
+            currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
+            note: draft.taxNote.isEmpty ? nil : draft.taxNote
+        )
+    }
+
+    private func insertInvoiceRecord(
+        for invoice: WorkspaceInvoice,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        updatedAt: Date,
+        project projectRecord: ProjectRecord,
+        bucket bucketRecord: BucketRecord
+    ) -> InvoiceRecord {
+        let invoiceRecord = InvoiceRecord(
+            id: invoice.id,
+            projectID: projectID,
+            bucketID: bucketID,
+            number: invoice.number,
+            templateRaw: invoice.template.rawValue,
+            issueDate: invoice.issueDate,
+            dueDate: invoice.dueDate,
+            servicePeriod: invoice.servicePeriod,
+            statusRaw: invoice.status.rawValue,
+            totalMinorUnits: invoice.totalMinorUnits,
+            currencyCode: invoice.currencyCode,
+            note: invoice.note ?? "",
+            businessName: invoice.businessSnapshot?.businessName ?? "",
+            businessPersonName: invoice.businessSnapshot?.personName ?? "",
+            businessEmail: invoice.businessSnapshot?.email ?? "",
+            businessPhone: invoice.businessSnapshot?.phone ?? "",
+            businessAddress: invoice.businessSnapshot?.address ?? "",
+            businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
+            businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
+            businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
+            businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
+            clientName: invoice.clientSnapshot?.name ?? invoice.clientName,
+            clientEmail: invoice.clientSnapshot?.email ?? "",
+            clientBillingAddress: invoice.clientSnapshot?.billingAddress ?? "",
+            projectName: invoice.projectName,
+            bucketName: invoice.bucketName,
+            createdAt: invoice.issueDate,
+            updatedAt: updatedAt,
+            project: projectRecord,
+            bucket: bucketRecord
+        )
+        modelContext.insert(invoiceRecord)
+
+        for (lineItemIndex, lineItem) in invoice.lineItems.enumerated() {
+            modelContext.insert(InvoiceLineItemRecord(
+                id: lineItem.id,
+                invoiceID: invoice.id,
+                sortOrder: lineItemIndex,
+                descriptionText: lineItem.description,
+                quantityLabel: lineItem.quantityLabel,
+                amountMinorUnits: lineItem.amountMinorUnits,
+                createdAt: invoice.issueDate,
+                updatedAt: updatedAt,
+                invoice: invoiceRecord
+            ))
+        }
+
+        return invoiceRecord
     }
 
     private func invoiceRecord(_ id: WorkspaceInvoice.ID) throws -> InvoiceRecord? {
