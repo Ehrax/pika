@@ -106,7 +106,7 @@ enum AppPersistenceMode: Equatable {
     ) -> ModelConfiguration {
         switch self {
         case .cloudKitPrivate:
-            ModelConfiguration(
+            return ModelConfiguration(
                 schema: schema,
                 cloudKitDatabase: .private(Self.cloudKitContainerIdentifier)
             )
