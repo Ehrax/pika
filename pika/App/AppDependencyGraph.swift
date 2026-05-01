@@ -14,7 +14,7 @@ struct AppLaunchConfiguration: Equatable {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         isRunningTests: Bool? = nil
     ) {
-        let resolvedIsRunningTests = isRunningTests ?? Self.resolveIsRunningTests(environment: environment)
+        let resolvedIsRunningTests = (isRunningTests == true) || Self.resolveIsRunningTests(environment: environment)
         workspaceSeed = WorkspaceSeed.resolve(arguments: arguments, environment: environment)
         initialWorkspace = workspaceSeed.initialWorkspace
         persistenceMode = Self.resolvePersistenceMode(
