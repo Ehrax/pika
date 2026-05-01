@@ -211,8 +211,7 @@ extension WorkspaceStore {
         modelContext.insert(projectRecord)
         modelContext.insert(bucketRecord)
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
 
         guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
             throw WorkspaceStoreError.persistenceFailed
@@ -253,8 +252,7 @@ extension WorkspaceStore {
         projectRecord.client = clientRecord
         projectRecord.updatedAt = .now
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -281,8 +279,7 @@ extension WorkspaceStore {
         projectRecord.isArchived = isArchived
         projectRecord.updatedAt = .now
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -314,29 +311,12 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.projectNotArchived
         }
 
-        for bucketRecord in try bucketRecords(for: projectID) {
-            for timeEntry in try timeEntryRecords(for: bucketRecord.id) {
-                modelContext.delete(timeEntry)
-            }
-            for fixedCost in try fixedCostRecords(for: bucketRecord.id) {
-                modelContext.delete(fixedCost)
-            }
-            modelContext.delete(bucketRecord)
-        }
-
-        for invoiceRecord in try invoiceRecords(for: projectID) {
-            for lineItem in try invoiceLineItemRecords(for: invoiceRecord.id) {
-                modelContext.delete(lineItem)
-            }
-            modelContext.delete(invoiceRecord)
-        }
-
         let projectName = projectRecord.name
         let projectClientName = workspace.projects.first(where: { $0.id == projectID })?.clientName ?? ""
+        try deleteProjectDependenciesFromNormalizedRecords(projectID: projectID)
         modelContext.delete(projectRecord)
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         appendActivity(
             message: "\(projectName) project removed",
             detail: projectClientName,
@@ -344,5 +324,39 @@ extension WorkspaceStore {
         )
         AppTelemetry.projectRemoved(projectName: projectName)
         try persistWorkspace()
+    }
+
+    private func deleteProjectDependenciesFromNormalizedRecords(
+        projectID: WorkspaceProject.ID
+    ) throws {
+        for bucketRecord in try bucketRecords(for: projectID) {
+            try deleteBucketDependenciesFromNormalizedRecords(bucketRecord.id)
+            modelContext.delete(bucketRecord)
+        }
+
+        for invoiceRecord in try invoiceRecords(for: projectID) {
+            try deleteInvoiceDependenciesFromNormalizedRecords(invoiceRecord.id)
+            modelContext.delete(invoiceRecord)
+        }
+    }
+
+    private func deleteBucketDependenciesFromNormalizedRecords(
+        _ bucketID: WorkspaceBucket.ID
+    ) throws {
+        for timeEntry in try timeEntryRecords(for: bucketID) {
+            modelContext.delete(timeEntry)
+        }
+
+        for fixedCost in try fixedCostRecords(for: bucketID) {
+            modelContext.delete(fixedCost)
+        }
+    }
+
+    private func deleteInvoiceDependenciesFromNormalizedRecords(
+        _ invoiceID: WorkspaceInvoice.ID
+    ) throws {
+        for lineItem in try invoiceLineItemRecords(for: invoiceID) {
+            modelContext.delete(lineItem)
+        }
     }
 }

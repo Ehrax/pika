@@ -209,8 +209,7 @@ extension WorkspaceStore {
         )
         modelContext.insert(record)
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -253,8 +252,7 @@ extension WorkspaceStore {
         record.defaultTermsDays = draft.defaultTermsDays
         record.updatedAt = .now
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -281,8 +279,7 @@ extension WorkspaceStore {
         record.isArchived = isArchived
         record.updatedAt = .now
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -322,8 +319,7 @@ extension WorkspaceStore {
         let clientEmail = record.email
         modelContext.delete(record)
 
-        let previousActivity = workspace.activity
-        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        try saveAndReloadNormalizedWorkspacePreservingActivity()
         appendActivity(
             message: "\(clientName) client removed",
             detail: clientEmail,

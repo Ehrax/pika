@@ -662,6 +662,10 @@ final class WorkspaceStore {
         workspace = reloadedWorkspace
     }
 
+    func saveAndReloadNormalizedWorkspacePreservingActivity() throws {
+        try saveAndReloadNormalizedWorkspace(preservingActivity: workspace.activity)
+    }
+
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
         let businessName = draft.businessName.trimmingCharacters(in: .whitespacesAndNewlines)
         let personName = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
