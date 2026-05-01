@@ -12,6 +12,21 @@ struct NoopProjectStore: ProjectStore {
     }
 }
 
+private protocol NormalizedRecordSortable {
+    var id: UUID { get }
+    var createdAt: Date { get }
+    var updatedAt: Date { get }
+}
+
+extension BusinessProfileRecord: NormalizedRecordSortable {}
+extension ClientRecord: NormalizedRecordSortable {}
+extension ProjectRecord: NormalizedRecordSortable {}
+extension BucketRecord: NormalizedRecordSortable {}
+extension TimeEntryRecord: NormalizedRecordSortable {}
+extension FixedCostRecord: NormalizedRecordSortable {}
+extension InvoiceRecord: NormalizedRecordSortable {}
+extension InvoiceLineItemRecord: NormalizedRecordSortable {}
+
 enum WorkspaceStoreError: Error, Equatable {
     case projectNotFound
     case bucketNotFound
@@ -182,93 +197,28 @@ final class WorkspaceStore {
 
         let projects = sortedProjects(projectRecords).map { projectRecord in
             let projectClient = clientsByID[projectRecord.clientID] ?? projectRecord.client.map {
-                WorkspaceClient(
-                    id: $0.id,
-                    name: $0.name,
-                    email: $0.email,
-                    billingAddress: $0.billingAddress,
-                    defaultTermsDays: $0.defaultTermsDays,
-                    isArchived: $0.isArchived
-                )
+                clientProjection(from: $0)
             }
 
             let buckets = sortedBuckets(bucketsByProjectID[projectRecord.id] ?? [])
-                .map { bucketRecord in
-                    let timeEntries = buildTimeEntryProjections(
-                        from: sortedTimeEntries(timeEntriesByBucketID[bucketRecord.id] ?? [])
-                    )
-                    let fixedCostEntries = buildFixedCostProjections(
-                        from: sortedFixedCosts(fixedCostsByBucketID[bucketRecord.id] ?? [])
-                    )
-                    let billableMinutes = timeEntries
-                        .filter(\.isBillable)
-                        .map(\.durationMinutes)
-                        .reduce(0, +)
-                    let nonBillableMinutes = timeEntries
-                        .filter { !$0.isBillable }
-                        .map(\.durationMinutes)
-                        .reduce(0, +)
-                    let fixedCostMinorUnits = fixedCostEntries
-                        .map(\.amountMinorUnits)
-                        .reduce(0, +)
-                    let billableTimeMinorUnits = timeEntries
-                        .map(\.billableAmountMinorUnits)
-                        .reduce(0, +)
-
-                    return WorkspaceBucket(
-                        id: bucketRecord.id,
-                        name: bucketRecord.name,
-                        status: bucketRecord.status,
-                        totalMinorUnits: billableTimeMinorUnits + fixedCostMinorUnits,
-                        billableMinutes: billableMinutes,
-                        fixedCostMinorUnits: fixedCostMinorUnits,
-                        nonBillableMinutes: nonBillableMinutes,
-                        defaultHourlyRateMinorUnits: timeEntries
-                            .first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?
-                            .hourlyRateMinorUnits,
-                        timeEntries: timeEntries,
-                        fixedCostEntries: fixedCostEntries
+                .map {
+                    bucketProjection(
+                        from: $0,
+                        timeEntriesByBucketID: timeEntriesByBucketID,
+                        fixedCostsByBucketID: fixedCostsByBucketID
                     )
                 }
 
             let bucketsByID = Dictionary(uniqueKeysWithValues: buckets.map { ($0.id, $0) })
             let invoices = sortedInvoices(invoicesByProjectID[projectRecord.id] ?? [])
-                .map { invoiceRecord in
-                    let bucket = bucketsByID[invoiceRecord.bucketID]
-                    let clientID = projectClient?.id ?? projectRecord.clientID
-                    let clientSnapshot = invoiceClientSnapshot(
-                        invoiceRecord: invoiceRecord,
-                        fallbackClient: projectClient,
-                        fallbackTermsDays: profile.defaultTermsDays,
-                        fallbackClientID: clientID
-                    )
-                    let invoiceLineItems = buildInvoiceLineItemSnapshots(
-                        from: sortedInvoiceLineItems(lineItemsByInvoiceID[invoiceRecord.id] ?? [])
-                    )
-
-                    return WorkspaceInvoice(
-                        id: invoiceRecord.id,
-                        number: invoiceRecord.number,
-                        businessSnapshot: invoiceBusinessSnapshot(invoiceRecord: invoiceRecord, fallbackProfile: profile),
-                        clientSnapshot: clientSnapshot,
-                        clientID: clientID,
-                        clientName: invoiceDisplayClientName(
-                            invoiceRecord: invoiceRecord,
-                            fallbackClient: projectClient
-                        ),
-                        projectID: projectRecord.id,
-                        projectName: invoiceRecord.projectName.isEmpty ? projectRecord.name : invoiceRecord.projectName,
-                        bucketID: invoiceRecord.bucketID,
-                        bucketName: invoiceRecord.bucketName.isEmpty ? (bucket?.name ?? "") : invoiceRecord.bucketName,
-                        template: invoiceRecord.template,
-                        issueDate: invoiceRecord.issueDate,
-                        dueDate: invoiceRecord.dueDate,
-                        servicePeriod: invoiceRecord.servicePeriod,
-                        status: invoiceRecord.status,
-                        totalMinorUnits: invoiceRecord.totalMinorUnits,
-                        lineItems: invoiceLineItems,
-                        currencyCode: invoiceRecord.currencyCode,
-                        note: invoiceRecord.note.isEmpty ? nil : invoiceRecord.note
+                .map {
+                    invoiceProjection(
+                        from: $0,
+                        projectRecord: projectRecord,
+                        projectClient: projectClient,
+                        bucket: bucketsByID[$0.bucketID],
+                        profile: profile,
+                        lineItemsByInvoiceID: lineItemsByInvoiceID
                     )
                 }
 
@@ -315,16 +265,105 @@ final class WorkspaceStore {
     }
 
     private static func buildClientProjections(from records: [ClientRecord]) -> [WorkspaceClient] {
-        sortedClients(records).map {
-            WorkspaceClient(
-                id: $0.id,
-                name: $0.name,
-                email: $0.email,
-                billingAddress: $0.billingAddress,
-                defaultTermsDays: $0.defaultTermsDays,
-                isArchived: $0.isArchived
-            )
-        }
+        sortedClients(records).map(clientProjection)
+    }
+
+    private static func clientProjection(from record: ClientRecord) -> WorkspaceClient {
+        WorkspaceClient(
+            id: record.id,
+            name: record.name,
+            email: record.email,
+            billingAddress: record.billingAddress,
+            defaultTermsDays: record.defaultTermsDays,
+            isArchived: record.isArchived
+        )
+    }
+
+    private static func bucketProjection(
+        from record: BucketRecord,
+        timeEntriesByBucketID: [UUID: [TimeEntryRecord]],
+        fixedCostsByBucketID: [UUID: [FixedCostRecord]]
+    ) -> WorkspaceBucket {
+        let timeEntries = buildTimeEntryProjections(
+            from: sortedTimeEntries(timeEntriesByBucketID[record.id] ?? [])
+        )
+        let fixedCostEntries = buildFixedCostProjections(
+            from: sortedFixedCosts(fixedCostsByBucketID[record.id] ?? [])
+        )
+        let billableMinutes = timeEntries
+            .filter(\.isBillable)
+            .map(\.durationMinutes)
+            .reduce(0, +)
+        let nonBillableMinutes = timeEntries
+            .filter { !$0.isBillable }
+            .map(\.durationMinutes)
+            .reduce(0, +)
+        let fixedCostMinorUnits = fixedCostEntries
+            .map(\.amountMinorUnits)
+            .reduce(0, +)
+        let billableTimeMinorUnits = timeEntries
+            .map(\.billableAmountMinorUnits)
+            .reduce(0, +)
+
+        return WorkspaceBucket(
+            id: record.id,
+            name: record.name,
+            status: record.status,
+            totalMinorUnits: billableTimeMinorUnits + fixedCostMinorUnits,
+            billableMinutes: billableMinutes,
+            fixedCostMinorUnits: fixedCostMinorUnits,
+            nonBillableMinutes: nonBillableMinutes,
+            defaultHourlyRateMinorUnits: timeEntries
+                .first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?
+                .hourlyRateMinorUnits,
+            timeEntries: timeEntries,
+            fixedCostEntries: fixedCostEntries
+        )
+    }
+
+    private static func invoiceProjection(
+        from record: InvoiceRecord,
+        projectRecord: ProjectRecord,
+        projectClient: WorkspaceClient?,
+        bucket: WorkspaceBucket?,
+        profile: BusinessProfileProjection,
+        lineItemsByInvoiceID: [UUID: [InvoiceLineItemRecord]]
+    ) -> WorkspaceInvoice {
+        let clientID = projectClient?.id ?? projectRecord.clientID
+        let clientSnapshot = invoiceClientSnapshot(
+            invoiceRecord: record,
+            fallbackClient: projectClient,
+            fallbackTermsDays: profile.defaultTermsDays,
+            fallbackClientID: clientID
+        )
+        let invoiceLineItems = buildInvoiceLineItemSnapshots(
+            from: sortedInvoiceLineItems(lineItemsByInvoiceID[record.id] ?? [])
+        )
+
+        return WorkspaceInvoice(
+            id: record.id,
+            number: record.number,
+            businessSnapshot: invoiceBusinessSnapshot(invoiceRecord: record, fallbackProfile: profile),
+            clientSnapshot: clientSnapshot,
+            clientID: clientID,
+            clientName: invoiceDisplayClientName(
+                invoiceRecord: record,
+                fallbackClient: projectClient
+            ),
+            projectID: projectRecord.id,
+            projectName: record.projectName.isEmpty ? projectRecord.name : record.projectName,
+            bucketID: record.bucketID,
+            bucketName: record.bucketName.isEmpty ? (bucket?.name ?? "") : record.bucketName,
+            template: record.template,
+            issueDate: record.issueDate,
+            dueDate: record.dueDate,
+            servicePeriod: record.servicePeriod,
+            status: record.status,
+            totalMinorUnits: record.totalMinorUnits,
+            lineItems: invoiceLineItems,
+            currencyCode: record.currencyCode,
+            note: record.note.isEmpty ? nil : record.note
+        )
     }
 
     private static func buildTimeEntryProjections(from records: [TimeEntryRecord]) -> [WorkspaceTimeEntry] {
@@ -535,111 +574,19 @@ final class WorkspaceStore {
         }
     }
 
-    private static func normalizedRecordSortAscending(
-        leftCreatedAt: Date,
-        rightCreatedAt: Date,
-        leftUpdatedAt: Date,
-        rightUpdatedAt: Date,
-        leftID: UUID,
-        rightID: UUID
+    private static func normalizedRecordSortAscending<Record: NormalizedRecordSortable>(
+        left: Record,
+        right: Record
     ) -> Bool {
-        if leftCreatedAt != rightCreatedAt {
-            return leftCreatedAt < rightCreatedAt
+        if left.createdAt != right.createdAt {
+            return left.createdAt < right.createdAt
         }
 
-        if leftUpdatedAt != rightUpdatedAt {
-            return leftUpdatedAt < rightUpdatedAt
+        if left.updatedAt != right.updatedAt {
+            return left.updatedAt < right.updatedAt
         }
 
-        return leftID.uuidString < rightID.uuidString
-    }
-
-    private static func normalizedRecordSortAscending(left: BusinessProfileRecord, right: BusinessProfileRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: ClientRecord, right: ClientRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: ProjectRecord, right: ProjectRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: BucketRecord, right: BucketRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: TimeEntryRecord, right: TimeEntryRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: FixedCostRecord, right: FixedCostRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: InvoiceRecord, right: InvoiceRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
-    }
-
-    private static func normalizedRecordSortAscending(left: InvoiceLineItemRecord, right: InvoiceLineItemRecord) -> Bool {
-        normalizedRecordSortAscending(
-            leftCreatedAt: left.createdAt,
-            rightCreatedAt: right.createdAt,
-            leftUpdatedAt: left.updatedAt,
-            rightUpdatedAt: right.updatedAt,
-            leftID: left.id,
-            rightID: right.id
-        )
+        return left.id.uuidString < right.id.uuidString
     }
 
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
@@ -698,13 +645,7 @@ final class WorkspaceStore {
         named clientName: String,
         draft: InvoiceFinalizationDraft
     ) -> WorkspaceClient {
-        let matchedClient = workspace.clients.first { client in
-            if let clientID {
-                return client.id == clientID
-            }
-
-            return client.name == clientName
-        }
+        let matchedClient = workspace.clients.firstMatching(id: clientID, name: clientName)
         let resolvedClientID = matchedClient?.id ?? clientID ?? UUID()
         let termsDays = matchedClient?.defaultTermsDays
             ?? workspace.businessProfile.defaultTermsDays

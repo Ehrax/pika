@@ -8,13 +8,7 @@ extension WorkspaceStore {
     ) throws -> InvoiceFinalizationDraft {
         let project = try project(projectID)
         _ = try bucket(bucketID, in: project)
-        let client = workspace.clients.first { client in
-            if let clientID = project.clientID {
-                return client.id == clientID
-            }
-
-            return client.name == project.clientName
-        }
+        let client = workspace.clients.firstMatching(id: project.clientID, name: project.clientName)
         let termsDays = client?.defaultTermsDays ?? workspace.businessProfile.defaultTermsDays
         let dueDate = Calendar.pikaStoreGregorian.date(
             byAdding: .day,

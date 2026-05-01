@@ -377,14 +377,7 @@ struct WorkspaceProject: Codable, Equatable, Identifiable {
 
     private func latestInvoice(for bucket: WorkspaceBucket) -> WorkspaceInvoice? {
         invoices
-            .filter { invoice in
-                let projectMatches = invoice.projectID == id || {
-                    let invoiceProjectName = invoice.projectName.isEmpty ? name : invoice.projectName
-                    return invoiceProjectName == name
-                }()
-                let bucketMatches = invoice.bucketID == bucket.id || invoice.bucketName == bucket.name
-                return projectMatches && bucketMatches
-            }
+            .filter { $0.matches(projectID: id, projectName: name, bucketID: bucket.id, bucketName: bucket.name) }
             .sorted { left, right in
                 if left.issueDate == right.issueDate {
                     return left.number > right.number
@@ -648,6 +641,30 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         lineItems = try container.decodeIfPresent([WorkspaceInvoiceLineItemSnapshot].self, forKey: .lineItems) ?? []
         currencyCode = try container.decodeIfPresent(String.self, forKey: .currencyCode) ?? ""
         note = try container.decodeIfPresent(String.self, forKey: .note)
+    }
+
+    func matches(
+        projectID expectedProjectID: WorkspaceProject.ID,
+        projectName expectedProjectName: String,
+        bucketID expectedBucketID: WorkspaceBucket.ID,
+        bucketName expectedBucketName: String
+    ) -> Bool {
+        let invoiceProjectName = projectName.isEmpty ? expectedProjectName : projectName
+        let projectMatches = projectID == expectedProjectID || invoiceProjectName == expectedProjectName
+        let bucketMatches = bucketID == expectedBucketID || bucketName == expectedBucketName
+        return projectMatches && bucketMatches
+    }
+}
+
+extension Collection where Element == WorkspaceClient {
+    func firstMatching(id clientID: UUID?, name clientName: String) -> WorkspaceClient? {
+        first { client in
+            if let clientID {
+                return client.id == clientID
+            }
+
+            return client.name == clientName
+        }
     }
 }
 
@@ -1070,13 +1087,7 @@ extension WorkspaceSnapshot {
                 return left.invoice.issueDate > right.invoice.issueDate
             }
             .map { projectName, invoice in
-                let client = clients.first { client in
-                    if let invoiceClientID = invoice.clientID {
-                        return client.id == invoiceClientID
-                    }
-
-                    return client.name == invoice.clientName
-                }
+                let client = clients.firstMatching(id: invoice.clientID, name: invoice.clientName)
                 return WorkspaceInvoiceRowProjection(
                     invoice: invoice,
                     projectName: projectName,
