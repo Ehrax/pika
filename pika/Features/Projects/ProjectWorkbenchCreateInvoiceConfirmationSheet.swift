@@ -45,12 +45,18 @@ struct CreateInvoiceConfirmationSheet: View {
                         PikaInputSheetFieldRow(label: "Issue date") {
                             DatePicker("", selection: $draft.issueDate, displayedComponents: .date)
                                 .labelsHidden()
+                                .datePickerStyle(.field)
+                                .controlSize(.regular)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         PikaInputSheetDivider()
                         PikaInputSheetFieldRow(label: "Due date") {
                             DatePicker("", selection: $draft.dueDate, displayedComponents: .date)
                                 .labelsHidden()
+                                .datePickerStyle(.field)
+                                .controlSize(.regular)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         PikaInputSheetDivider()
