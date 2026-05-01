@@ -1077,7 +1077,7 @@ extension WorkspaceSnapshot {
 
                     return client.name == invoice.clientName
                 }
-                WorkspaceInvoiceRowProjection(
+                return WorkspaceInvoiceRowProjection(
                     invoice: invoice,
                     projectName: projectName,
                     billingAddress: client?.billingAddress ?? "",
