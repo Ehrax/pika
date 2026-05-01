@@ -4,6 +4,33 @@ import Testing
 @testable import pika
 
 struct WorkspacePersistenceReloadTests {
+    @Test func persistentWorkspaceReloadDoesNotRestoreLegacyActivityBlob() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let seededWorkspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [],
+            activity: [
+                WorkspaceActivity(
+                    message: "Legacy activity",
+                    detail: "Do not reload",
+                    occurredAt: Date.pikaDate(year: 2026, month: 5, day: 1)
+                ),
+            ]
+        )
+
+        let seedStore = WorkspaceStore(seed: seededWorkspace, modelContext: modelContext)
+        #expect(seedStore.workspace.activity.count == 1)
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        #expect(reloadedStore.workspace.businessProfile.businessName == seededWorkspace.businessProfile.businessName)
+        #expect(reloadedStore.workspace.activity.isEmpty)
+    }
+
     @Test func persistentWorkspaceStoreFinalizesInvoiceSnapshotsIntoNormalizedRecords() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {

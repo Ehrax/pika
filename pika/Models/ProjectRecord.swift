@@ -383,28 +383,6 @@ final class InvoiceLineItemRecord {
     }
 }
 
-@Model
-final class WorkspaceStorageRecord {
-    var id: UUID = UUID()
-    var payload: Data = Data()
-    var updatedAt: Date = Date()
-
-    init(
-        id: UUID = UUID(),
-        payload: Data,
-        updatedAt: Date = .now
-    ) {
-        self.id = id
-        self.payload = payload
-        self.updatedAt = updatedAt
-    }
-
-    func apply(payload: Data) {
-        self.payload = payload
-        updatedAt = .now
-    }
-}
-
 enum PikaPersistenceSchema {
     static func makeSchema() -> Schema {
         Schema([
@@ -416,7 +394,6 @@ enum PikaPersistenceSchema {
             FixedCostRecord.self,
             InvoiceRecord.self,
             InvoiceLineItemRecord.self,
-            WorkspaceStorageRecord.self,
         ])
     }
 }

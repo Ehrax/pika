@@ -2,32 +2,36 @@
 
 ## Decision
 
-- Persistence backend is now SwiftData-only for workspace runtime state.
-- CloudKit/iCloud sync is intentionally disabled (`cloudKitDatabase: .none`) for deterministic local-first behavior during this phase.
+- Persistence backend is SwiftData-only with normalized records as the source of truth.
+- Default runtime persistence uses private CloudKit sync.
+- Pre-release workspace persistence is intentionally no-migration for legacy blob/plist data.
 
 ## Persistence Architecture
 
 - `WorkspaceStore` now persists through SwiftData `ModelContext`.
-- `WorkspaceStorageRecord` is the persisted SwiftData model root for workspace state.
-- App runtime uses a file-backed SwiftData store at `Application Support/Pika/workspace.store`.
-- In-memory store contexts are still used for isolated unit test defaults.
+- The normalized model graph (`BusinessProfileRecord`, `ClientRecord`, `ProjectRecord`, `BucketRecord`, `TimeEntryRecord`, `FixedCostRecord`, `InvoiceRecord`, `InvoiceLineItemRecord`) is the persisted source of truth.
+- Seed-based deterministic imports replace existing local normalized records when explicitly requested.
+- In-memory contexts remain the default for isolated tests.
 
-## JSON Removal Scope
+## Legacy Removal Scope
 
 Removed from app persistence logic:
 
 - `workspace.json` default path construction.
 - direct file IO read/write persistence (`Data(contentsOf:)`, `data.write(to:)`).
 - JSON encoder/decoder persistence path in `WorkspaceStore`.
-- app launch persistence URL override contract (`--pika-workspace-path`) from runtime configuration.
+- blob/plist workspace persistence (`WorkspaceStorageRecord`, binary plist payload encode/decode).
+- legacy workspace path migration and cleanup behavior.
 
 ## CloudKit Config
 
-- `PikaApp.makeModelContainer`: `cloudKitDatabase: .none`
-- `WorkspaceStore.makeModelContainer`: `cloudKitDatabase: .none`
+- `AppPersistenceMode.cloudKitPrivate` uses:
+  - `cloudKitDatabase: .private("iCloud.ehrax.dev.pika")`
+- `AppPersistenceMode.local` and `AppPersistenceMode.inMemory` use:
+  - `cloudKitDatabase: .none`
 
 Rationale:
 
-- Keeps persistence deterministic while the new SwiftData storage path stabilizes.
-- Avoids accidental sync/schema side effects during local-first refactor validation.
-- Allows adding CloudKit later behind explicit product + schema decisions.
+- Keeps the default app experience synced privately across the developer's devices.
+- Preserves deterministic local/test behavior for seed imports and automated tests.
+- Avoids carrying pre-release migration debt for superseded blob storage formats.

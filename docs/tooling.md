@@ -91,8 +91,16 @@ xcodebuild test -project pika.xcodeproj -scheme pika -destination "$IOS_DESTINAT
 
 CRAP-style metrics are intentionally not part of this scaffold branch. They need coverage data plus a useful complexity signal, and that is better added once the app has enough executable logic for the metric to say something real.
 
-## Scaffold Deferrals
+## Persistence Modes
 
-The scaffold wires a minimal SwiftData `ModelContainer` around `ProjectRecord`, but CloudKit/iCloud entitlements are intentionally not added in this pass. The exact CloudKit container identifier and provisioning setup remain open product decisions, so the scaffold keeps that integration out of the project file until those values are known.
+Pika persists workspace state through normalized SwiftData records. The app does not keep a legacy blob/plist workspace fallback.
 
-If a development machine has an incompatible local store left over from the starter SwiftData template, clear the app's local development container once before launching this scaffold. The scaffold does not perform a destructive runtime reset.
+- Default app launches use private CloudKit-backed persistence (`AppPersistenceMode.cloudKitPrivate`).
+- Explicit seed imports (`--pika-workspace-seed`) run in local-only mode (`AppPersistenceMode.local`) and replace existing local data with a deterministic normalized import.
+- Test and UI test runs use in-memory mode (`AppPersistenceMode.inMemory`) for isolation and repeatability.
+
+## Development Data Policy
+
+Pre-release persistence is intentionally no-migration. Legacy blob/plist workspace data is not imported into normalized records.
+
+For development and test workflows this means local data may be reset as persistence evolves; use seed flags to rebuild deterministic local state when needed.

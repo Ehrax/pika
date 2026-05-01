@@ -54,7 +54,6 @@ final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
     let modelContext: ModelContext
-    private let storageRecordID: UUID
     private static let deterministicImportTimestamp = Date(timeIntervalSince1970: 0)
 
     private struct ClientRecordLookup {
@@ -70,11 +69,8 @@ final class WorkspaceStore {
     init(
         seed: WorkspaceSnapshot = .empty,
         modelContext: ModelContext? = nil,
-        resetForSeedImport: Bool = false,
-        storageRecordID: UUID = UUID(uuidString: "8C2E6FE9-EA65-4D16-91A0-CF1220195B79")!
+        resetForSeedImport: Bool = false
     ) {
-        self.storageRecordID = storageRecordID
-
         if let modelContext {
             self.modelContext = modelContext
         } else {
@@ -88,12 +84,12 @@ final class WorkspaceStore {
             return
         }
 
-        let persistedWorkspace = Self.loadWorkspace(from: self.modelContext, recordID: storageRecordID)
+        let persistedWorkspace = Self.loadNormalizedWorkspace(from: self.modelContext)
         workspace = persistedWorkspace ?? seed
         workspace.normalizeMissingHourlyRates()
 
         if persistedWorkspace == nil {
-            try? persistWorkspace()
+            try? replacePersistentWorkspaceWithSeedImport(workspace)
         }
     }
 
@@ -116,46 +112,10 @@ final class WorkspaceStore {
         }
     }
 
-    private static func loadWorkspace(
-        from context: ModelContext,
-        recordID: UUID
-    ) -> WorkspaceSnapshot? {
-        if var normalizedWorkspace = loadNormalizedWorkspace(from: context) {
-            if let legacyWorkspace = loadLegacyWorkspace(from: context, recordID: recordID) {
-                normalizedWorkspace.activity = legacyWorkspace.activity
-            }
-            return normalizedWorkspace
-        }
-
-        return loadLegacyWorkspace(from: context, recordID: recordID)
-    }
-
-    private static func loadLegacyWorkspace(
-        from context: ModelContext,
-        recordID: UUID
-    ) -> WorkspaceSnapshot? {
-        var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
-            predicate: #Predicate { $0.id == recordID }
-        )
-        descriptor.fetchLimit = 1
-
-        guard let record = try? context.fetch(descriptor).first else {
-            return nil
-        }
-
-        return decodeWorkspace(from: record.payload)
-    }
-
     private func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
         do {
             try Self.clearWorkspaceRecords(from: modelContext)
             try Self.persistNormalizedWorkspace(snapshot, into: modelContext)
-            let payload = try Self.encodeWorkspace(snapshot)
-            try Self.upsertLegacyWorkspaceStorageRecord(
-                payload: payload,
-                recordID: storageRecordID,
-                in: modelContext
-            )
             try modelContext.save()
         } catch {
             throw WorkspaceStoreError.persistenceFailed
@@ -164,45 +124,9 @@ final class WorkspaceStore {
 
     func persistWorkspace() throws {
         do {
-            let payload = try Self.encodeWorkspace(workspace)
-            try Self.upsertLegacyWorkspaceStorageRecord(
-                payload: payload,
-                recordID: storageRecordID,
-                in: modelContext
-            )
             try modelContext.save()
         } catch {
             throw WorkspaceStoreError.persistenceFailed
-        }
-    }
-
-    private static func encodeWorkspace(_ snapshot: WorkspaceSnapshot) throws -> Data {
-        let encoder = PropertyListEncoder()
-        encoder.outputFormat = .binary
-        return try encoder.encode(snapshot)
-    }
-
-    private static func decodeWorkspace(from payload: Data) -> WorkspaceSnapshot? {
-        try? PropertyListDecoder().decode(WorkspaceSnapshot.self, from: payload)
-    }
-
-    private static func upsertLegacyWorkspaceStorageRecord(
-        payload: Data,
-        recordID: UUID,
-        in context: ModelContext
-    ) throws {
-        var descriptor = FetchDescriptor<WorkspaceStorageRecord>(
-            predicate: #Predicate { $0.id == recordID }
-        )
-        descriptor.fetchLimit = 1
-
-        if let existingRecord = try context.fetch(descriptor).first {
-            existingRecord.apply(payload: payload)
-        } else {
-            context.insert(WorkspaceStorageRecord(
-                id: recordID,
-                payload: payload
-            ))
         }
     }
 
@@ -215,7 +139,6 @@ final class WorkspaceStore {
         try deleteAll(FetchDescriptor<FixedCostRecord>(), from: context)
         try deleteAll(FetchDescriptor<InvoiceLineItemRecord>(), from: context)
         try deleteAll(FetchDescriptor<InvoiceRecord>(), from: context)
-        try deleteAll(FetchDescriptor<WorkspaceStorageRecord>(), from: context)
     }
 
     private static func deleteAll<Record: PersistentModel>(
