@@ -2,6 +2,9 @@ import SwiftData
 import SwiftUI
 
 struct AppLaunchConfiguration: Equatable {
+    private static let xctestConfigurationEnvironmentKey = "XCTestConfigurationFilePath"
+    private static let uiTestingEnvironmentKey = "PIKA_UI_TESTING"
+
     let workspaceSeed: WorkspaceSeed
     let initialWorkspace: WorkspaceSnapshot
     let persistenceMode: AppPersistenceMode
@@ -9,11 +12,32 @@ struct AppLaunchConfiguration: Equatable {
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        isRunningTests: Bool = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        isRunningTests: Bool? = nil
     ) {
+        let resolvedIsRunningTests = isRunningTests ?? Self.resolveIsRunningTests(environment: environment)
         workspaceSeed = WorkspaceSeed.resolve(arguments: arguments, environment: environment)
         initialWorkspace = workspaceSeed.initialWorkspace
-        persistenceMode = Self.resolvePersistenceMode(workspaceSeed: workspaceSeed, isRunningTests: isRunningTests)
+        persistenceMode = Self.resolvePersistenceMode(
+            workspaceSeed: workspaceSeed,
+            isRunningTests: resolvedIsRunningTests
+        )
+    }
+
+    private static func resolveIsRunningTests(environment: [String: String]) -> Bool {
+        if environment[xctestConfigurationEnvironmentKey] != nil {
+            return true
+        }
+
+        let uiTestingFlag = environment[uiTestingEnvironmentKey]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch uiTestingFlag {
+        case "1", "true", "yes":
+            return true
+        default:
+            return false
+        }
     }
 
     private static func resolvePersistenceMode(

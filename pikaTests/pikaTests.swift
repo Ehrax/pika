@@ -240,6 +240,16 @@ struct PikaScaffoldTests {
         #expect(configuration.persistenceMode == .inMemory)
     }
 
+    @Test func appLaunchConfigurationUsesInMemoryModeForExplicitUITestEnvironment() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika"],
+            environment: ["PIKA_UI_TESTING": "1"],
+            isRunningTests: false
+        )
+
+        #expect(configuration.persistenceMode == .inMemory)
+    }
+
     @Test func appLaunchConfigurationCanExplicitlyUseEmptyWorkspace() {
         let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--empty"],
