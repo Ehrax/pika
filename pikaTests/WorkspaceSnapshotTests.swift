@@ -341,6 +341,294 @@ struct WorkspaceSnapshotTests {
         ])
     }
 
+    @Test func persistentWorkspaceStoreFinalizesInvoiceSnapshotsIntoNormalizedRecords() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000611")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000611")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000611")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 1)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 15)
+
+        let profile = BusinessProfileRecord(
+            businessName: "North Coast Studio",
+            personName: "Avery North",
+            email: "billing@northcoast.example",
+            phone: "+49 555 0100",
+            address: "1 Harbour Way",
+            taxIdentifier: "DE123",
+            economicIdentifier: "ECO123",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 42,
+            currencyCode: "EUR",
+            paymentDetails: "IBAN DE00 1234",
+            taxNote: "VAT exempt",
+            defaultTermsDays: 14,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let client = ClientRecord(
+            id: clientID,
+            name: "Snapshot Client",
+            email: "billing@snapshot.example",
+            billingAddress: "1 Snapshot Way",
+            defaultTermsDays: 21,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Snapshot Project",
+            currencyCode: "EUR",
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Ready Snapshot",
+            statusRaw: BucketStatus.ready.rawValue,
+            defaultHourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            project: project
+        )
+        let timeEntry = TimeEntryRecord(
+            bucketID: bucketID,
+            workDate: issueDate,
+            durationMinutes: 600,
+            descriptionText: "Billable work",
+            isBillable: true,
+            hourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            bucket: bucket
+        )
+        let fixedCost = FixedCostRecord(
+            bucketID: bucketID,
+            date: issueDate,
+            descriptionText: "Design package",
+            quantity: 1,
+            unitPriceMinorUnits: 32_000,
+            isBillable: true,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            bucket: bucket
+        )
+
+        modelContext.insert(profile)
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        modelContext.insert(fixedCost)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let invoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Snapshot Client",
+                recipientEmail: "billing@snapshot.example",
+                recipientBillingAddress: "1 Snapshot Way",
+                invoiceNumber: "NCS-2026-042",
+                template: .kleinunternehmerClassic,
+                issueDate: issueDate,
+                dueDate: dueDate,
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: "Thank you."
+            ),
+            occurredAt: issueDate
+        )
+
+        let persistedInvoices = try store.invoiceRecords(for: projectID)
+        #expect(persistedInvoices.count == 1)
+        let persistedLineItems = try store.invoiceLineItemRecords(for: invoice.id)
+            .sorted(by: { $0.sortOrder < $1.sortOrder })
+        #expect(persistedLineItems.map(\.descriptionText) == [
+            "Ready Snapshot",
+            "Design package",
+        ])
+
+        profile.businessName = "Changed Business"
+        client.name = "Changed Client"
+        client.email = "changed@example.com"
+        project.name = "Changed Project"
+        bucket.name = "Changed Bucket"
+        timeEntry.descriptionText = "Changed time"
+        fixedCost.descriptionText = "Changed fixed cost"
+        try modelContext.save()
+
+        try store.markInvoiceSent(invoiceID: invoice.id, occurredAt: dueDate)
+        try store.markInvoicePaid(invoiceID: invoice.id, occurredAt: dueDate.addingTimeInterval(60))
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first(where: { $0.id == projectID }))
+        let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucketID }))
+        let reloadedInvoice = try #require(reloadedProject.invoices.first(where: { $0.id == invoice.id }))
+
+        #expect(reloadedBucket.status == .finalized)
+        #expect(reloadedInvoice.status == .paid)
+        #expect(reloadedInvoice.businessSnapshot?.businessName == "North Coast Studio")
+        #expect(reloadedInvoice.clientSnapshot?.name == "Snapshot Client")
+        #expect(reloadedInvoice.clientSnapshot?.email == "billing@snapshot.example")
+        #expect(reloadedInvoice.projectName == "Snapshot Project")
+        #expect(reloadedInvoice.bucketName == "Ready Snapshot")
+        #expect(reloadedInvoice.number == "NCS-2026-042")
+        #expect(reloadedInvoice.currencyCode == "EUR")
+        #expect(reloadedInvoice.note == "Thank you.")
+        #expect(reloadedInvoice.lineItems.map(\.description) == [
+            "Ready Snapshot",
+            "Design package",
+        ])
+        #expect(reloadedInvoice.lineItems.map(\.quantityLabel) == [
+            "10h",
+            "1 item",
+        ])
+        #expect(reloadedInvoice.lineItems.map(\.amountMinorUnits) == [
+            100_000,
+            32_000,
+        ])
+    }
+
+    @Test func persistentWorkspaceStoreRejectsDuplicateLocalInvoiceNumbers() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000612")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000612")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000612")!
+        let existingInvoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000612")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 2)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 16)
+
+        let profile = BusinessProfileRecord(
+            businessName: "North Coast Studio",
+            personName: "Avery North",
+            email: "billing@northcoast.example",
+            phone: "+49 555 0100",
+            address: "1 Harbour Way",
+            taxIdentifier: "DE123",
+            economicIdentifier: "ECO123",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 43,
+            currencyCode: "EUR",
+            paymentDetails: "IBAN DE00 1234",
+            taxNote: "VAT exempt",
+            defaultTermsDays: 14,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let client = ClientRecord(
+            id: clientID,
+            name: "Snapshot Client",
+            email: "billing@snapshot.example",
+            billingAddress: "1 Snapshot Way",
+            defaultTermsDays: 21,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Snapshot Project",
+            currencyCode: "EUR",
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Ready Snapshot",
+            statusRaw: BucketStatus.ready.rawValue,
+            defaultHourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            project: project
+        )
+        let timeEntry = TimeEntryRecord(
+            bucketID: bucketID,
+            workDate: issueDate,
+            durationMinutes: 60,
+            descriptionText: "Billable work",
+            isBillable: true,
+            hourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            bucket: bucket
+        )
+        let existingInvoice = InvoiceRecord(
+            id: existingInvoiceID,
+            projectID: projectID,
+            bucketID: bucketID,
+            number: "NCS-2026-042",
+            templateRaw: InvoiceTemplate.kleinunternehmerClassic.rawValue,
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "May 2026",
+            statusRaw: InvoiceStatus.finalized.rawValue,
+            totalMinorUnits: 10_000,
+            currencyCode: "EUR",
+            note: "",
+            businessName: "North Coast Studio",
+            businessPersonName: "Avery North",
+            businessEmail: "billing@northcoast.example",
+            businessPhone: "+49 555 0100",
+            businessAddress: "1 Harbour Way",
+            businessTaxIdentifier: "DE123",
+            businessEconomicIdentifier: "ECO123",
+            businessPaymentDetails: "IBAN DE00 1234",
+            businessTaxNote: "VAT exempt",
+            clientName: "Snapshot Client",
+            clientEmail: "billing@snapshot.example",
+            clientBillingAddress: "1 Snapshot Way",
+            projectName: "Snapshot Project",
+            bucketName: "Ready Snapshot",
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            project: project,
+            bucket: bucket
+        )
+        modelContext.insert(profile)
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        modelContext.insert(existingInvoice)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        #expect(throws: WorkspaceStoreError.duplicateInvoiceNumber) {
+            try store.finalizeInvoice(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: InvoiceFinalizationDraft(
+                    recipientName: "Snapshot Client",
+                    recipientEmail: "billing@snapshot.example",
+                    recipientBillingAddress: "1 Snapshot Way",
+                    invoiceNumber: " NCS-2026-042 ",
+                    template: .kleinunternehmerClassic,
+                    issueDate: issueDate,
+                    dueDate: dueDate,
+                    servicePeriod: "May 2026",
+                    currencyCode: "EUR",
+                    taxNote: ""
+                ),
+                occurredAt: issueDate
+            )
+        }
+    }
+
     @Test func invoiceFinalizationOnlyAllowsReviewSpecificFieldsToBeEdited() {
         #expect(InvoiceFinalizationField.editableFields == [
             .template,

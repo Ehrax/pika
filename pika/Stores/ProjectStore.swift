@@ -43,6 +43,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case invalidFixedCost
     case entryNotFound
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
+    case duplicateInvoiceNumber
     case clientHasLinkedProjects
     case clientNotArchived
     case projectNotArchived
