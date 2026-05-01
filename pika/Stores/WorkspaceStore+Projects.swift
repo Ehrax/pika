@@ -10,6 +10,11 @@ extension WorkspaceStore {
     }
 
     func removeProject(projectID: WorkspaceProject.ID, occurredAt: Date = .now) throws {
+        if isUsingNormalizedWorkspacePersistence() {
+            try removeProjectFromNormalizedRecords(projectID: projectID, occurredAt: occurredAt)
+            return
+        }
+
         guard let index = workspace.projects.firstIndex(where: { $0.id == projectID }) else {
             throw WorkspaceStoreError.invalidProject
         }
@@ -35,18 +40,28 @@ extension WorkspaceStore {
         _ draft: WorkspaceProjectUpdateDraft,
         occurredAt: Date = .now
     ) throws -> WorkspaceProject {
+        if isUsingNormalizedWorkspacePersistence() {
+            return try updateProjectInNormalizedRecords(
+                projectID: projectID,
+                draft,
+                occurredAt: occurredAt
+            )
+        }
+
         let index = try projectIndex(projectID)
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
+        guard let client = workspace.clients.first(where: { $0.id == draft.clientID }) else {
+            throw WorkspaceStoreError.invalidProject
+        }
+        let clientName = client.name
 
-        guard !projectName.isEmpty, !clientName.isEmpty, !currencyCode.isEmpty else {
+        guard !projectName.isEmpty, !currencyCode.isEmpty else {
             throw WorkspaceStoreError.invalidProject
         }
 
-        let resolvedClientID = workspace.clients.first { $0.name == clientName }?.id
         workspace.projects[index].name = projectName
-        workspace.projects[index].clientID = resolvedClientID
+        workspace.projects[index].clientID = client.id
         workspace.projects[index].clientName = clientName
         workspace.projects[index].currencyCode = currencyCode
         let project = workspace.projects[index]
@@ -66,13 +81,19 @@ extension WorkspaceStore {
         _ draft: WorkspaceProjectDraft,
         occurredAt: Date = .now
     ) throws -> WorkspaceProject {
+        if isUsingNormalizedWorkspacePersistence() {
+            return try createProjectInNormalizedRecords(draft, occurredAt: occurredAt)
+        }
+
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let clientName = draft.clientName.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let client = workspace.clients.first(where: { $0.id == draft.clientID }) else {
+            throw WorkspaceStoreError.invalidProject
+        }
+        let clientName = client.name
 
         guard !projectName.isEmpty,
-              !clientName.isEmpty,
               !currencyCode.isEmpty,
               !bucketName.isEmpty,
               draft.hourlyRateMinorUnits > 0
@@ -80,10 +101,9 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.invalidProject
         }
 
-        let resolvedClientID = workspace.clients.first { $0.name == clientName }?.id
         let project = WorkspaceProject(
             id: UUID(),
-            clientID: resolvedClientID,
+            clientID: client.id,
             name: projectName,
             clientName: clientName,
             currencyCode: currencyCode,
@@ -118,6 +138,15 @@ extension WorkspaceStore {
         isArchived: Bool,
         occurredAt: Date
     ) throws {
+        if isUsingNormalizedWorkspacePersistence() {
+            try setProjectArchivedInNormalizedRecords(
+                projectID: projectID,
+                isArchived: isArchived,
+                occurredAt: occurredAt
+            )
+            return
+        }
+
         let index = try projectIndex(projectID)
         workspace.projects[index].isArchived = isArchived
         let project = workspace.projects[index]
@@ -134,6 +163,185 @@ extension WorkspaceStore {
             AppTelemetry.projectRestored(projectName: project.name)
         }
 
+        try persistWorkspace()
+    }
+
+    @discardableResult
+    private func createProjectInNormalizedRecords(
+        _ draft: WorkspaceProjectDraft,
+        occurredAt: Date
+    ) throws -> WorkspaceProject {
+        let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
+        let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !projectName.isEmpty,
+              !currencyCode.isEmpty,
+              !bucketName.isEmpty,
+              draft.hourlyRateMinorUnits > 0
+        else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        guard let clientRecord = try clientRecord(draft.clientID) else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        let now = Date.now
+        let projectID = UUID()
+        let projectRecord = ProjectRecord(
+            id: projectID,
+            clientID: clientRecord.id,
+            name: projectName,
+            currencyCode: currencyCode,
+            isArchived: false,
+            createdAt: now,
+            updatedAt: now,
+            client: clientRecord
+        )
+        let bucketRecord = BucketRecord(
+            projectID: projectID,
+            name: bucketName,
+            createdAt: now,
+            updatedAt: now,
+            project: projectRecord
+        )
+
+        modelContext.insert(projectRecord)
+        modelContext.insert(bucketRecord)
+
+        let previousActivity = workspace.activity
+        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+
+        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+
+        appendActivity(
+            message: "\(project.name) project created",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectCreated(projectName: project.name, clientName: project.clientName)
+        try persistWorkspace()
+        return project
+    }
+
+    @discardableResult
+    private func updateProjectInNormalizedRecords(
+        projectID: WorkspaceProject.ID,
+        _ draft: WorkspaceProjectUpdateDraft,
+        occurredAt: Date
+    ) throws -> WorkspaceProject {
+        let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
+
+        guard !projectName.isEmpty, !currencyCode.isEmpty else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        guard let projectRecord = try projectRecord(projectID),
+              let clientRecord = try clientRecord(draft.clientID)
+        else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        projectRecord.name = projectName
+        projectRecord.currencyCode = currencyCode
+        projectRecord.clientID = clientRecord.id
+        projectRecord.client = clientRecord
+        projectRecord.updatedAt = .now
+
+        let previousActivity = workspace.activity
+        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+
+        appendActivity(
+            message: "\(project.name) project updated",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectUpdated(projectName: project.name, clientName: project.clientName)
+        try persistWorkspace()
+        return project
+    }
+
+    private func setProjectArchivedInNormalizedRecords(
+        projectID: WorkspaceProject.ID,
+        isArchived: Bool,
+        occurredAt: Date
+    ) throws {
+        guard let projectRecord = try projectRecord(projectID) else {
+            throw WorkspaceStoreError.projectNotFound
+        }
+
+        projectRecord.isArchived = isArchived
+        projectRecord.updatedAt = .now
+
+        let previousActivity = workspace.activity
+        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+
+        appendActivity(
+            message: "\(project.name) \(isArchived ? "archived" : "restored")",
+            detail: project.clientName,
+            occurredAt: occurredAt
+        )
+
+        if isArchived {
+            AppTelemetry.projectArchived(projectName: project.name)
+        } else {
+            AppTelemetry.projectRestored(projectName: project.name)
+        }
+
+        try persistWorkspace()
+    }
+
+    private func removeProjectFromNormalizedRecords(
+        projectID: WorkspaceProject.ID,
+        occurredAt: Date
+    ) throws {
+        guard let projectRecord = try projectRecord(projectID) else {
+            throw WorkspaceStoreError.invalidProject
+        }
+
+        guard projectRecord.isArchived else {
+            throw WorkspaceStoreError.projectNotArchived
+        }
+
+        for bucketRecord in try bucketRecords(for: projectID) {
+            for timeEntry in try timeEntryRecords(for: bucketRecord.id) {
+                modelContext.delete(timeEntry)
+            }
+            for fixedCost in try fixedCostRecords(for: bucketRecord.id) {
+                modelContext.delete(fixedCost)
+            }
+            modelContext.delete(bucketRecord)
+        }
+
+        for invoiceRecord in try invoiceRecords(for: projectID) {
+            for lineItem in try invoiceLineItemRecords(for: invoiceRecord.id) {
+                modelContext.delete(lineItem)
+            }
+            modelContext.delete(invoiceRecord)
+        }
+
+        let projectName = projectRecord.name
+        let projectClientName = workspace.projects.first(where: { $0.id == projectID })?.clientName ?? ""
+        modelContext.delete(projectRecord)
+
+        let previousActivity = workspace.activity
+        try saveAndReloadNormalizedWorkspace(preservingActivity: previousActivity)
+        appendActivity(
+            message: "\(projectName) project removed",
+            detail: projectClientName,
+            occurredAt: occurredAt
+        )
+        AppTelemetry.projectRemoved(projectName: projectName)
         try persistWorkspace()
     }
 }

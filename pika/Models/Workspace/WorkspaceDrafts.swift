@@ -64,7 +64,7 @@ struct WorkspaceFixedCostDraft: Equatable {
 
 struct WorkspaceProjectDraft: Equatable {
     var name: String
-    var clientName: String
+    var clientID: WorkspaceClient.ID
     var currencyCode: String
     var firstBucketName: String
     var hourlyRateMinorUnits: Int
@@ -72,7 +72,7 @@ struct WorkspaceProjectDraft: Equatable {
 
 struct WorkspaceProjectUpdateDraft: Equatable {
     var name: String
-    var clientName: String
+    var clientID: WorkspaceClient.ID
     var currencyCode: String
 }
 

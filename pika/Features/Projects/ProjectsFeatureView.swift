@@ -268,7 +268,7 @@ private struct CreateProjectSheet: View {
     let onSave: (WorkspaceProjectDraft) -> Void
 
     @State private var name = ""
-    @State private var clientName: String
+    @State private var clientID: WorkspaceClient.ID?
     @State private var currencyCode: String
     @State private var firstBucketName = "MVP"
     @State private var hourlyRate = 80.0
@@ -283,7 +283,7 @@ private struct CreateProjectSheet: View {
         self.defaultCurrencyCode = defaultCurrencyCode
         self.onCancel = onCancel
         self.onSave = onSave
-        _clientName = State(initialValue: clients.first?.name ?? "")
+        _clientID = State(initialValue: clients.first?.id)
         _currencyCode = State(initialValue: defaultCurrencyCode)
     }
 
@@ -299,12 +299,12 @@ private struct CreateProjectSheet: View {
                         PikaInputSheetDivider()
                         PikaInputSheetFieldRow(label: "Client") {
                             if clients.isEmpty {
-                                TextField("Client", text: $clientName)
-                                    .textFieldStyle(.roundedBorder)
+                                Text("Create a client first")
+                                    .foregroundStyle(PikaColor.textMuted)
                             } else {
-                                Picker("Client", selection: $clientName) {
+                                Picker("Client", selection: $clientID) {
                                     ForEach(clients) { client in
-                                        Text(client.name).tag(client.name)
+                                        Text(client.name).tag(Optional(client.id))
                                     }
                                 }
                                 .labelsHidden()
@@ -344,9 +344,10 @@ private struct CreateProjectSheet: View {
                 Spacer()
 
                 Button {
+                    guard let clientID else { return }
                     onSave(WorkspaceProjectDraft(
                         name: name,
-                        clientName: clientName,
+                        clientID: clientID,
                         currencyCode: CurrencyTextFormatting.normalizedInput(currencyCode),
                         firstBucketName: firstBucketName,
                         hourlyRateMinorUnits: max(Int((hourlyRate * 100).rounded()), 0)
@@ -366,7 +367,7 @@ private struct CreateProjectSheet: View {
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !clientName.isEmpty
+            && clientID != nil
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && hourlyRate > 0

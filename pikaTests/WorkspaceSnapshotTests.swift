@@ -417,6 +417,7 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func inMemoryWorkspaceStoreCreatesProjectWithStarterBucket() throws {
+        let clientID = try #require(WorkspaceFixtures.demoWorkspace.clients.first?.id)
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: WorkspaceFixtures.demoWorkspace.clients,
@@ -428,7 +429,7 @@ struct WorkspaceSnapshotTests {
         let project = try store.createProject(
             WorkspaceProjectDraft(
                 name: "Client portal",
-                clientName: "Happ.ines",
+                clientID: clientID,
                 currencyCode: "EUR",
                 firstBucketName: "MVP",
                 hourlyRateMinorUnits: 12_000
@@ -731,6 +732,9 @@ struct WorkspaceSnapshotTests {
     }
 
     @Test func inMemoryWorkspaceStoreUpdatesProjectMetadataWithoutRewritingHistory() throws {
+        let originalClientID = try #require(WorkspaceFixtures.demoWorkspace.clients.first?.id)
+        let updatedClientName = try #require(WorkspaceFixtures.demoWorkspace.clients.last?.name)
+        let updatedClientID = try #require(WorkspaceFixtures.demoWorkspace.clients.last?.id)
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000861")!
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000861")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000861")!
@@ -740,6 +744,7 @@ struct WorkspaceSnapshotTests {
             projects: [
                 WorkspaceProject(
                     id: projectID,
+                    clientID: originalClientID,
                     name: "Original project",
                     clientName: "Happ.ines",
                     currencyCode: "EUR",
@@ -777,7 +782,7 @@ struct WorkspaceSnapshotTests {
             projectID: projectID,
             WorkspaceProjectUpdateDraft(
                 name: "  Retainer work  ",
-                clientName: "  Northstar Labs  ",
+                clientID: updatedClientID,
                 currencyCode: " usd "
             ),
             occurredAt: occurredAt
@@ -785,7 +790,7 @@ struct WorkspaceSnapshotTests {
 
         #expect(project.id == projectID)
         #expect(project.name == "Retainer work")
-        #expect(project.clientName == "Northstar Labs")
+        #expect(project.clientName == updatedClientName)
         #expect(project.currencyCode == "USD")
         #expect(project.buckets.map(\.id) == [bucketID])
         #expect(project.invoices.map(\.projectName) == ["Original project"])
@@ -823,6 +828,7 @@ struct WorkspaceSnapshotTests {
 
     @Test func inMemoryWorkspaceStoreUpdatesClientAndProjectReferences() throws {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000811")!
+        let unrelatedClientID = UUID(uuidString: "10000000-0000-0000-0000-000000000812")!
         let store = WorkspaceStore(seed: WorkspaceSnapshot(
             businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
             clients: [
@@ -833,10 +839,18 @@ struct WorkspaceSnapshotTests {
                     billingAddress: "1 Original Street",
                     defaultTermsDays: 14
                 ),
+                WorkspaceClient(
+                    id: unrelatedClientID,
+                    name: "Other Client",
+                    email: "billing@other.example",
+                    billingAddress: "2 Other Street",
+                    defaultTermsDays: 14
+                ),
             ],
             projects: [
                 WorkspaceProject(
                     id: UUID(uuidString: "20000000-0000-0000-0000-000000000811")!,
+                    clientID: clientID,
                     name: "Matching project",
                     clientName: "Original Client",
                     currencyCode: "EUR",
@@ -846,8 +860,9 @@ struct WorkspaceSnapshotTests {
                 ),
                 WorkspaceProject(
                     id: UUID(uuidString: "20000000-0000-0000-0000-000000000812")!,
+                    clientID: unrelatedClientID,
                     name: "Other project",
-                    clientName: "Other Client",
+                    clientName: "Original Client",
                     currencyCode: "EUR",
                     isArchived: false,
                     buckets: [],
@@ -877,11 +892,53 @@ struct WorkspaceSnapshotTests {
         #expect(store.workspace.clients.first == client)
         #expect(store.workspace.projects.map(\.clientName) == [
             "Renamed Client",
-            "Other Client",
+            "Original Client",
         ])
         #expect(store.workspace.activity.map(\.message) == ["Renamed Client client updated"])
         #expect(store.workspace.activity.first?.detail == "billing@renamed.example")
         #expect(store.workspace.activity.first?.occurredAt == occurredAt)
+    }
+
+    @Test func inMemoryWorkspaceStoreAllowsRemovingArchivedClientWhenOnlyNameMatchesProjects() throws {
+        let removableClientID = UUID(uuidString: "10000000-0000-0000-0000-000000000841")!
+        let otherClientID = UUID(uuidString: "10000000-0000-0000-0000-000000000842")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: removableClientID,
+                    name: "Northstar Labs",
+                    email: "billing@northstar.example",
+                    billingAddress: "1 Main Street",
+                    defaultTermsDays: 14,
+                    isArchived: true
+                ),
+                WorkspaceClient(
+                    id: otherClientID,
+                    name: "Other Client",
+                    email: "billing@other.example",
+                    billingAddress: "2 Side Street",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: UUID(uuidString: "20000000-0000-0000-0000-000000000841")!,
+                    clientID: otherClientID,
+                    name: "Name collision project",
+                    clientName: "Northstar Labs",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        try store.removeClient(clientID: removableClientID)
+
+        #expect(store.workspace.clients.map(\.id) == [otherClientID])
     }
 
     @Test func persistentWorkspaceStoreSavesClientUpdates() throws {
@@ -905,6 +962,7 @@ struct WorkspaceSnapshotTests {
                 projects: [
                     WorkspaceProject(
                         id: UUID(uuidString: "20000000-0000-0000-0000-000000000821")!,
+                        clientID: clientID,
                         name: "Stored project",
                         clientName: "Stored Client",
                         currencyCode: "EUR",
@@ -934,6 +992,72 @@ struct WorkspaceSnapshotTests {
         #expect(relaunchedStore.workspace.clients.first?.billingAddress == "9 Updated Lane")
         #expect(relaunchedStore.workspace.clients.first?.defaultTermsDays == 45)
         #expect(relaunchedStore.workspace.projects.first?.clientName == "Stored Client Updated")
+    }
+
+    @Test func persistentWorkspaceStoreMutatesNormalizedProjectClientLinksByID() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let originalClientID = UUID(uuidString: "10000000-0000-0000-0000-000000000851")!
+        let replacementClientID = UUID(uuidString: "10000000-0000-0000-0000-000000000852")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 27)
+        modelContext.insert(ClientRecord(
+            id: originalClientID,
+            name: "Original Client",
+            email: "billing@original.example",
+            billingAddress: "1 Original Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        modelContext.insert(ClientRecord(
+            id: replacementClientID,
+            name: "Replacement Client",
+            email: "billing@replacement.example",
+            billingAddress: "2 Replacement Street",
+            defaultTermsDays: 30,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        ))
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: WorkspaceSnapshot.empty, modelContext: modelContext)
+        let createdProject = try store.createProject(WorkspaceProjectDraft(
+            name: "Client portal",
+            clientID: originalClientID,
+            currencyCode: "EUR",
+            firstBucketName: "MVP",
+            hourlyRateMinorUnits: 12_000
+        ))
+
+        #expect(createdProject.clientID == originalClientID)
+        #expect(createdProject.clientName == "Original Client")
+
+        let updatedProject = try store.updateProject(
+            projectID: createdProject.id,
+            WorkspaceProjectUpdateDraft(
+                name: "Client portal v2",
+                clientID: replacementClientID,
+                currencyCode: "USD"
+            )
+        )
+
+        #expect(updatedProject.clientID == replacementClientID)
+        #expect(updatedProject.clientName == "Replacement Client")
+        #expect(updatedProject.currencyCode == "USD")
+
+        try store.updateClient(clientID: replacementClientID, WorkspaceClientDraft(
+            name: "Replacement Client Renamed",
+            email: "billing@replacement.example",
+            billingAddress: "2 Replacement Street",
+            defaultTermsDays: 30
+        ))
+
+        let relaunchedStore = WorkspaceStore(seed: WorkspaceSnapshot.empty, modelContext: modelContext)
+        #expect(relaunchedStore.workspace.projects.first?.clientID == replacementClientID)
+        #expect(relaunchedStore.workspace.projects.first?.clientName == "Replacement Client Renamed")
     }
 
     @Test func inMemoryWorkspaceStoreRejectsInvalidClientUpdatesWithoutMutation() {

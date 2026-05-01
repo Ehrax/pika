@@ -151,7 +151,7 @@ struct ClientDetailSurface: View {
     }
 
     private var projectCount: Int {
-        workspaceStore.workspace.projects.filter { $0.clientName == client.name }.count
+        workspaceStore.workspace.projects.filter { $0.clientID == client.id }.count
     }
 
     private var canDeleteClient: Bool {

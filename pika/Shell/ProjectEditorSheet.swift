@@ -7,7 +7,7 @@ struct ProjectEditorSheet: View {
     let onSave: (WorkspaceProjectUpdateDraft) -> Void
 
     @State private var name: String
-    @State private var clientName: String
+    @State private var clientID: WorkspaceClient.ID?
     @State private var currencyCode: String
 
     init(
@@ -21,7 +21,9 @@ struct ProjectEditorSheet: View {
         self.onCancel = onCancel
         self.onSave = onSave
         _name = State(initialValue: project.name)
-        _clientName = State(initialValue: project.clientName)
+        _clientID = State(initialValue: project.clientID
+            ?? clients.first(where: { $0.name == project.clientName })?.id
+            ?? clients.first?.id)
         _currencyCode = State(initialValue: CurrencyTextFormatting.normalizedInput(project.currencyCode))
     }
 
@@ -35,13 +37,13 @@ struct ProjectEditorSheet: View {
                     }
                     PikaInputSheetDivider()
                     PikaInputSheetFieldRow(label: "Client") {
-                        Picker("Client", selection: $clientName) {
-                            if !clients.contains(where: { $0.name == clientName }) {
-                                Text(clientName).tag(clientName)
+                        Picker("Client", selection: $clientID) {
+                            if let clientID, !clients.contains(where: { $0.id == clientID }) {
+                                Text(project.clientName).tag(Optional(clientID))
                             }
 
                             ForEach(clients) { client in
-                                Text(client.name).tag(client.name)
+                                Text(client.name).tag(Optional(client.id))
                             }
                         }
                         .labelsHidden()
@@ -68,9 +70,10 @@ struct ProjectEditorSheet: View {
                 Spacer()
 
                 Button {
+                    guard let clientID else { return }
                     onSave(WorkspaceProjectUpdateDraft(
                         name: name,
-                        clientName: clientName,
+                        clientID: clientID,
                         currencyCode: CurrencyTextFormatting.normalizedInput(currencyCode)
                     ))
                 } label: {
@@ -88,7 +91,7 @@ struct ProjectEditorSheet: View {
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !clientName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && clientID != nil
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

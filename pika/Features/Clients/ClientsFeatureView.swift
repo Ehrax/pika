@@ -133,7 +133,7 @@ struct ClientsFeatureView: View {
     private var linkedProjectCountsByClientID: [WorkspaceClient.ID: Int] {
         Dictionary(
             uniqueKeysWithValues: workspace.clients.map { client in
-                let count = workspace.projects.filter { $0.clientName == client.name }.count
+                let count = workspace.projects.filter { $0.clientID == client.id }.count
                 return (client.id, count)
             }
         )
