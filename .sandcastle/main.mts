@@ -11,13 +11,7 @@ import {
   REVIEWER_EFFORT,
   REVIEWER_MODEL,
 } from "./agent-config.mts";
-import { codexAuthHook, codexDocker } from "./codex-sandbox.mts";
-import {
-  formatVerificationFailure,
-  hostVerifyCommandsFromEnv,
-  runHostVerification,
-} from "./host-verification.mts";
-import { verifyAndRepair } from "./repair.mts";
+import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 import { runWithConcurrencyLimit } from "./concurrency.mts";
 
 type IssuePlan = {
@@ -26,10 +20,7 @@ type IssuePlan = {
   branch: string;
 };
 
-const HOST_VERIFY_COMMANDS = hostVerifyCommandsFromEnv(
-  "SANDCASTLE_HOST_VERIFY_COMMANDS",
-  ["./script/test.sh"]
-);
+const hostSandbox = noSandbox();
 
 const parsePlan = (stdout: string) => {
   const planMatch = stdout.match(/<plan>([\s\S]*?)<\/plan>/);
@@ -42,32 +33,20 @@ const parsePlan = (stdout: string) => {
 
 const runPlanner = async () => {
   const plan = await sandcastle.run({
-    sandbox: codexDocker,
+    sandbox: hostSandbox,
+    branchStrategy: { type: "head" },
     name: "Planner",
     agent: sandcastle.codex(PLANNER_MODEL, { effort: PLANNER_EFFORT }),
     promptFile: "./.sandcastle/plan-prompt.md",
-    hooks: {
-      sandbox: {
-        onSandboxReady: [codexAuthHook],
-      },
-    },
   });
 
   return parsePlan(plan.stdout).issues;
 };
 
 const implementAndReviewIssue = async (issue: IssuePlan) => {
-  await using sandbox = await sandcastle.createSandbox({
-    sandbox: codexDocker,
-    branch: issue.branch,
-    hooks: {
-      sandbox: {
-        onSandboxReady: [codexAuthHook],
-      },
-    },
-  });
-
-  const result = await sandbox.run({
+  const result = await sandcastle.run({
+    sandbox: hostSandbox,
+    branchStrategy: { type: "branch", branch: issue.branch },
     name: "Implementer #" + issue.number,
     agent: sandcastle.codex(IMPLEMENTER_MODEL, {
       effort: IMPLEMENTER_EFFORT,
@@ -84,14 +63,9 @@ const implementAndReviewIssue = async (issue: IssuePlan) => {
     return result;
   }
 
-  await verifyAndRepair(
-    sandbox,
-    issue,
-    "implementation",
-    HOST_VERIFY_COMMANDS
-  );
-
-  const review = await sandbox.run({
+  await sandcastle.run({
+    sandbox: hostSandbox,
+    branchStrategy: { type: "branch", branch: issue.branch },
     name: "Reviewer #" + issue.number,
     agent: sandcastle.codex(REVIEWER_MODEL, {
       effort: REVIEWER_EFFORT,
@@ -104,10 +78,6 @@ const implementAndReviewIssue = async (issue: IssuePlan) => {
     },
   });
 
-  if (review.commits.length > 0) {
-    await verifyAndRepair(sandbox, issue, "review", HOST_VERIFY_COMMANDS);
-  }
-
   return result;
 };
 
@@ -115,16 +85,12 @@ const mergeCompletedBranches = async (completedIssues: IssuePlan[]) => {
   const completedBranches = completedIssues.map((issue) => issue.branch);
 
   await sandcastle.run({
-    sandbox: codexDocker,
+    sandbox: hostSandbox,
+    branchStrategy: { type: "head" },
     name: "Merger",
     maxIterations: 10,
     agent: sandcastle.codex(MERGER_MODEL, { effort: MERGER_EFFORT }),
     promptFile: "./.sandcastle/merge-prompt.md",
-    hooks: {
-      sandbox: {
-        onSandboxReady: [codexAuthHook],
-      },
-    },
     promptArgs: {
       BRANCHES: completedBranches.map((branch) => `- ${branch}`).join("\n"),
       ISSUES: completedIssues
@@ -132,17 +98,6 @@ const mergeCompletedBranches = async (completedIssues: IssuePlan[]) => {
         .join("\n"),
     },
   });
-
-  const mergeVerification = await runHostVerification(
-    process.cwd(),
-    HOST_VERIFY_COMMANDS
-  );
-  if (!mergeVerification.ok) {
-    throw new Error(
-      "Host verification failed after merge.\n\n" +
-        formatVerificationFailure(mergeVerification)
-    );
-  }
 };
 
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {

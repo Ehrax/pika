@@ -350,7 +350,7 @@ private struct InvoicePDFRenderer {
         }
 
         let rowCount = max(lineItems.count, 1)
-        let dividerY = tableY + rowTopOffset + CGFloat(rowCount) * rowHeight + 4
+        let dividerY = tableY + rowTopOffset + CGFloat(rowCount) * rowHeight - 8
         drawDivider(y: dividerY, context: context)
 
         return dividerY

@@ -1,8 +1,8 @@
 import Foundation
+@testable import pika
 import SwiftData
 import SwiftUI
 import Testing
-@testable import pika
 
 struct PikaScaffoldTests {
     @Test func designTokensExposeExpectedScaffoldValues() {
@@ -29,7 +29,7 @@ struct PikaScaffoldTests {
     }
 
     @Test func sidebarProjectDotPaletteDoesNotRepeatBeforePaletteIsExhausted() {
-        let firstPalettePass = (0..<SidebarProjectDotPalette.colorCount)
+        let firstPalettePass = (0 ..< SidebarProjectDotPalette.colorCount)
             .map(SidebarProjectDotPalette.colorIndex(forProjectAt:))
 
         #expect(Set(firstPalettePass).count == SidebarProjectDotPalette.colorCount)
@@ -76,12 +76,12 @@ struct PikaScaffoldTests {
         #expect(CurrencyTextFormatting.normalizedInput(" EUR ") == "EUR")
     }
 
-    @Test func normalizedPersistenceRecordsUseCloudKitFriendlyDefaultsAndTypedEnums() {
-        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000501")!
-        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000501")!
-        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000501")!
-        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000501")!
-        let lineItemID = UUID(uuidString: "50000000-0000-0000-0000-000000000501")!
+    @Test func normalizedPersistenceRecordsUseCloudKitFriendlyDefaultsAndTypedEnums() throws {
+        let clientID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000501"))
+        let projectID = try #require(UUID(uuidString: "20000000-0000-0000-0000-000000000501"))
+        let bucketID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000000501"))
+        let invoiceID = try #require(UUID(uuidString: "40000000-0000-0000-0000-000000000501"))
+        let lineItemID = try #require(UUID(uuidString: "50000000-0000-0000-0000-000000000501"))
 
         let profile = BusinessProfileRecord()
         let client = ClientRecord(id: clientID, name: "Northstar Labs")
@@ -152,7 +152,7 @@ struct PikaScaffoldTests {
     }
 
     @Test func macOSLaunchWindowPolicyStartsWithRoomForSidebarAndContent() {
-        #expect(PikaApp.defaultLaunchWindowSize.width == 1_408)
+        #expect(PikaApp.defaultLaunchWindowSize.width == 1408)
         #expect(PikaApp.defaultLaunchWindowSize.height == 813)
         #expect(MainWindowLayout.frameAutosaveName == "PikaMainWindowFrame")
         #expect(MainWindowLayout.frameStorageKey == "pika.mainWindow.frame")
@@ -304,41 +304,41 @@ struct PikaScaffoldTests {
         #expect(configuration.workspaceSeed == .sample)
     }
 
-#if DEBUG
-    @Test func appLaunchConfigurationResolvesDemoWorkspaceSeedForDevelopment() {
-        let configuration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "sample"],
-            environment: [:]
-        )
+    #if DEBUG
+        @Test func appLaunchConfigurationResolvesDemoWorkspaceSeedForDevelopment() {
+            let configuration = AppLaunchConfiguration(
+                arguments: ["pika", "--pika-workspace-seed", "sample"],
+                environment: [:]
+            )
 
-        #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.demoWorkspace)
-    }
+            #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.demoWorkspace)
+        }
 
-    @Test func appLaunchConfigurationResolvesBikeparkWorkspaceSeedForDevelopment() {
-        let configuration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
-            environment: [:]
-        )
+        @Test func appLaunchConfigurationResolvesBikeparkWorkspaceSeedForDevelopment() {
+            let configuration = AppLaunchConfiguration(
+                arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
+                environment: [:]
+            )
 
-        #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.bikeparkThunersee)
-    }
-#else
-    @Test func appLaunchConfigurationFallsBackToEmptyForDevelopmentOnlySeedsInRelease() {
-        let demoConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "sample"],
-            environment: [:]
-        )
-        let bikeparkConfiguration = AppLaunchConfiguration(
-            arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
-            environment: [:]
-        )
+            #expect(configuration.initialWorkspace == WorkspaceSeedLibrary.bikeparkThunersee)
+        }
+    #else
+        @Test func appLaunchConfigurationFallsBackToEmptyForDevelopmentOnlySeedsInRelease() {
+            let demoConfiguration = AppLaunchConfiguration(
+                arguments: ["pika", "--pika-workspace-seed", "sample"],
+                environment: [:]
+            )
+            let bikeparkConfiguration = AppLaunchConfiguration(
+                arguments: ["pika", "--pika-workspace-seed", "bikepark-thunersee"],
+                environment: [:]
+            )
 
-        #expect(demoConfiguration.workspaceSeed == .sample)
-        #expect(demoConfiguration.initialWorkspace == .empty)
-        #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
-        #expect(bikeparkConfiguration.initialWorkspace == .empty)
-    }
-#endif
+            #expect(demoConfiguration.workspaceSeed == .sample)
+            #expect(demoConfiguration.initialWorkspace == .empty)
+            #expect(bikeparkConfiguration.workspaceSeed == .bikeparkThunersee)
+            #expect(bikeparkConfiguration.initialWorkspace == .empty)
+        }
+    #endif
 
     @MainActor
     @Test func navigationBoundariesAreHashableValueState() {
@@ -414,12 +414,12 @@ struct PikaScaffoldTests {
         let entitlementsURL = repositoryRoot.appendingPathComponent("pika/pika.entitlements")
         let projectURL = repositoryRoot.appendingPathComponent("pika.xcodeproj/project.pbxproj")
         let telemetryURL = repositoryRoot.appendingPathComponent("pika/Services/AppTelemetry.swift")
-        let projectStoreURL = repositoryRoot.appendingPathComponent("pika/Stores/ProjectStore.swift")
+        let workspacePersistenceURL = repositoryRoot.appendingPathComponent("pika/Stores/WorkspaceStore+Persistence.swift")
 
         let entitlements = try String(contentsOf: entitlementsURL, encoding: .utf8)
         let project = try String(contentsOf: projectURL, encoding: .utf8)
         let telemetry = try String(contentsOf: telemetryURL, encoding: .utf8)
-        let projectStore = try String(contentsOf: projectStoreURL, encoding: .utf8)
+        let workspacePersistence = try String(contentsOf: workspacePersistenceURL, encoding: .utf8)
         let remoteNotificationBackgroundModeSettings = [
             #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";"#,
             #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";"#,
@@ -434,7 +434,7 @@ struct PikaScaffoldTests {
         #expect(telemetry.contains("persistence.container_configured"))
         #expect(telemetry.contains("persistence.save_failed"))
         #expect(telemetry.contains("persistence.projection_reload_failed"))
-        #expect(projectStore.contains("AppTelemetry.persistenceSaveFailed("))
-        #expect(projectStore.contains("AppTelemetry.persistenceProjectionReloadFailed("))
+        #expect(workspacePersistence.contains("AppTelemetry.persistenceSaveFailed("))
+        #expect(workspacePersistence.contains("AppTelemetry.persistenceProjectionReloadFailed("))
     }
 }

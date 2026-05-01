@@ -55,7 +55,7 @@ Here are the last 10 commits:
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run portable checks such as `git diff --check` when useful. The Docker sandbox is Linux and cannot run `xcodebuild`, macOS launch checks, or iOS simulator tests. Do not run Node/TypeScript substitutes such as `npm run typecheck` or `npm run test`.
+2. Run the relevant Swift/Xcode checks for the change. For unit-level changes, prefer `./script/test.sh` or a narrow `xcodebuild test` command. Run `git diff --check` before committing. Do not run Node/TypeScript substitutes such as `npm run typecheck` or `npm run test`.
 3. Commit with a message starting with `RALPH: Review -` describing the refinements
 
 If the code is already clean and well-structured, do nothing.

@@ -157,9 +157,7 @@ extension WorkspaceStore {
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
-        guard bucket.status == .open, bucket.effectiveTotalMinorUnits > 0 else {
-            throw WorkspaceStoreError.bucketNotInvoiceable
-        }
+        try mutationPolicy.ensureBucketCanBeMarkedReady(bucket)
 
         workspace.projects[projectIndex].buckets[bucketIndex].status = .ready
         appendActivity(
@@ -193,18 +191,7 @@ extension WorkspaceStore {
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
-        switch status {
-        case .archived:
-            guard !bucket.status.isInvoiceLocked else {
-                throw WorkspaceStoreError.bucketLocked(bucket.status)
-            }
-        case .open:
-            guard bucket.status == .archived else {
-                throw WorkspaceStoreError.bucketLocked(bucket.status)
-            }
-        case .ready, .finalized:
-            throw WorkspaceStoreError.bucketStatusNotReady(bucket.status)
-        }
+        try mutationPolicy.ensureBucketStatusTransition(from: bucket.status, to: status)
 
         workspace.projects[projectIndex].buckets[bucketIndex].status = status
         appendActivity(
@@ -311,9 +298,7 @@ extension WorkspaceStore {
     ) throws {
         let project = try project(projectID)
         let bucket = try bucket(bucketID, in: project)
-        guard bucket.status == .open, bucket.effectiveTotalMinorUnits > 0 else {
-            throw WorkspaceStoreError.bucketNotInvoiceable
-        }
+        try mutationPolicy.ensureBucketCanBeMarkedReady(bucket)
 
         guard let bucketRecord = try bucketRecord(bucketID),
               bucketRecord.projectID == projectID
@@ -348,18 +333,7 @@ extension WorkspaceStore {
         }
 
         let currentStatus = bucketRecord.status
-        switch status {
-        case .archived:
-            guard !currentStatus.isInvoiceLocked else {
-                throw WorkspaceStoreError.bucketLocked(currentStatus)
-            }
-        case .open:
-            guard currentStatus == .archived else {
-                throw WorkspaceStoreError.bucketLocked(currentStatus)
-            }
-        case .ready, .finalized:
-            throw WorkspaceStoreError.bucketStatusNotReady(currentStatus)
-        }
+        try mutationPolicy.ensureBucketStatusTransition(from: currentStatus, to: status)
 
         let projectName = workspace.projects.first(where: { $0.id == projectID })?.name ?? ""
         let bucketName = workspace.projects

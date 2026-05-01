@@ -6,7 +6,7 @@ Pull in the issue using `gh issue view`, with comments. If it has a parent PRD, 
 
 Only work on the issue specified.
 
-Work on branch {{BRANCH}}. Make commits. The Sandcastle host orchestrator will run macOS/Xcode verification from the host after your pass.
+Work on branch {{BRANCH}}. Make commits.
 
 # CONTEXT
 
@@ -28,22 +28,19 @@ Pay extra attention to test files that touch the relevant parts of the code.
 
 If applicable, use RGR to complete the task.
 
-1. RED: write one test
-2. GREEN: write the implementation to pass that test
+1. RED: write one focused test, then run the narrowest relevant test command and verify it fails for the expected reason.
+2. GREEN: write the smallest implementation to pass that test, then rerun the relevant test command and verify it passes.
 3. REPEAT until done
 4. REFACTOR the code
 
 # FEEDBACK LOOPS
 
-This repository is a SwiftUI macOS app. The Docker sandbox is Linux and cannot run `xcodebuild`, macOS app launch checks, or iOS simulator tests.
+This repository is a SwiftUI macOS app and this agent runs locally with `noSandbox()`, so macOS/Xcode tooling is available.
 
-Inside the sandbox:
-
-1. Run portable checks such as `git diff --check` when useful.
-2. Do not run Node/TypeScript substitutes such as `npm run typecheck` or `npm run test`.
-3. If host verification failures are provided in a follow-up prompt, fix the reported Swift/Xcode issues and commit the fix.
-
-The host orchestrator will run the relevant macOS/Xcode verification commands from the worktree after your pass.
+1. Prefer focused test commands while iterating. For unit-level changes, use `./script/test.sh` or the equivalent narrow `xcodebuild test` invocation.
+2. For iOS-specific checks, use `./script/test_ios.sh` or a narrow `xcodebuild` command if the issue calls for it.
+3. Run `git diff --check` before committing.
+4. Do not use Node/TypeScript substitutes such as `npm run typecheck` or `npm run test` for app verification.
 
 # COMMIT
 

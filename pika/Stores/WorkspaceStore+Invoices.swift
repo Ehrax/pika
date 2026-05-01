@@ -121,9 +121,7 @@ extension WorkspaceStore {
 
         let indices = try invoiceIndices(invoiceID)
         let invoice = workspace.projects[indices.project].invoices[indices.invoice]
-        guard invoice.status.canTransition(to: newStatus) else {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: invoice.status, to: newStatus)
-        }
+        try mutationPolicy.ensureInvoiceStatusTransition(from: invoice.status, to: newStatus)
 
         workspace.projects[indices.project].invoices[indices.invoice].status = newStatus
         appendActivity(
@@ -194,7 +192,7 @@ extension WorkspaceStore {
             clientSnapshot: clientSnapshot,
             lineItems: lineItems
         )
-        let invoiceRecord = insertInvoiceRecord(
+        _ = insertInvoiceRecord(
             for: invoice,
             projectID: projectID,
             bucketID: bucketID,
@@ -233,9 +231,7 @@ extension WorkspaceStore {
         }
 
         let oldStatus = invoiceRecord.status
-        guard oldStatus.canTransition(to: newStatus) else {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: oldStatus, to: newStatus)
-        }
+        try mutationPolicy.ensureInvoiceStatusTransition(from: oldStatus, to: newStatus)
 
         invoiceRecord.status = newStatus
         invoiceRecord.updatedAt = .now
