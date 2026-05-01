@@ -184,7 +184,11 @@ extension WorkspaceStore {
 
         let now = Date.now
         let timeRange = WorkspaceEntryDurationParser.timeRangeMinutes(from: draft.timeInput)
-        let hourlyRateMinorUnits = bucket.hourlyRateMinorUnits
+        let persistedBucketDefaultRate: Int? = bucketRecord.defaultHourlyRateMinorUnits > 0
+            ? bucketRecord.defaultHourlyRateMinorUnits
+            : nil
+        let hourlyRateMinorUnits = persistedBucketDefaultRate
+            ?? bucket.hourlyRateMinorUnits
             ?? project.defaultHourlyRateMinorUnits
             ?? 0
         let record = TimeEntryRecord(
