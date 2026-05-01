@@ -17,21 +17,11 @@ enum WorkspaceEntryDurationParser {
             return minutes > 0 ? minutes : nil
         }
 
-        let parts = normalized
-            .split(separator: "-", maxSplits: 1)
-            .map { String($0).trimmingCharacters(in: .whitespaces) }
-        guard parts.count == 2,
-              let start = minutesSinceStartOfDay(parts[0]),
-              let end = minutesSinceStartOfDay(parts[1]),
-              end > start
-        else {
-            return nil
-        }
-
-        return end - start
+        guard let range = timeRangeMinutes(from: normalized) else { return nil }
+        return range.end - range.start
     }
 
-    static func timeRangeLabels(from input: String) -> (start: String, end: String)? {
+    static func timeRangeMinutes(from input: String) -> (start: Int, end: Int)? {
         let parts = normalized(input)
             .split(separator: "-", maxSplits: 1)
             .map { String($0).trimmingCharacters(in: .whitespaces) }
@@ -43,7 +33,13 @@ enum WorkspaceEntryDurationParser {
             return nil
         }
 
-        return (timeLabel(minutes: start), timeLabel(minutes: end))
+        return (start: start, end: end)
+    }
+
+    static func timeRangeLabels(from input: String) -> (start: String, end: String)? {
+        guard let range = timeRangeMinutes(from: input) else { return nil }
+
+        return (timeLabel(minutes: range.start), timeLabel(minutes: range.end))
     }
 
     static func displayLabel(from input: String) -> String {

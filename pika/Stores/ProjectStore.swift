@@ -368,12 +368,15 @@ final class WorkspaceStore {
 
     private static func buildTimeEntryProjections(from records: [TimeEntryRecord]) -> [WorkspaceTimeEntry] {
         records.map { record in
+            let durationMinutes = normalizedDurationMinutes(for: record)
+            let startTime = timeLabel(minuteOfDay: record.startMinuteOfDay)
+            let endTime = timeLabel(minuteOfDay: record.endMinuteOfDay)
             WorkspaceTimeEntry(
                 id: record.id,
                 date: record.workDate,
-                startTime: timeLabel(minuteOfDay: record.startMinuteOfDay),
-                endTime: timeLabel(minuteOfDay: record.endMinuteOfDay),
-                durationMinutes: normalizedDurationMinutes(for: record),
+                startTime: startTime.isEmpty && endTime.isEmpty ? durationInputLabel(minutes: durationMinutes) : startTime,
+                endTime: endTime,
+                durationMinutes: durationMinutes,
                 description: record.descriptionText,
                 isBillable: record.isBillable,
                 hourlyRateMinorUnits: record.hourlyRateMinorUnits
@@ -484,6 +487,17 @@ final class WorkspaceStore {
         let hours = minuteOfDay / 60
         let minutes = minuteOfDay % 60
         return String(format: "%02d:%02d", hours, minutes)
+    }
+
+    private static func durationInputLabel(minutes: Int) -> String {
+        guard minutes > 0 else { return "" }
+        if minutes.isMultiple(of: 60) {
+            return "\(minutes / 60)h"
+        }
+        if minutes.isMultiple(of: 30) {
+            return String(format: "%.1fh", locale: Locale(identifier: "en_US_POSIX"), Double(minutes) / 60)
+        }
+        return "\(minutes)m"
     }
 
     private static func sortedClients(_ records: [ClientRecord]) -> [ClientRecord] {
@@ -603,6 +617,14 @@ final class WorkspaceStore {
 
     func projectRecord(_ id: WorkspaceProject.ID) throws -> ProjectRecord? {
         var descriptor = FetchDescriptor<ProjectRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    func bucketRecord(_ id: WorkspaceBucket.ID) throws -> BucketRecord? {
+        var descriptor = FetchDescriptor<BucketRecord>(
             predicate: #Predicate { $0.id == id }
         )
         descriptor.fetchLimit = 1
