@@ -164,10 +164,6 @@ extension WorkspaceStore {
         let project = try project(projectID)
         let bucket = try bucket(bucketID, in: project)
 
-        guard !bucket.status.isInvoiceLocked else {
-            throw WorkspaceStoreError.bucketLocked(bucket.status)
-        }
-
         let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard
             !description.isEmpty,
@@ -176,8 +172,14 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.invalidTimeEntry
         }
 
-        guard let bucketRecord = try bucketRecord(bucketID) else {
+        guard let bucketRecord = try bucketRecord(bucketID),
+              bucketRecord.projectID == projectID
+        else {
             throw WorkspaceStoreError.bucketNotFound
+        }
+        let bucketStatus = bucketRecord.status
+        guard !bucketStatus.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucketStatus)
         }
 
         let now = Date.now
@@ -206,12 +208,17 @@ extension WorkspaceStore {
         bucketRecord.updatedAt = now
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
+        let bucketName = workspace.projects
+            .first(where: { $0.id == projectID })?
+            .buckets
+            .first(where: { $0.id == bucketID })?
+            .name ?? bucketRecord.name
         appendActivity(
-            message: "\(bucket.name) entry added",
+            message: "\(bucketName) entry added",
             detail: project.name,
             occurredAt: occurredAt
         )
-        AppTelemetry.bucketTimeEntryAdded(bucketName: bucket.name, projectName: project.name)
+        AppTelemetry.bucketTimeEntryAdded(bucketName: bucketName, projectName: project.name)
         try persistWorkspace()
     }
 
@@ -222,19 +229,21 @@ extension WorkspaceStore {
         occurredAt: Date
     ) throws {
         let project = try project(projectID)
-        let bucket = try bucket(bucketID, in: project)
-
-        guard !bucket.status.isInvoiceLocked else {
-            throw WorkspaceStoreError.bucketLocked(bucket.status)
-        }
+        _ = try bucket(bucketID, in: project)
 
         let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !description.isEmpty, draft.amountMinorUnits > 0 else {
             throw WorkspaceStoreError.invalidFixedCost
         }
 
-        guard let bucketRecord = try bucketRecord(bucketID) else {
+        guard let bucketRecord = try bucketRecord(bucketID),
+              bucketRecord.projectID == projectID
+        else {
             throw WorkspaceStoreError.bucketNotFound
+        }
+        let bucketStatus = bucketRecord.status
+        guard !bucketStatus.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucketStatus)
         }
 
         let now = Date.now
@@ -257,12 +266,17 @@ extension WorkspaceStore {
         bucketRecord.updatedAt = now
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
+        let bucketName = workspace.projects
+            .first(where: { $0.id == projectID })?
+            .buckets
+            .first(where: { $0.id == bucketID })?
+            .name ?? bucketRecord.name
         appendActivity(
-            message: "\(bucket.name) cost added",
+            message: "\(bucketName) cost added",
             detail: project.name,
             occurredAt: occurredAt
         )
-        AppTelemetry.bucketFixedCostAdded(bucketName: bucket.name, projectName: project.name)
+        AppTelemetry.bucketFixedCostAdded(bucketName: bucketName, projectName: project.name)
         try persistWorkspace()
     }
 
@@ -275,14 +289,16 @@ extension WorkspaceStore {
         occurredAt: Date
     ) throws {
         let project = try project(projectID)
-        let bucket = try bucket(bucketID, in: project)
+        _ = try bucket(bucketID, in: project)
 
-        guard !bucket.status.isInvoiceLocked else {
-            throw WorkspaceStoreError.bucketLocked(bucket.status)
-        }
-
-        guard let bucketRecord = try bucketRecord(bucketID) else {
+        guard let bucketRecord = try bucketRecord(bucketID),
+              bucketRecord.projectID == projectID
+        else {
             throw WorkspaceStoreError.bucketNotFound
+        }
+        let bucketStatus = bucketRecord.status
+        guard !bucketStatus.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucketStatus)
         }
 
         let deleted: Bool
@@ -303,12 +319,17 @@ extension WorkspaceStore {
         bucketRecord.updatedAt = .now
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
+        let bucketName = workspace.projects
+            .first(where: { $0.id == projectID })?
+            .buckets
+            .first(where: { $0.id == bucketID })?
+            .name ?? bucketRecord.name
         appendActivity(
-            message: "\(bucket.name) entry deleted",
+            message: "\(bucketName) entry deleted",
             detail: project.name,
             occurredAt: occurredAt
         )
-        AppTelemetry.bucketEntryDeleted(bucketName: bucket.name, projectName: project.name)
+        AppTelemetry.bucketEntryDeleted(bucketName: bucketName, projectName: project.name)
         try persistWorkspace()
     }
 

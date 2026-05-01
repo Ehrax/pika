@@ -1173,6 +1173,133 @@ struct WorkspaceSnapshotTests {
         #expect(fixedCost.isBillable)
     }
 
+    @Test func persistentWorkspaceStoreRejectsNormalizedEntryMutationsWhenBucketRecordBecomesLocked() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000874")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000874")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000874")!
+        let timeEntryID = UUID(uuidString: "70000000-0000-0000-0000-000000000874")!
+        let fixedCostID = UUID(uuidString: "80000000-0000-0000-0000-000000000874")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Bucket lock guard",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint 3",
+            statusRaw: BucketStatus.open.rawValue,
+            defaultHourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        let timeEntry = TimeEntryRecord(
+            id: timeEntryID,
+            bucketID: bucketID,
+            workDate: createdAt,
+            durationMinutes: 60,
+            descriptionText: "Existing time",
+            isBillable: true,
+            hourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        )
+        let fixedCost = FixedCostRecord(
+            id: fixedCostID,
+            bucketID: bucketID,
+            date: createdAt,
+            descriptionText: "Existing cost",
+            quantity: 1,
+            unitPriceMinorUnits: 1_000,
+            isBillable: true,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        modelContext.insert(fixedCost)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        #expect(store.workspace.projects.first?.buckets.first?.status == .open)
+
+        let lockedAt = Date.pikaDate(year: 2026, month: 4, day: 29)
+        let bucketRecord = try #require(store.bucketRecord(bucketID))
+        bucketRecord.status = .archived
+        bucketRecord.updatedAt = lockedAt
+        try modelContext.save()
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.addTimeEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: WorkspaceTimeEntryDraft(
+                    date: lockedAt,
+                    timeInput: "1h",
+                    description: "Should fail",
+                    isBillable: true
+                )
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.addFixedCost(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: WorkspaceFixedCostDraft(
+                    date: lockedAt,
+                    description: "Should fail",
+                    amountMinorUnits: 2_500
+                )
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.deleteEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: timeEntryID,
+                kind: .time,
+                isBillable: true
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.deleteEntry(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: fixedCostID,
+                kind: .fixedCost,
+                isBillable: true
+            )
+        }
+
+        #expect((try store.timeEntryRecords(for: bucketID)).count == 1)
+        #expect((try store.fixedCostRecords(for: bucketID)).count == 1)
+    }
+
     @Test func persistentWorkspaceStoreMutatesNormalizedBucketLifecycleRecords() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
