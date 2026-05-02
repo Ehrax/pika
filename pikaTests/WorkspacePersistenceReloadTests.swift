@@ -1059,4 +1059,189 @@ struct WorkspacePersistenceReloadTests {
         #expect(first.projects.first?.buckets.map(\.name) == ["Alpha Bucket", "Zeta Bucket"])
         #expect(first == second)
     }
+
+    @Test func persistentWorkspaceArchiveExportEncodesV1WithoutRecordFieldLeakage() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let profileID = UUID(uuidString: "10000000-0000-0000-0000-000000008801")!
+        let clientID = UUID(uuidString: "20000000-0000-0000-0000-000000008801")!
+        let projectID = UUID(uuidString: "30000000-0000-0000-0000-000000008801")!
+        let bucketID = UUID(uuidString: "40000000-0000-0000-0000-000000008801")!
+        let billableEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000008801")!
+        let nonBillableEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000008802")!
+        let fixedCostID = UUID(uuidString: "60000000-0000-0000-0000-000000008801")!
+        let invoiceID = UUID(uuidString: "70000000-0000-0000-0000-000000008801")!
+        let lineItemID = UUID(uuidString: "80000000-0000-0000-0000-000000008801")!
+        let exportedAt = Date.pikaDate(year: 2026, month: 5, day: 2)
+        let issuedAt = Date.pikaDate(year: 2026, month: 5, day: 1)
+        let dueAt = Date.pikaDate(year: 2026, month: 5, day: 15)
+
+        modelContext.insert(BusinessProfileRecord(
+            id: profileID,
+            businessName: "North Coast Studio",
+            personName: "Avery North",
+            email: "billing@northcoast.example",
+            phone: "+49 555 0100",
+            address: "1 Harbour Way",
+            taxIdentifier: "DE123",
+            economicIdentifier: "ECO123",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 43,
+            currencyCode: "EUR",
+            paymentDetails: "IBAN DE00 1234",
+            taxNote: "VAT exempt",
+            defaultTermsDays: 14,
+            createdAt: issuedAt,
+            updatedAt: issuedAt
+        ))
+        let clientRecord = ClientRecord(
+            id: clientID,
+            name: "Snapshot Client",
+            email: "billing@snapshot.example",
+            billingAddress: "1 Snapshot Way",
+            defaultTermsDays: 21,
+            createdAt: issuedAt,
+            updatedAt: issuedAt
+        )
+        modelContext.insert(clientRecord)
+        let projectRecord = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Snapshot Project",
+            currencyCode: "USD",
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            client: clientRecord
+        )
+        modelContext.insert(projectRecord)
+        let bucketRecord = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Ready Snapshot",
+            statusRaw: BucketStatus.ready.rawValue,
+            defaultHourlyRateMinorUnits: 10_000,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            project: projectRecord
+        )
+        modelContext.insert(bucketRecord)
+        modelContext.insert(TimeEntryRecord(
+            id: billableEntryID,
+            bucketID: bucketID,
+            workDate: issuedAt,
+            startMinuteOfDay: 540,
+            endMinuteOfDay: 600,
+            durationMinutes: 60,
+            descriptionText: "Billable work",
+            isBillable: true,
+            hourlyRateMinorUnits: 10_000,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            bucket: bucketRecord
+        ))
+        modelContext.insert(TimeEntryRecord(
+            id: nonBillableEntryID,
+            bucketID: bucketID,
+            workDate: issuedAt,
+            durationMinutes: 30,
+            descriptionText: "Non-billable work",
+            isBillable: false,
+            hourlyRateMinorUnits: 10_000,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            bucket: bucketRecord
+        ))
+        modelContext.insert(FixedCostRecord(
+            id: fixedCostID,
+            bucketID: bucketID,
+            date: issuedAt,
+            descriptionText: "Travel pass",
+            quantity: 3,
+            unitPriceMinorUnits: 3_500,
+            isBillable: false,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            bucket: bucketRecord
+        ))
+        let invoiceRecord = InvoiceRecord(
+            id: invoiceID,
+            projectID: projectID,
+            bucketID: bucketID,
+            number: "NCS-2026-042",
+            templateRaw: InvoiceTemplate.kleinunternehmerClassic.rawValue,
+            issueDate: issuedAt,
+            dueDate: dueAt,
+            servicePeriod: "May 2026",
+            statusRaw: InvoiceStatus.sent.rawValue,
+            totalMinorUnits: 42_000,
+            currencyCode: "USD",
+            note: "Thank you.",
+            businessName: "North Coast Studio",
+            businessPersonName: "Avery North",
+            businessEmail: "billing@northcoast.example",
+            businessPhone: "+49 555 0100",
+            businessAddress: "1 Harbour Way",
+            businessTaxIdentifier: "DE123",
+            businessEconomicIdentifier: "ECO123",
+            businessPaymentDetails: "IBAN DE00 1234",
+            businessTaxNote: "VAT exempt",
+            clientName: "Snapshot Client",
+            clientEmail: "billing@snapshot.example",
+            clientBillingAddress: "1 Snapshot Way",
+            projectName: "Snapshot Project",
+            bucketName: "Ready Snapshot",
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            project: projectRecord,
+            bucket: bucketRecord
+        )
+        modelContext.insert(invoiceRecord)
+        modelContext.insert(InvoiceLineItemRecord(
+            id: lineItemID,
+            invoiceID: invoiceID,
+            sortOrder: 0,
+            descriptionText: "Ready Snapshot",
+            quantityLabel: "1h",
+            amountMinorUnits: 10_000,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            invoice: invoiceRecord
+        ))
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let envelope = try store.workspaceArchiveEnvelope(
+            exportedAt: exportedAt,
+            generator: WorkspaceArchiveGenerator(app: "pika-tests", version: "1.0.0", build: "test")
+        )
+        let data = try WorkspaceArchiveCodec.encode(envelope)
+        let json = try #require(String(data: data, encoding: .utf8))
+        let decoded = try WorkspaceArchiveCodec.decode(data)
+
+        #expect(decoded.format == WorkspaceArchiveEnvelope.formatMarker)
+        #expect(decoded.version == WorkspaceArchiveEnvelope.supportedVersion)
+        #expect(decoded.generator?.app == "pika-tests")
+        #expect(decoded.workspace.businessProfile.businessName == "North Coast Studio")
+        #expect(decoded.workspace.projects.map(\.currencyCode) == ["USD"])
+        #expect(decoded.workspace.invoices.map(\.currencyCode) == ["USD"])
+        #expect(decoded.workspace.timeEntries.count == 2)
+        #expect(decoded.workspace.timeEntries.contains { !$0.isBillable && $0.id == nonBillableEntryID })
+        #expect(decoded.workspace.fixedCosts == [
+            WorkspaceArchiveV1Workspace.FixedCost(
+                id: fixedCostID,
+                bucketID: bucketID,
+                date: "2026-05-01",
+                description: "Travel pass",
+                amountMinorUnits: 10_500
+            ),
+        ])
+        #expect(decoded.workspace.invoiceLineItems.map(\.id) == [lineItemID])
+        #expect(!json.contains("\"createdAt\""))
+        #expect(!json.contains("\"updatedAt\""))
+        #expect(!json.contains("\"statusRaw\""))
+        #expect(!json.contains("\"templateRaw\""))
+    }
 }

@@ -8,6 +8,7 @@ enum AppTelemetry {
     private static let dashboardLogger = Logger(subsystem: subsystem, category: "dashboard")
     private static let projectLogger = Logger(subsystem: subsystem, category: "projects")
     private static let invoiceLogger = Logger(subsystem: subsystem, category: "invoices")
+    private static let archiveLogger = Logger(subsystem: subsystem, category: "archive")
     private static let clientLogger = Logger(subsystem: subsystem, category: "clients")
     private static let settingsLogger = Logger(subsystem: subsystem, category: "settings")
     private static let layoutLogger = Logger(subsystem: subsystem, category: "layout")
@@ -149,6 +150,10 @@ enum AppTelemetry {
 
     static func invoicePDFActionFailed(action: String, message: String) {
         invoiceLogger.error("invoice.pdf_action_failed action=\(action, privacy: .public) error=\(message, privacy: .private)")
+    }
+
+    static func workspaceArchiveExportFailed(message: String) {
+        archiveLogger.error("workspace_archive.export_failed error=\(message, privacy: .private)")
     }
 
     static func clientsLoaded(clientCount: Int) {
