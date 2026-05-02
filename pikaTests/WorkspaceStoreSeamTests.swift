@@ -70,6 +70,37 @@ private final class RecordingWorkspacePersistence: WorkspacePersistence {
     }
 }
 
+private struct FailingInvoiceFinalizationWorkspacePersistence: WorkspacePersistence {
+    enum Failure: Error {
+        case applyFailed
+    }
+
+    let bootWorkspace: WorkspaceSnapshot
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        true
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot {
+        throw Failure.applyFailed
+    }
+
+    func persistWorkspace() throws {}
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+}
+
 private struct RejectPaidInvoicingWorkflow: WorkspaceInvoicing {
     private let defaultWorkflow = WorkspaceInvoicingWorkflow()
 
@@ -320,5 +351,93 @@ struct WorkspaceStoreSeamTests {
             try persistentStore.removeBucket(projectID: projectID, bucketID: bucketID)
         }
         #expect(persistentStore.workspace.projects.first?.buckets.map(\.id) == [bucketID])
+    }
+
+    @Test func normalizedInvoiceFinalizationMapsUnexpectedPersistenceFailuresToPersistenceFailed() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009997")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009997")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009997")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 2)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 16)
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Pipeline Client",
+                    email: "billing@pipeline.example",
+                    billingAddress: "9 Pipeline Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Pipeline Project",
+                    clientName: "Pipeline Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Bucket",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: UUID(uuidString: "50000000-0000-0000-0000-000000009997")!,
+                                    date: issueDate,
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Architecture validation",
+                                    isBillable: true,
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let store = WorkspaceStore(
+            seed: workspace,
+            workspacePersistence: FailingInvoiceFinalizationWorkspacePersistence(bootWorkspace: workspace)
+        )
+
+        #expect(store.isUsingNormalizedWorkspacePersistence())
+        do {
+            try store.finalizeInvoice(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: InvoiceFinalizationDraft(
+                    recipientName: "Pipeline Client",
+                    recipientEmail: "billing@pipeline.example",
+                    recipientBillingAddress: "9 Pipeline Way",
+                    invoiceNumber: "NCS-2026-997",
+                    template: .kleinunternehmerClassic,
+                    issueDate: issueDate,
+                    dueDate: dueDate,
+                    servicePeriod: "May 2026",
+                    currencyCode: "EUR",
+                    taxNote: ""
+                ),
+                occurredAt: issueDate
+            )
+            Issue.record("Expected persistence failure during normalized invoice finalization")
+        } catch let error as WorkspaceStoreError {
+            #expect(error == .persistenceFailed)
+        } catch {
+            Issue.record("Unexpected error type: \(String(describing: error))")
+        }
+
+        let project = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
+        #expect(project.invoices.isEmpty)
+        #expect(project.buckets.first(where: { $0.id == bucketID })?.status == .ready)
     }
 }
