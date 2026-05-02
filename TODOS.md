@@ -39,7 +39,6 @@ This list tracks the remaining work from `docs/design-proposal/pika-mac-first-ap
 - [ ] Review overdue behavior so it stays derived from due date and unpaid invoice status.
 - [ ] Add focused tests for any missing status transitions.
 - [ ] Add focused tests for edit/delete behavior once implemented.
-- [ ] Resolve or intentionally defer the Swift 6 isolation warning in `ProjectStore.swift`.
 - [ ] Split sample/seed data out of large mixed files if it keeps slowing implementation down.
 
 ## Design And Runtime Verification
@@ -55,7 +54,6 @@ This list tracks the remaining work from `docs/design-proposal/pika-mac-first-ap
 
 - [ ] Run a final review-and-simplify pass after the Mac functional loop is real.
 - [ ] Split oversized views only where it reduces real complexity.
-- [ ] Split store operations if `ProjectStore.swift` continues to collect unrelated responsibilities.
 - [ ] Keep reusable design-system additions narrow and justified by duplication.
 - [ ] Remove noisy temporary telemetry, keeping useful product/debug logs.
 

@@ -382,7 +382,6 @@ struct PikaScaffoldTests {
 
         #expect(environment.appRouter == nil)
         #expect(environment.appSettings.defaultPaymentTermsDays == 14)
-        #expect(environment.projectStore.placeholderProjects().isEmpty)
         #expect(throws: InvoicePDFService.Error.notImplemented) {
             try environment.invoicePDFService.renderDraftPDF()
         }
