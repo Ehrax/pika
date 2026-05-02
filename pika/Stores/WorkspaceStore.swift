@@ -29,9 +29,7 @@ final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
     let modelContext: ModelContext
-    private let usesNormalizedPersistence: Bool
-    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
-    let persistenceAdapter: any WorkspacePersistenceAdapter
+    let workspacePersistence: any WorkspacePersistence
     let mutationPolicy: any WorkspaceMutationPolicy
 
     init(
@@ -40,38 +38,27 @@ final class WorkspaceStore {
         resetForSeedImport: Bool = false,
         projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
         mutationPolicy: any WorkspaceMutationPolicy = DefaultWorkspaceMutationPolicy(),
-        persistenceAdapter: any WorkspacePersistenceAdapter = SwiftDataWorkspacePersistenceAdapter()
+        persistenceAdapter: any WorkspacePersistenceAdapter = SwiftDataWorkspacePersistenceAdapter(),
+        workspacePersistence: (any WorkspacePersistence)? = nil
     ) {
-        self.projectionLoadingAdapter = projectionLoadingAdapter
         self.mutationPolicy = mutationPolicy
-        self.persistenceAdapter = persistenceAdapter
-        usesNormalizedPersistence = modelContext != nil
+        let usesNormalizedPersistence = modelContext != nil
         if let modelContext {
             self.modelContext = modelContext
         } else {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
         }
 
-        guard usesNormalizedPersistence else {
-            workspace = seed
-            workspace.normalizeMissingHourlyRates()
-            return
-        }
-
-        if resetForSeedImport {
-            workspace = seed
-            workspace.normalizeMissingHourlyRates()
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
-            return
-        }
-
-        let persistedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: self.modelContext)
-        workspace = persistedWorkspace ?? seed
-        workspace.normalizeMissingHourlyRates()
-
-        if persistedWorkspace == nil {
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
-        }
+        self.workspacePersistence = workspacePersistence ?? DefaultWorkspacePersistence(
+            modelContext: self.modelContext,
+            usesNormalizedPersistence: usesNormalizedPersistence,
+            projectionLoadingAdapter: projectionLoadingAdapter,
+            persistenceAdapter: persistenceAdapter
+        )
+        self.workspace = self.workspacePersistence.bootstrapWorkspace(
+            seed: seed,
+            resetForSeedImport: resetForSeedImport
+        )
     }
 
     static func makeModelContainer(
@@ -94,6 +81,6 @@ final class WorkspaceStore {
     }
 
     func isUsingNormalizedWorkspacePersistence() -> Bool {
-        usesNormalizedPersistence && projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) != nil
+        workspacePersistence.isUsingNormalizedPersistence()
     }
 }

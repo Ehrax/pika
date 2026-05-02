@@ -14,6 +14,42 @@ private struct NoopPersistenceAdapter: WorkspacePersistenceAdapter {
     func save(context: ModelContext) throws {}
 }
 
+private final class RecordingWorkspacePersistence: WorkspacePersistence {
+    private(set) var bootSeed: WorkspaceSnapshot?
+    private(set) var bootResetForSeedImport = false
+    private(set) var saveAndReloadActivity: [WorkspaceActivity] = []
+    private(set) var saveAndReloadCallCount = 0
+    private let bootWorkspace: WorkspaceSnapshot
+    private let reloadedWorkspace: WorkspaceSnapshot
+
+    init(bootWorkspace: WorkspaceSnapshot, reloadedWorkspace: WorkspaceSnapshot) {
+        self.bootWorkspace = bootWorkspace
+        self.reloadedWorkspace = reloadedWorkspace
+    }
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        bootSeed = seed
+        bootResetForSeedImport = resetForSeedImport
+        return bootWorkspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        true
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func persistWorkspace() throws {}
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        saveAndReloadCallCount += 1
+        saveAndReloadActivity = activity
+        var reloaded = reloadedWorkspace
+        reloaded.activity = activity
+        return reloaded
+    }
+}
+
 private struct RejectPaidInvoicePolicy: WorkspaceMutationPolicy {
     func ensureBucketCanBeMarkedReady(_ bucket: WorkspaceBucket) throws {
         if bucket.status != .open || bucket.effectiveTotalMinorUnits <= 0 {
@@ -47,6 +83,44 @@ private struct RejectPaidInvoicePolicy: WorkspaceMutationPolicy {
 }
 
 struct WorkspaceStoreSeamTests {
+    @Test func workspaceStoreUsesWorkspacePersistenceForBootAndReload() throws {
+        let seed = WorkspaceFixtures.demoWorkspace
+        var bootWorkspace = WorkspaceSnapshot.empty
+        bootWorkspace.businessProfile.businessName = "Booted Workspace"
+        var reloadedWorkspace = WorkspaceSnapshot.empty
+        reloadedWorkspace.businessProfile.businessName = "Reloaded Workspace"
+        let persistence = RecordingWorkspacePersistence(
+            bootWorkspace: bootWorkspace,
+            reloadedWorkspace: reloadedWorkspace
+        )
+        let store = WorkspaceStore(
+            seed: seed,
+            workspacePersistence: persistence
+        )
+
+        #expect(store.workspace.businessProfile.businessName == "Booted Workspace")
+        #expect(
+            persistence.bootSeed?.businessProfile.businessName ==
+                seed.businessProfile.businessName
+        )
+        #expect(persistence.bootResetForSeedImport == false)
+
+        store.workspace.activity = [
+            WorkspaceActivity(
+                message: "Keep me",
+                detail: "Across reload",
+                occurredAt: Date(timeIntervalSince1970: 1_777_777_777)
+            ),
+        ]
+
+        try store.saveAndReloadNormalizedWorkspacePreservingActivity()
+
+        #expect(store.workspace.businessProfile.businessName == "Reloaded Workspace")
+        #expect(store.workspace.activity.map { $0.message } == ["Keep me"])
+        #expect(persistence.saveAndReloadCallCount == 1)
+        #expect(persistence.saveAndReloadActivity.map { $0.detail } == ["Across reload"])
+    }
+
     @Test func projectionLoadingAdapterFallbackUsesSeedWhenNoPersistedWorkspaceExists() throws {
         let seed = WorkspaceFixtures.demoWorkspace
         let (modelContext, storeURL) = try makePersistentModelContext()

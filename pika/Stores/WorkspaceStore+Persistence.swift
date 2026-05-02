@@ -26,6 +26,71 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
     }
 }
 
+protocol WorkspacePersistence {
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot
+    func isUsingNormalizedPersistence() -> Bool
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws
+    func persistWorkspace() throws
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
+}
+
+struct DefaultWorkspacePersistence: WorkspacePersistence {
+    let modelContext: ModelContext
+    let usesNormalizedPersistence: Bool
+    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
+    let persistenceAdapter: any WorkspacePersistenceAdapter
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        guard usesNormalizedPersistence else {
+            return normalizedWorkspace(seed)
+        }
+
+        if resetForSeedImport {
+            let workspace = normalizedWorkspace(seed)
+            try? replacePersistentWorkspaceWithSeedImport(workspace)
+            return workspace
+        }
+
+        let persistedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext)
+        let workspace = normalizedWorkspace(persistedWorkspace ?? seed)
+        if persistedWorkspace == nil {
+            try? replacePersistentWorkspaceWithSeedImport(workspace)
+        }
+        return workspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        usesNormalizedPersistence && projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) != nil
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+    }
+
+    func persistWorkspace() throws {
+        try persistenceAdapter.save(context: modelContext)
+    }
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        try persistenceAdapter.save(context: modelContext)
+        guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
+            AppTelemetry.persistenceProjectionReloadFailed(
+                operation: "save_and_reload_normalized_workspace"
+            )
+            throw WorkspaceStoreError.persistenceFailed
+        }
+        reloadedWorkspace.normalizeMissingHourlyRates()
+        reloadedWorkspace.activity = activity
+        return reloadedWorkspace
+    }
+
+    private func normalizedWorkspace(_ snapshot: WorkspaceSnapshot) -> WorkspaceSnapshot {
+        var workspace = snapshot
+        workspace.normalizeMissingHourlyRates()
+        return workspace
+    }
+}
+
 extension WorkspaceStore {
     private static let deterministicImportTimestamp = Date(timeIntervalSince1970: 0)
 
@@ -45,13 +110,13 @@ extension WorkspaceStore {
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
         try performPersistentWorkspaceWrite(operation: "replace_persistent_workspace_with_seed_import") {
-            try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+            try workspacePersistence.replacePersistentWorkspaceWithSeedImport(snapshot)
         }
     }
 
     func persistWorkspace() throws {
         try performPersistentWorkspaceWrite(operation: "persist_workspace") {
-            try persistenceAdapter.save(context: modelContext)
+            try workspacePersistence.persistWorkspace()
         }
     }
 
@@ -544,18 +609,19 @@ extension WorkspaceStore {
     }
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
-        try performPersistentWorkspaceWrite(operation: "save_and_reload_normalized_workspace") {
-            try persistenceAdapter.save(context: modelContext)
-        }
-        guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
-            AppTelemetry.persistenceProjectionReloadFailed(
-                operation: "save_and_reload_normalized_workspace"
+        do {
+            workspace = try workspacePersistence.saveAndReloadNormalizedWorkspace(
+                preservingActivity: activity
+            )
+        } catch WorkspaceStoreError.persistenceFailed {
+            throw WorkspaceStoreError.persistenceFailed
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: "save_and_reload_normalized_workspace",
+                message: String(describing: error)
             )
             throw WorkspaceStoreError.persistenceFailed
         }
-        reloadedWorkspace.normalizeMissingHourlyRates()
-        reloadedWorkspace.activity = activity
-        workspace = reloadedWorkspace
     }
 
     func saveAndReloadNormalizedWorkspacePreservingActivity() throws {
