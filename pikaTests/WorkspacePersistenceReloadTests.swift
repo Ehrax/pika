@@ -680,6 +680,114 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedProject.invoices.map(\.number) == ["NCS-2026-045"])
     }
 
+    @Test func persistentWorkspaceStoreSerializesDuplicateInvoiceNumbersAcrossContexts() throws {
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.store")
+        let container = try WorkspaceStore.makeModelContainer(mode: .local, storeURL: storeURL)
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000616")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000616")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000616")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 6)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 20)
+        let seededWorkspace = WorkspaceSnapshot(
+            businessProfile: BusinessProfileProjection(
+                businessName: "North Coast Studio",
+                personName: "Avery North",
+                email: "billing@northcoast.example",
+                phone: "+49 555 0100",
+                address: "1 Harbour Way",
+                taxIdentifier: "DE123",
+                economicIdentifier: "ECO123",
+                invoicePrefix: "NCS",
+                nextInvoiceNumber: 47,
+                currencyCode: "EUR",
+                paymentDetails: "IBAN DE00 1234",
+                taxNote: "VAT exempt",
+                defaultTermsDays: 14
+            ),
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Snapshot Client",
+                    email: "billing@snapshot.example",
+                    billingAddress: "1 Snapshot Way",
+                    defaultTermsDays: 21
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Snapshot Project",
+                    clientName: "Snapshot Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Snapshot",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            defaultHourlyRateMinorUnits: 10_000
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        _ = WorkspaceStore(
+            seed: seededWorkspace,
+            modelContext: ModelContext(container),
+            resetForSeedImport: true
+        )
+        let firstStore = WorkspaceStore(seed: .empty, modelContext: ModelContext(container))
+        let staleSecondStore = WorkspaceStore(seed: .empty, modelContext: ModelContext(container))
+        #expect(staleSecondStore.workspace.projects.first?.buckets.first?.status == .ready)
+
+        let draft = InvoiceFinalizationDraft(
+            recipientName: "Snapshot Client",
+            recipientEmail: "billing@snapshot.example",
+            recipientBillingAddress: "1 Snapshot Way",
+            invoiceNumber: " NCS-2026-047 ",
+            template: .kleinunternehmerClassic,
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "May 2026",
+            currencyCode: "EUR",
+            taxNote: ""
+        )
+        let firstInvoice = try firstStore.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: draft,
+            occurredAt: issueDate
+        )
+
+        #expect(firstInvoice.number == "NCS-2026-047")
+        #expect(throws: WorkspaceStoreError.persistenceConflict) {
+            try staleSecondStore.finalizeInvoice(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: draft,
+                occurredAt: issueDate
+            )
+        }
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: ModelContext(container))
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first(where: { $0.id == projectID }))
+        #expect(reloadedProject.invoices.map(\.number) == ["NCS-2026-047"])
+        #expect(reloadedProject.buckets.first(where: { $0.id == bucketID })?.status == .finalized)
+    }
+
     @Test func persistentWorkspaceStoreLoadsSavedWorkspaceOnRelaunch() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {

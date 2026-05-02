@@ -225,6 +225,18 @@ private enum WorkspacePersistenceOperation {
     static let saveAndReloadNormalizedWorkspace = "save_and_reload_normalized_workspace"
 }
 
+private final class WorkspaceInvoiceFinalizationWriteLock {
+    static let shared = WorkspaceInvoiceFinalizationWriteLock()
+
+    private let lock = NSLock()
+
+    func withLock<Result>(_ operation: () throws -> Result) rethrows -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return try operation()
+    }
+}
+
 struct DefaultWorkspacePersistence: WorkspacePersistence {
     let modelContext: ModelContext
     let usesNormalizedPersistence: Bool
@@ -262,12 +274,14 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
         _ result: InvoiceFinalizationResult,
         preservingActivity activity: [WorkspaceActivity]
     ) throws -> WorkspaceSnapshot {
-        do {
-            try persistenceAdapter.applyInvoiceFinalizationResult(result)
-            return try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
-        } catch {
-            persistenceAdapter.rollback()
-            throw error
+        try WorkspaceInvoiceFinalizationWriteLock.shared.withLock {
+            do {
+                try persistenceAdapter.applyInvoiceFinalizationResult(result)
+                return try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+            } catch {
+                persistenceAdapter.rollback()
+                throw error
+            }
         }
     }
 
