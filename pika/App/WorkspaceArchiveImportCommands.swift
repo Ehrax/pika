@@ -118,6 +118,10 @@ struct WorkspaceArchiveImportCommands: Commands {
             return "Invoice \(invoiceID.uuidString) total mismatch. Expected \(expected), got \(actual)."
         case WorkspaceStoreError.persistenceFailed:
             return "Workspace replacement failed. The previous workspace was kept."
+        case WorkspaceArchiveActionError.backupsDirectoryUnavailable:
+            return "Import is blocked because the backups directory could not be located."
+        case WorkspaceArchiveActionError.backupsDirectoryOpenFailed:
+            return "The backups folder could not be opened."
         case let decodingError as DecodingError:
             return "Archive decoding failed: \(decodingError.localizedDescription)"
         default:

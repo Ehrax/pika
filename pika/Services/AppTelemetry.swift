@@ -156,6 +156,10 @@ enum AppTelemetry {
         archiveLogger.error("workspace_archive.export_failed error=\(message, privacy: .private)")
     }
 
+    static func workspaceArchiveBackupRevealFailed(message: String) {
+        archiveLogger.error("workspace_archive.backups_reveal_failed error=\(message, privacy: .private)")
+    }
+
     static func clientsLoaded(clientCount: Int) {
         clientLogger.info("clients.loaded count=\(clientCount, privacy: .public)")
     }

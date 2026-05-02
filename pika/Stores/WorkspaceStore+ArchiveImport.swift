@@ -6,10 +6,21 @@ extension WorkspaceStore {
     }
 
     func importWorkspaceArchive(_ data: Data) throws -> WorkspaceArchiveImportSummary {
+        try importWorkspaceArchive(data) {
+            _ = try WorkspaceArchiveActions.writePreImportBackup(workspaceStore: self)
+        }
+    }
+
+    func importWorkspaceArchive(
+        _ data: Data,
+        createPreImportBackup: () throws -> Void
+    ) throws -> WorkspaceArchiveImportSummary {
         let envelope = try WorkspaceArchiveCodec.decode(data)
         let summary = try WorkspaceArchiveImportValidator.validateAndSummarize(envelope)
         let replacementWorkspace = try Self.workspaceSnapshot(from: envelope.workspace)
         let priorWorkspace = workspace
+
+        try createPreImportBackup()
 
         do {
             try replacePersistentWorkspaceWithSeedImport(replacementWorkspace)

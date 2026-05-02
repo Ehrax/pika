@@ -9,6 +9,10 @@ struct WorkspaceArchiveCommands: Commands {
                 exportWorkspaceArchive()
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
+
+            Button("Reveal Workspace Backups") {
+                revealWorkspaceBackups()
+            }
         }
     }
 
@@ -17,6 +21,18 @@ struct WorkspaceArchiveCommands: Commands {
             try WorkspaceArchiveActions.export(workspaceStore: workspaceStore)
         } catch {
             AppTelemetry.workspaceArchiveExportFailed(message: String(describing: error))
+        }
+    }
+
+    private func revealWorkspaceBackups() {
+        do {
+            #if os(macOS)
+            try WorkspaceArchiveActions.revealWorkspaceBackups()
+            #else
+            throw WorkspaceArchiveActionError.unsupportedPlatform
+            #endif
+        } catch {
+            AppTelemetry.workspaceArchiveBackupRevealFailed(message: String(describing: error))
         }
     }
 }

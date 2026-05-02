@@ -32,7 +32,9 @@ struct WorkspaceArchiveImportValidationTests {
             WorkspaceArchiveImportFixture.makeReplacementEnvelope()
         )
 
-        let summary = try store.importWorkspaceArchive(archiveData)
+        let summary = try store.importWorkspaceArchive(archiveData) {
+            persistence.recordPreImportBackup()
+        }
 
         #expect(summary == WorkspaceArchiveImportSummary(
             clientCount: 1,
@@ -83,6 +85,43 @@ struct WorkspaceArchiveImportValidationTests {
         ])
     }
 
+    @Test func confirmedImportCreatesPreImportBackupBeforeReplacement() throws {
+        let initialWorkspace = WorkspaceFixtures.demoWorkspace
+        let persistence = CapturingArchiveImportWorkspacePersistence(bootWorkspace: initialWorkspace)
+        let store = WorkspaceStore(seed: initialWorkspace, workspacePersistence: persistence)
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeReplacementEnvelope()
+        )
+
+        _ = try store.importWorkspaceArchive(archiveData) {
+            persistence.recordPreImportBackup()
+        }
+
+        #expect(persistence.operationSequence == [
+            "pre_import_backup",
+            "replace_persistent_workspace",
+        ])
+    }
+
+    @Test func backupFailureBlocksImportBeforeReplacement() throws {
+        let initialWorkspace = WorkspaceFixtures.demoWorkspace
+        let persistence = CapturingArchiveImportWorkspacePersistence(bootWorkspace: initialWorkspace)
+        let store = WorkspaceStore(seed: initialWorkspace, workspacePersistence: persistence)
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeReplacementEnvelope()
+        )
+        let expectedError = WorkspaceArchiveActionError.backupsDirectoryUnavailable
+
+        #expect(throws: expectedError) {
+            _ = try store.importWorkspaceArchive(archiveData) {
+                throw expectedError
+            }
+        }
+
+        #expect(persistence.replaceCallCount == 0)
+        #expect(store.workspace == initialWorkspace)
+    }
+
     @Test func replacementFailureLeavesCurrentWorkspaceUntouched() throws {
         let initialWorkspace = WorkspaceFixtures.demoWorkspace
         let persistence = CapturingArchiveImportWorkspacePersistence(
@@ -95,7 +134,9 @@ struct WorkspaceArchiveImportValidationTests {
         )
 
         #expect(throws: WorkspaceStoreError.persistenceFailed) {
-            _ = try store.importWorkspaceArchive(archiveData)
+            _ = try store.importWorkspaceArchive(archiveData) {
+                persistence.recordPreImportBackup()
+            }
         }
         #expect(persistence.replaceCallCount == 1)
         #expect(store.workspace == initialWorkspace)
@@ -483,6 +524,7 @@ private final class CapturingArchiveImportWorkspacePersistence: WorkspacePersist
     }
 
     private(set) var replaceCallCount = 0
+    private(set) var operationSequence: [String] = []
     private let bootWorkspace: WorkspaceSnapshot
     private let replaceFailure: Error?
 
@@ -500,10 +542,15 @@ private final class CapturingArchiveImportWorkspacePersistence: WorkspacePersist
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        operationSequence.append("replace_persistent_workspace")
         replaceCallCount += 1
         if let replaceFailure {
             throw replaceFailure
         }
+    }
+
+    func recordPreImportBackup() {
+        operationSequence.append("pre_import_backup")
     }
 
     func applyInvoiceFinalizationResult(
