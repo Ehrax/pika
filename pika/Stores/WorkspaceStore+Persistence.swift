@@ -279,7 +279,12 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
-        try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(normalizedWorkspace(snapshot))
+        do {
+            try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(normalizedWorkspace(snapshot))
+        } catch {
+            persistenceAdapter.rollback()
+            throw error
+        }
     }
 
     func applyInvoiceFinalizationResult(

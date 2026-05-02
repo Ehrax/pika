@@ -5,22 +5,19 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct WorkspaceArchiveImportCommands: Commands {
+    @Environment(\.workspaceStore) private var workspaceStore
+
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Divider()
             Button("Import Workspace Archive…") {
-                WorkspaceArchiveImportCommand.run()
+                importWorkspaceArchive()
             }
             .keyboardShortcut("I", modifiers: [.command, .shift])
         }
     }
-}
 
-@MainActor
-private enum WorkspaceArchiveImportCommand {
-    private static let archiveType = UTType(filenameExtension: "pikaarchive")
-
-    static func run() {
+    private func importWorkspaceArchive() {
         let panel = NSOpenPanel()
         panel.title = "Import Workspace Archive"
         panel.message = "Choose a .pikaarchive file to validate before replacing your workspace."
@@ -30,7 +27,7 @@ private enum WorkspaceArchiveImportCommand {
         panel.allowsMultipleSelection = false
         panel.allowsOtherFileTypes = false
 
-        if let archiveType {
+        if let archiveType = UTType(filenameExtension: "pikaarchive") {
             panel.allowedContentTypes = [archiveType]
         }
 
@@ -40,14 +37,14 @@ private enum WorkspaceArchiveImportCommand {
 
         do {
             let archiveData = try Data(contentsOf: archiveURL)
-            let summary = try WorkspaceArchiveImportValidator.validateAndSummarize(archiveData)
-            showConfirmation(summary: summary)
+            let summary = try workspaceStore.validateImportedWorkspaceArchive(archiveData)
+            try runConfirmedReplacement(summary: summary, archiveData: archiveData)
         } catch {
             showValidationError(error)
         }
     }
 
-    private static func showConfirmation(summary: WorkspaceArchiveImportSummary) {
+    private func runConfirmedReplacement(summary: WorkspaceArchiveImportSummary, archiveData: Data) throws {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Replace Current Workspace?"
@@ -60,15 +57,17 @@ private enum WorkspaceArchiveImportCommand {
             return
         }
 
-        let pendingAlert = NSAlert()
-        pendingAlert.alertStyle = .informational
-        pendingAlert.messageText = "Replacement Not Implemented Yet"
-        pendingAlert.informativeText = "Archive validation completed. Actual workspace replacement is tracked in a follow-up step."
-        pendingAlert.addButton(withTitle: "OK")
-        pendingAlert.runModal()
+        _ = try workspaceStore.importWorkspaceArchive(archiveData)
+
+        let successAlert = NSAlert()
+        successAlert.alertStyle = .informational
+        successAlert.messageText = "Workspace Replaced"
+        successAlert.informativeText = "The selected archive replaced the current workspace."
+        successAlert.addButton(withTitle: "OK")
+        successAlert.runModal()
     }
 
-    private static func showValidationError(_ error: Error) {
+    private func showValidationError(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = "Archive Import Failed"
@@ -77,7 +76,7 @@ private enum WorkspaceArchiveImportCommand {
         alert.runModal()
     }
 
-    private static func formattedSummary(_ summary: WorkspaceArchiveImportSummary) -> String {
+    private func formattedSummary(_ summary: WorkspaceArchiveImportSummary) -> String {
         [
             "Clients: \(summary.clientCount)",
             "Projects: \(summary.projectCount)",
@@ -88,7 +87,7 @@ private enum WorkspaceArchiveImportCommand {
         ].joined(separator: " · ")
     }
 
-    private static func message(for error: Error) -> String {
+    private func message(for error: Error) -> String {
         switch error {
         case WorkspaceArchiveError.invalidFormatMarker(_, let found):
             return "Unsupported archive format: \(found)."
@@ -117,6 +116,8 @@ private enum WorkspaceArchiveImportCommand {
             return "Duplicate invoice number found after normalization: \(normalizedNumber)."
         case WorkspaceArchiveImportError.invoiceTotalMismatch(let invoiceID, let expected, let actual):
             return "Invoice \(invoiceID.uuidString) total mismatch. Expected \(expected), got \(actual)."
+        case WorkspaceStoreError.persistenceFailed:
+            return "Workspace replacement failed. The previous workspace was kept."
         case let decodingError as DecodingError:
             return "Archive decoding failed: \(decodingError.localizedDescription)"
         default:
