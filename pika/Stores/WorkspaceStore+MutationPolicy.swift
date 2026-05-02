@@ -3,6 +3,7 @@ import Foundation
 protocol WorkspaceMutationPolicy {
     func ensureBucketCanBeMarkedReady(_ bucket: WorkspaceBucket) throws
     func ensureBucketStatusTransition(from currentStatus: BucketStatus, to targetStatus: BucketStatus) throws
+    func ensureBucketCanBeRemoved(status: BucketStatus) throws
 }
 
 struct DefaultWorkspaceMutationPolicy: WorkspaceMutationPolicy {
@@ -24,6 +25,12 @@ struct DefaultWorkspaceMutationPolicy: WorkspaceMutationPolicy {
             }
         case .ready, .finalized:
             throw WorkspaceStoreError.bucketStatusNotReady(currentStatus)
+        }
+    }
+
+    func ensureBucketCanBeRemoved(status: BucketStatus) throws {
+        guard status == .archived else {
+            throw WorkspaceStoreError.bucketLocked(status)
         }
     }
 }

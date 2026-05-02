@@ -98,7 +98,70 @@ private struct RejectPaidInvoicingWorkflow: WorkspaceInvoicing {
     }
 }
 
+private struct RejectArchivedBucketRemovalPolicy: WorkspaceMutationPolicy {
+    private let fallback = DefaultWorkspaceMutationPolicy()
+
+    func ensureBucketCanBeMarkedReady(_ bucket: WorkspaceBucket) throws {
+        try fallback.ensureBucketCanBeMarkedReady(bucket)
+    }
+
+    func ensureBucketStatusTransition(from currentStatus: BucketStatus, to targetStatus: BucketStatus) throws {
+        try fallback.ensureBucketStatusTransition(from: currentStatus, to: targetStatus)
+    }
+
+    func ensureBucketCanBeRemoved(status: BucketStatus) throws {
+        if status == .archived {
+            throw WorkspaceStoreError.bucketLocked(.archived)
+        }
+        try fallback.ensureBucketCanBeRemoved(status: status)
+    }
+}
+
 struct WorkspaceStoreSeamTests {
+    @Test func defaultMutationPolicyCoversReadyFinalizedArchivedLockedAndRemovableBucketCases() throws {
+        let policy = DefaultWorkspaceMutationPolicy()
+
+        let openInvoiceableBucket = WorkspaceBucket(
+            id: UUID(),
+            name: "Invoiceable",
+            status: .open,
+            totalMinorUnits: 10_000,
+            billableMinutes: 60,
+            fixedCostMinorUnits: 0
+        )
+        try policy.ensureBucketCanBeMarkedReady(openInvoiceableBucket)
+
+        let finalizedBucket = WorkspaceBucket(
+            id: UUID(),
+            name: "Finalized",
+            status: .finalized,
+            totalMinorUnits: 10_000,
+            billableMinutes: 60,
+            fixedCostMinorUnits: 0
+        )
+        #expect(throws: WorkspaceStoreError.bucketNotInvoiceable) {
+            try policy.ensureBucketCanBeMarkedReady(finalizedBucket)
+        }
+
+        try policy.ensureBucketStatusTransition(from: .open, to: .archived)
+        try policy.ensureBucketStatusTransition(from: .archived, to: .open)
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.finalized)) {
+            try policy.ensureBucketStatusTransition(from: .finalized, to: .archived)
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.ready)) {
+            try policy.ensureBucketStatusTransition(from: .ready, to: .open)
+        }
+
+        for lockedStatus in [BucketStatus.open, .ready, .finalized] {
+            #expect(throws: WorkspaceStoreError.bucketLocked(lockedStatus)) {
+                try policy.ensureBucketCanBeRemoved(status: lockedStatus)
+            }
+        }
+
+        try policy.ensureBucketCanBeRemoved(status: .archived)
+    }
+
     @Test func workspacePersistenceNormalizesSeedImportBeforeDelegatingToAdapter() throws {
         let modelContainer = try WorkspaceStore.makeModelContainer(mode: .inMemory)
         let modelContext = ModelContext(modelContainer)
@@ -205,5 +268,57 @@ struct WorkspaceStoreSeamTests {
         #expect(throws: WorkspaceStoreError.invalidInvoiceStatusTransition(from: .finalized, to: .paid)) {
             try store.markInvoicePaid(invoiceID: invoiceID)
         }
+    }
+
+    @Test func mutationPolicyCanOverrideArchivedBucketRemovalRuleAcrossStorePaths() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009998")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009998")!
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Policy Project",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Archived Bucket",
+                            status: .archived,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let inMemoryStore = WorkspaceStore(seed: workspace, mutationPolicy: RejectArchivedBucketRemovalPolicy())
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try inMemoryStore.removeBucket(projectID: projectID, bucketID: bucketID)
+        }
+        #expect(inMemoryStore.workspace.projects.first?.buckets.map(\.id) == [bucketID])
+
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+        let persistentStore = WorkspaceStore(
+            seed: workspace,
+            modelContext: modelContext,
+            mutationPolicy: RejectArchivedBucketRemovalPolicy()
+        )
+
+        #expect(persistentStore.isUsingNormalizedWorkspacePersistence())
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try persistentStore.removeBucket(projectID: projectID, bucketID: bucketID)
+        }
+        #expect(persistentStore.workspace.projects.first?.buckets.map(\.id) == [bucketID])
     }
 }
