@@ -34,6 +34,12 @@ protocol WorkspacePersistence {
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
 }
 
+private enum WorkspacePersistenceOperation {
+    static let replacePersistentWorkspaceWithSeedImport = "replace_persistent_workspace_with_seed_import"
+    static let persistWorkspace = "persist_workspace"
+    static let saveAndReloadNormalizedWorkspace = "save_and_reload_normalized_workspace"
+}
+
 struct DefaultWorkspacePersistence: WorkspacePersistence {
     let modelContext: ModelContext
     let usesNormalizedPersistence: Bool
@@ -47,14 +53,14 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
 
         if resetForSeedImport {
             let workspace = normalizedWorkspace(seed)
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
+            replacePersistentWorkspaceWithSeedImportIfPossible(workspace)
             return workspace
         }
 
         let persistedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext)
         let workspace = normalizedWorkspace(persistedWorkspace ?? seed)
         if persistedWorkspace == nil {
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
+            replacePersistentWorkspaceWithSeedImportIfPossible(workspace)
         }
         return workspace
     }
@@ -75,7 +81,7 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
         try persistenceAdapter.save(context: modelContext)
         guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
             AppTelemetry.persistenceProjectionReloadFailed(
-                operation: "save_and_reload_normalized_workspace"
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
             )
             throw WorkspaceStoreError.persistenceFailed
         }
@@ -88,6 +94,17 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
         var workspace = snapshot
         workspace.normalizeMissingHourlyRates()
         return workspace
+    }
+
+    private func replacePersistentWorkspaceWithSeedImportIfPossible(_ workspace: WorkspaceSnapshot) {
+        do {
+            try replacePersistentWorkspaceWithSeedImport(workspace)
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: WorkspacePersistenceOperation.replacePersistentWorkspaceWithSeedImport,
+                message: String(describing: error)
+            )
+        }
     }
 }
 
@@ -109,13 +126,15 @@ extension WorkspaceStore {
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
-        try performPersistentWorkspaceWrite(operation: "replace_persistent_workspace_with_seed_import") {
+        try performPersistentWorkspaceWrite(
+            operation: WorkspacePersistenceOperation.replacePersistentWorkspaceWithSeedImport
+        ) {
             try workspacePersistence.replacePersistentWorkspaceWithSeedImport(snapshot)
         }
     }
 
     func persistWorkspace() throws {
-        try performPersistentWorkspaceWrite(operation: "persist_workspace") {
+        try performPersistentWorkspaceWrite(operation: WorkspacePersistenceOperation.persistWorkspace) {
             try workspacePersistence.persistWorkspace()
         }
     }
@@ -617,7 +636,7 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.persistenceFailed
         } catch {
             AppTelemetry.persistenceSaveFailed(
-                operation: "save_and_reload_normalized_workspace",
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace,
                 message: String(describing: error)
             )
             throw WorkspaceStoreError.persistenceFailed
