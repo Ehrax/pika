@@ -167,7 +167,7 @@ struct WorkspaceArchiveImportValidationTests {
             WorkspaceArchiveImportFixture.makeReplacementEnvelope()
         )
 
-        _ = try store.importWorkspaceArchive(archiveData)
+        _ = try store.importWorkspaceArchive(archiveData) {}
 
         let clientRecords = try modelContext.fetch(FetchDescriptor<ClientRecord>())
         let projectRecords = try modelContext.fetch(FetchDescriptor<ProjectRecord>())

@@ -67,10 +67,10 @@ struct WorkspaceArchiveActionsTests {
         }
 
         var openedURL: URL?
-        let directoryURL = try WorkspaceArchiveActions.workspaceBackupsDirectoryURL(
-            fileManager: fileManager,
-            appSupportDirectoryURL: appSupportRoot
-        )
+        let directoryURL = appSupportRoot
+            .appending(component: WorkspaceArchiveActions.appSupportSubdirectoryName, directoryHint: .isDirectory)
+            .appending(component: WorkspaceArchiveActions.backupsDirectoryName, directoryHint: .isDirectory)
+        #expect(!fileManager.fileExists(atPath: directoryURL.path))
 
         try WorkspaceArchiveActions.revealWorkspaceBackups(
             fileManager: fileManager,
