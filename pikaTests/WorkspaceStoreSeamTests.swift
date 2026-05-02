@@ -10,8 +10,18 @@ private struct EmptyProjectionLoader: WorkspaceProjectionLoadingAdapter {
 }
 
 private struct NoopPersistenceAdapter: WorkspacePersistenceAdapter {
-    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws {}
-    func save(context: ModelContext) throws {}
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+    func save() throws {}
+}
+
+private final class CapturingPersistenceAdapter: WorkspacePersistenceAdapter {
+    private(set) var replacedSnapshots: [WorkspaceSnapshot] = []
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        replacedSnapshots.append(snapshot)
+    }
+
+    func save() throws {}
 }
 
 private final class RecordingWorkspacePersistence: WorkspacePersistence {
@@ -83,6 +93,25 @@ private struct RejectPaidInvoicePolicy: WorkspaceMutationPolicy {
 }
 
 struct WorkspaceStoreSeamTests {
+    @Test func workspacePersistenceNormalizesSeedImportBeforeDelegatingToAdapter() throws {
+        let modelContainer = try WorkspaceStore.makeModelContainer(mode: .inMemory)
+        let modelContext = ModelContext(modelContainer)
+        let persistenceAdapter = CapturingPersistenceAdapter()
+        let persistence = DefaultWorkspacePersistence(
+            modelContext: modelContext,
+            usesNormalizedPersistence: true,
+            projectionLoadingAdapter: EmptyProjectionLoader(),
+            persistenceAdapter: persistenceAdapter
+        )
+        var seed = WorkspaceFixtures.demoWorkspace
+        seed.projects[0].buckets[0].timeEntries[0].hourlyRateMinorUnits = 0
+
+        try persistence.replacePersistentWorkspaceWithSeedImport(seed)
+
+        let importedSnapshot = try #require(persistenceAdapter.replacedSnapshots.first)
+        #expect(importedSnapshot.projects[0].buckets[0].timeEntries[0].hourlyRateMinorUnits == 20_000)
+    }
+
     @Test func workspaceStoreUsesWorkspacePersistenceForBootAndReload() throws {
         let seed = WorkspaceFixtures.demoWorkspace
         var bootWorkspace = WorkspaceSnapshot.empty

@@ -38,7 +38,7 @@ final class WorkspaceStore {
         resetForSeedImport: Bool = false,
         projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
         mutationPolicy: any WorkspaceMutationPolicy = DefaultWorkspaceMutationPolicy(),
-        persistenceAdapter: any WorkspacePersistenceAdapter = SwiftDataWorkspacePersistenceAdapter(),
+        persistenceAdapter: (any WorkspacePersistenceAdapter)? = nil,
         workspacePersistence: (any WorkspacePersistence)? = nil
     ) {
         self.mutationPolicy = mutationPolicy
@@ -49,11 +49,14 @@ final class WorkspaceStore {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
         }
 
+        let resolvedPersistenceAdapter = persistenceAdapter ?? SwiftDataWorkspacePersistenceAdapter(
+            modelContext: self.modelContext
+        )
         self.workspacePersistence = workspacePersistence ?? DefaultWorkspacePersistence(
             modelContext: self.modelContext,
             usesNormalizedPersistence: usesNormalizedPersistence,
             projectionLoadingAdapter: projectionLoadingAdapter,
-            persistenceAdapter: persistenceAdapter
+            persistenceAdapter: resolvedPersistenceAdapter
         )
         self.workspace = self.workspacePersistence.bootstrapWorkspace(
             seed: seed,

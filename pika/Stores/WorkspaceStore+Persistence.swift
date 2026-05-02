@@ -12,17 +12,38 @@ struct SwiftDataWorkspaceProjectionLoadingAdapter: WorkspaceProjectionLoadingAda
 }
 
 protocol WorkspacePersistenceAdapter {
-    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws
-    func save(context: ModelContext) throws
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws
+    func save() throws
 }
 
 struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
-    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws {
-        try WorkspaceStore.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
+    let modelContext: ModelContext
+    let seedImportingAdapter: any WorkspaceSeedImportingAdapter
+
+    init(
+        modelContext: ModelContext,
+        seedImportingAdapter: any WorkspaceSeedImportingAdapter = SwiftDataWorkspaceSeedImportingAdapter()
+    ) {
+        self.modelContext = modelContext
+        self.seedImportingAdapter = seedImportingAdapter
     }
 
-    func save(context: ModelContext) throws {
-        try context.save()
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        try seedImportingAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+    }
+
+    func save() throws {
+        try modelContext.save()
+    }
+}
+
+protocol WorkspaceSeedImportingAdapter {
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws
+}
+
+struct SwiftDataWorkspaceSeedImportingAdapter: WorkspaceSeedImportingAdapter {
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws {
+        try WorkspaceSeedImportPersistence.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
     }
 }
 
@@ -70,15 +91,15 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
-        try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+        try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(normalizedWorkspace(snapshot))
     }
 
     func persistWorkspace() throws {
-        try persistenceAdapter.save(context: modelContext)
+        try persistenceAdapter.save()
     }
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
-        try persistenceAdapter.save(context: modelContext)
+        try persistenceAdapter.save()
         guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
             AppTelemetry.persistenceProjectionReloadFailed(
                 operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
@@ -105,6 +126,15 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
                 message: String(describing: error)
             )
         }
+    }
+}
+
+private enum WorkspaceSeedImportPersistence {
+    static func replacePersistentWorkspaceWithSeedImport(
+        _ snapshot: WorkspaceSnapshot,
+        in context: ModelContext
+    ) throws {
+        try WorkspaceStore.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
     }
 }
 
