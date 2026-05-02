@@ -358,16 +358,7 @@ extension WorkspaceStore {
     }
 
     private func existingBusinessProfileRecord() throws -> BusinessProfileRecord {
-        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
-        guard let record = records.max(by: {
-            if $0.updatedAt != $1.updatedAt {
-                return $0.updatedAt < $1.updatedAt
-            }
-            if $0.createdAt != $1.createdAt {
-                return $0.createdAt < $1.createdAt
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }) else {
+        guard let record = try latestBusinessProfileRecord() else {
             throw WorkspaceStoreError.persistenceFailed
         }
 

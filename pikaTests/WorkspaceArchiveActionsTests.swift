@@ -19,4 +19,12 @@ struct WorkspaceArchiveActionsTests {
 
         #expect(destinationURL == selectedURL)
     }
+
+    @Test func exportDestinationPreservesExistingNonArchiveExtension() {
+        let selectedURL = URL(filePath: "/tmp/workspace-2026-05-02.json")
+
+        let destinationURL = WorkspaceArchiveActions.exportDestinationURL(from: selectedURL)
+
+        #expect(destinationURL == selectedURL)
+    }
 }

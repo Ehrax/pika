@@ -26,7 +26,7 @@ extension WorkspaceStore {
         let invoiceRecords = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
         let invoiceLineItemRecords = try modelContext.fetch(FetchDescriptor<InvoiceLineItemRecord>())
 
-        guard let profileRecord = latestProfileRecord(in: profileRecords) else {
+        guard let profileRecord = latestBusinessProfileRecord(in: profileRecords) else {
             throw WorkspaceStoreError.persistenceFailed
         }
 
@@ -312,18 +312,6 @@ extension WorkspaceStore {
                 invoiceLineItems: lineItems
             )
         )
-    }
-
-    private func latestProfileRecord(in records: [BusinessProfileRecord]) -> BusinessProfileRecord? {
-        records.max {
-            if $0.updatedAt != $1.updatedAt {
-                return $0.updatedAt < $1.updatedAt
-            }
-            if $0.createdAt != $1.createdAt {
-                return $0.createdAt < $1.createdAt
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }
     }
 
     private func sortedForArchive<Record: ArchiveSortableRecord>(_ records: [Record]) -> [Record] {

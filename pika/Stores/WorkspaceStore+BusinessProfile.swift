@@ -109,16 +109,4 @@ extension WorkspaceStore {
         record.updatedAt = updatedAt
     }
 
-    private func latestBusinessProfileRecord() throws -> BusinessProfileRecord? {
-        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
-        return records.max {
-            if $0.updatedAt != $1.updatedAt {
-                return $0.updatedAt < $1.updatedAt
-            }
-            if $0.createdAt != $1.createdAt {
-                return $0.createdAt < $1.createdAt
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }
-    }
 }

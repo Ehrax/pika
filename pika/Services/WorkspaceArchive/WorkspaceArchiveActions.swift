@@ -32,9 +32,7 @@ enum WorkspaceArchiveActions {
     }
 
     static func exportDestinationURL(from selectedURL: URL) -> URL {
-        guard selectedURL.pathExtension.caseInsensitiveCompare(fileExtension) != .orderedSame,
-              selectedURL.pathExtension.isEmpty
-        else {
+        guard selectedURL.pathExtension.isEmpty else {
             return selectedURL
         }
 

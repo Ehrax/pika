@@ -2,6 +2,22 @@ import Foundation
 import SwiftData
 
 extension WorkspaceStore {
+    func latestBusinessProfileRecord() throws -> BusinessProfileRecord? {
+        try latestBusinessProfileRecord(in: modelContext.fetch(FetchDescriptor<BusinessProfileRecord>()))
+    }
+
+    func latestBusinessProfileRecord(in records: [BusinessProfileRecord]) -> BusinessProfileRecord? {
+        records.max {
+            if $0.updatedAt != $1.updatedAt {
+                return $0.updatedAt < $1.updatedAt
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt < $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
     func clientRecord(_ id: WorkspaceClient.ID) throws -> ClientRecord? {
         var descriptor = FetchDescriptor<ClientRecord>(
             predicate: #Predicate { $0.id == id }
