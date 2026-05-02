@@ -25,10 +25,20 @@ enum WorkspaceArchiveActions {
             return
         }
 
-        try data.write(to: url, options: .atomic)
+        try data.write(to: exportDestinationURL(from: url), options: .atomic)
         #else
         throw WorkspaceArchiveActionError.unsupportedPlatform
         #endif
+    }
+
+    static func exportDestinationURL(from selectedURL: URL) -> URL {
+        guard selectedURL.pathExtension.caseInsensitiveCompare(fileExtension) != .orderedSame,
+              selectedURL.pathExtension.isEmpty
+        else {
+            return selectedURL
+        }
+
+        return selectedURL.appendingPathExtension(fileExtension)
     }
 
     private static var archiveUTType: UTType {
