@@ -175,3 +175,220 @@ private struct WorkspaceBucketEntryRowSortingCandidate {
     let timeSortKey: String
     let row: WorkspaceBucketEntryRowProjection
 }
+
+enum WorkspaceProjectBucketProjections {
+    static func detail(
+        for project: WorkspaceProject,
+        selectedBucketID: WorkspaceBucket.ID? = nil,
+        formatter: MoneyFormatting,
+        on date: Date = .now
+    ) -> WorkspaceBucketDetailProjection? {
+        guard let selectedBucket = bucket(in: project, matching: selectedBucketID) ?? project.buckets.first else {
+            return nil
+        }
+
+        return WorkspaceBucketDetailProjection(
+            project: project,
+            selectedBucket: selectedBucket,
+            bucketRows: project.buckets.map { bucket in
+                WorkspaceBucketRowProjection(
+                    bucket: bucket,
+                    linkedInvoice: latestInvoice(for: bucket, in: project),
+                    formatter: formatter,
+                    on: date
+                )
+            },
+            formatter: formatter
+        )
+    }
+
+    static func normalizedBucketID(
+        for project: WorkspaceProject,
+        selectedBucketID: WorkspaceBucket.ID?
+    ) -> WorkspaceBucket.ID? {
+        (bucket(in: project, matching: selectedBucketID) ?? project.buckets.first)?.id
+    }
+
+    private static func bucket(in project: WorkspaceProject, matching id: WorkspaceBucket.ID?) -> WorkspaceBucket? {
+        guard let id else { return nil }
+        return project.buckets.first { $0.id == id }
+    }
+
+    private static func latestInvoice(
+        for bucket: WorkspaceBucket,
+        in project: WorkspaceProject
+    ) -> WorkspaceInvoice? {
+        project.invoices
+            .filter { $0.matches(projectID: project.id, projectName: project.name, bucketID: bucket.id, bucketName: bucket.name) }
+            .sorted { left, right in
+                if left.issueDate == right.issueDate {
+                    return left.number > right.number
+                }
+
+                return left.issueDate > right.issueDate
+            }
+            .first
+    }
+}
+
+extension WorkspaceProject {
+    func detailProjection(
+        selectedBucketID: WorkspaceBucket.ID? = nil,
+        formatter: MoneyFormatting,
+        on date: Date = .now
+    ) -> WorkspaceBucketDetailProjection? {
+        WorkspaceProjectBucketProjections.detail(
+            for: self,
+            selectedBucketID: selectedBucketID,
+            formatter: formatter,
+            on: date
+        )
+    }
+
+    func normalizedBucketID(_ id: WorkspaceBucket.ID?) -> WorkspaceBucket.ID? {
+        WorkspaceProjectBucketProjections.normalizedBucketID(for: self, selectedBucketID: id)
+    }
+}
+
+struct WorkspaceBucketRowProjection: Equatable, Identifiable {
+    let id: WorkspaceBucket.ID
+    let name: String
+    let meta: String
+    let status: BucketStatus
+    let statusTitle: String?
+    let statusTone: PikaStatusTone
+
+    init(
+        bucket: WorkspaceBucket,
+        linkedInvoice: WorkspaceInvoice? = nil,
+        formatter: MoneyFormatting,
+        on date: Date = .now
+    ) {
+        id = bucket.id
+        name = bucket.name
+        status = bucket.status
+
+        let amount = formatter.string(fromMinorUnits: bucket.effectiveTotalMinorUnits)
+        if bucket.effectiveFixedCostMinorUnits > 0 {
+            let fixedCost = formatter.string(fromMinorUnits: bucket.effectiveFixedCostMinorUnits)
+            meta = "\(bucket.billableHoursLabel) · \(amount) · \(fixedCost) fixed"
+        } else {
+            meta = "\(bucket.billableHoursLabel) · \(amount)"
+        }
+
+        if let linkedInvoice {
+            statusTitle = linkedInvoice.status.displayTitle(dueDate: linkedInvoice.dueDate, on: date)
+            statusTone = linkedInvoice.status.displayTone(dueDate: linkedInvoice.dueDate, on: date)
+        } else {
+            statusTitle = bucket.status == .open ? nil : bucket.status.rawValue.capitalized
+            statusTone = bucket.status.displayTone
+        }
+    }
+}
+
+private extension InvoiceStatus {
+    func displayTitle(dueDate: Date, on date: Date) -> String {
+        InvoiceWorkflowPolicy.statusTitle(status: self, isOverdue: isOverdue(dueDate: dueDate, on: date))
+    }
+
+    func displayTone(dueDate: Date, on date: Date) -> PikaStatusTone {
+        InvoiceWorkflowPolicy.statusTone(status: self, isOverdue: isOverdue(dueDate: dueDate, on: date))
+    }
+}
+
+private extension BucketStatus {
+    var displayTone: PikaStatusTone {
+        switch self {
+        case .open:
+            .neutral
+        case .ready:
+            .success
+        case .finalized:
+            .warning
+        case .archived:
+            .neutral
+        }
+    }
+}
+
+struct WorkspaceBucketDetailProjection: Equatable {
+    let selectedBucket: WorkspaceBucket
+    let bucketRows: [WorkspaceBucketRowProjection]
+    let title: String
+    let projectName: String
+    let clientName: String
+    let currencyCode: String
+    let totalLabel: String
+    let billableSummary: String
+    let nonBillableSummary: String
+    let fixedCostLabel: String
+    let rateLabel: String
+    let entryRows: [WorkspaceBucketEntryRowProjection]
+    let lineItems: [WorkspaceBucketLineItemProjection]
+
+    init(
+        project: WorkspaceProject,
+        selectedBucket: WorkspaceBucket,
+        bucketRows: [WorkspaceBucketRowProjection],
+        formatter: MoneyFormatting
+    ) {
+        self.selectedBucket = selectedBucket
+        self.bucketRows = bucketRows
+        title = selectedBucket.name
+        projectName = project.name
+        clientName = project.clientName
+        currencyCode = project.currencyCode
+        totalLabel = formatter.string(fromMinorUnits: selectedBucket.effectiveTotalMinorUnits)
+        billableSummary = "\(selectedBucket.billableHoursLabel) billable"
+        nonBillableSummary = "\(selectedBucket.nonBillableHoursLabel) non-billable"
+        fixedCostLabel = "\(formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits)) fixed"
+        rateLabel = selectedBucket.hourlyRateMinorUnits.map { "\(formatter.string(fromMinorUnits: $0))/h" } ?? "n/b"
+        entryRows = selectedBucket.entryRows(formatter: formatter)
+        lineItems = [
+            WorkspaceBucketLineItemProjection(
+                description: selectedBucket.name,
+                quantity: selectedBucket.billableHoursLabel,
+                amountLabel: formatter.string(fromMinorUnits: selectedBucket.billableTimeMinorUnits),
+                isBillable: true
+            ),
+            WorkspaceBucketLineItemProjection(
+                description: selectedBucket.fixedCostLineItemDescription,
+                quantity: selectedBucket.effectiveFixedCostMinorUnits > 0
+                    ? max(selectedBucket.fixedCostEntries.count, 1).formattedItemCount
+                    : "0 items",
+                amountLabel: formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits),
+                isBillable: selectedBucket.effectiveFixedCostMinorUnits > 0
+            ),
+        ].filter { $0.isBillable }
+    }
+}
+
+private extension Int {
+    var formattedItemCount: String {
+        self == 1 ? "1 item" : "\(self) items"
+    }
+}
+
+private extension WorkspaceBucket {
+    var fixedCostLineItemDescription: String {
+        guard fixedCostEntries.count == 1,
+              let description = fixedCostEntries.first?.description.trimmingCharacters(in: .whitespacesAndNewlines),
+              !description.isEmpty
+        else {
+            return "Fixed costs"
+        }
+
+        return description
+    }
+}
+
+struct WorkspaceBucketLineItemProjection: Equatable, Identifiable {
+    var id: String {
+        description
+    }
+
+    let description: String
+    let quantity: String
+    let amountLabel: String
+    let isBillable: Bool
+}

@@ -12,6 +12,31 @@ struct WorkspaceProjectionTests {
         )
     }
 
+    @Test func projectBucketProjectionMatchesWorkspaceProjectBehavior() throws {
+        let launchSprint = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
+        let mobileQA = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Mobile QA"))
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        #expect(
+            WorkspaceProjectBucketProjections.detail(
+                for: launchSprint,
+                selectedBucketID: nil,
+                formatter: formatter,
+                on: WorkspaceFixtures.today
+            ) == launchSprint.detailProjection(
+                selectedBucketID: nil,
+                formatter: formatter,
+                on: WorkspaceFixtures.today
+            )
+        )
+        #expect(
+            WorkspaceProjectBucketProjections.normalizedBucketID(
+                for: launchSprint,
+                selectedBucketID: mobileQA.buckets[0].id
+            ) == launchSprint.normalizedBucketID(mobileQA.buckets[0].id)
+        )
+    }
+
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
         let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
