@@ -9,25 +9,6 @@ extension WorkspaceStore {
         )
     }
 
-    func snapshotClient(
-        id clientID: UUID? = nil,
-        named clientName: String,
-        draft: InvoiceFinalizationDraft
-    ) -> WorkspaceClient {
-        let matchedClient = workspace.clients.firstMatching(id: clientID, name: clientName)
-        let resolvedClientID = matchedClient?.id ?? clientID ?? UUID()
-        let termsDays = invoiceTermsDays(for: matchedClient)
-
-        return WorkspaceClient(
-            id: resolvedClientID,
-            name: draft.recipientName,
-            email: draft.recipientEmail,
-            billingAddress: draft.recipientBillingAddress,
-            defaultTermsDays: termsDays,
-            isArchived: false
-        )
-    }
-
     func invoiceTermsDays(for client: WorkspaceClient?) -> Int {
         guard let client,
               Self.clientHasExplicitInvoiceDefaults(client)

@@ -47,36 +47,16 @@ extension WorkspaceStore {
             )
         }
 
-        let invoiceNumber = draft.invoiceNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        try ensureLocalInvoiceNumberIsAvailable(invoiceNumber)
-
-        let projectIndex = try projectIndex(projectID)
-        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
-        let project = workspace.projects[projectIndex]
-        let bucket = project.buckets[bucketIndex]
-
-        guard bucket.status == .ready else {
-            throw WorkspaceStoreError.bucketStatusNotReady(bucket.status)
-        }
-
-        let lineItems = bucket.invoiceLineItemSnapshots()
-        guard !lineItems.isEmpty else {
-            throw WorkspaceStoreError.bucketNotInvoiceable
-        }
-
-        let clientSnapshot = snapshotClient(
-            id: project.clientID,
-            named: project.clientName,
+        let result = try finalizeInvoiceWorkflowResult(
+            projectID: projectID,
+            bucketID: bucketID,
             draft: draft
         )
-        let invoice = finalizedInvoiceSnapshot(
-            invoiceNumber: invoiceNumber,
-            project: project,
-            bucket: bucket,
-            draft: draft,
-            clientSnapshot: clientSnapshot,
-            lineItems: lineItems
-        )
+        let invoice = result.invoice
+        let projectIndex = try projectIndex(result.projectID)
+        let bucketIndex = try bucketIndex(result.bucketID, in: workspace.projects[projectIndex])
+        let project = workspace.projects[projectIndex]
+        let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
         workspace.projects[projectIndex].buckets[bucketIndex].status = .finalized
         workspace.projects[projectIndex].invoices.append(invoice)
@@ -150,8 +130,12 @@ extension WorkspaceStore {
         draft: InvoiceFinalizationDraft,
         occurredAt: Date
     ) throws -> WorkspaceInvoice {
-        let invoiceNumber = draft.invoiceNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        try ensureLocalInvoiceNumberIsAvailable(invoiceNumber)
+        let result = try finalizeInvoiceWorkflowResult(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: draft
+        )
+        try ensureLocalInvoiceNumberIsAvailable(result.invoice.number)
 
         guard let projectRecord = try projectRecord(projectID) else {
             throw WorkspaceStoreError.projectNotFound
@@ -165,33 +149,10 @@ extension WorkspaceStore {
             throw WorkspaceStoreError.bucketStatusNotReady(bucketRecord.status)
         }
 
-        let project = try project(projectID)
-        let bucket = try bucket(bucketID, in: project)
-        guard bucket.status == .ready else {
-            throw WorkspaceStoreError.bucketStatusNotReady(bucket.status)
-        }
-
-        let lineItems = bucket.invoiceLineItemSnapshots()
-        guard !lineItems.isEmpty else {
-            throw WorkspaceStoreError.bucketNotInvoiceable
-        }
-
-        let clientSnapshot = snapshotClient(
-            id: project.clientID,
-            named: project.clientName,
-            draft: draft
-        )
         let profileRecord = try existingBusinessProfileRecord()
         let now = Date.now
 
-        let invoice = finalizedInvoiceSnapshot(
-            invoiceNumber: invoiceNumber,
-            project: project,
-            bucket: bucket,
-            draft: draft,
-            clientSnapshot: clientSnapshot,
-            lineItems: lineItems
-        )
+        let invoice = result.invoice
         _ = insertInvoiceRecord(
             for: invoice,
             projectID: projectID,
@@ -257,37 +218,6 @@ extension WorkspaceStore {
         }
 
         try persistWorkspace()
-    }
-
-    private func finalizedInvoiceSnapshot(
-        invoiceNumber: String,
-        project: WorkspaceProject,
-        bucket: WorkspaceBucket,
-        draft: InvoiceFinalizationDraft,
-        clientSnapshot: WorkspaceClient,
-        lineItems: [WorkspaceInvoiceLineItemSnapshot]
-    ) -> WorkspaceInvoice {
-        WorkspaceInvoice(
-            id: UUID(),
-            number: invoiceNumber,
-            businessSnapshot: workspace.businessProfile,
-            clientSnapshot: clientSnapshot,
-            clientID: project.clientID ?? clientSnapshot.id,
-            clientName: draft.recipientName,
-            projectID: project.id,
-            projectName: project.name,
-            bucketID: bucket.id,
-            bucketName: bucket.name,
-            template: draft.template,
-            issueDate: draft.issueDate,
-            dueDate: draft.dueDate,
-            servicePeriod: draft.servicePeriod.trimmingCharacters(in: .whitespacesAndNewlines),
-            status: .finalized,
-            totalMinorUnits: bucket.effectiveTotalMinorUnits,
-            lineItems: lineItems,
-            currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
-            note: draft.taxNote.isEmpty ? nil : draft.taxNote
-        )
     }
 
     private func insertInvoiceRecord(
@@ -374,24 +304,48 @@ extension WorkspaceStore {
         return record
     }
 
+    private func finalizeInvoiceWorkflowResult(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: InvoiceFinalizationDraft
+    ) throws -> InvoiceFinalizationResult {
+        do {
+            return try WorkspaceInvoicingWorkflow().finalizeInvoice(
+                workspace: workspace,
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: draft
+            )
+        } catch let workflowError as WorkspaceInvoicingWorkflowError {
+            throw mapFinalizationWorkflowError(workflowError)
+        }
+    }
+
+    private func mapFinalizationWorkflowError(
+        _ workflowError: WorkspaceInvoicingWorkflowError
+    ) -> WorkspaceStoreError {
+        switch workflowError {
+        case .projectNotFound:
+            return .projectNotFound
+        case .bucketNotFound:
+            return .bucketNotFound
+        case let .bucketStatusNotReady(status):
+            return .bucketStatusNotReady(status)
+        case .bucketNotInvoiceable:
+            return .bucketNotInvoiceable
+        case .duplicateInvoiceNumber:
+            return .duplicateInvoiceNumber
+        }
+    }
+
     private func ensureLocalInvoiceNumberIsAvailable(_ invoiceNumber: String) throws {
         let normalizedNumber = normalizedInvoiceNumberKey(invoiceNumber)
         guard !normalizedNumber.isEmpty else { return }
 
-        if isUsingNormalizedWorkspacePersistence() {
-            let records = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
-            let hasDuplicate = records.contains {
-                normalizedInvoiceNumberKey($0.number) == normalizedNumber
-            }
-            guard !hasDuplicate else {
-                throw WorkspaceStoreError.duplicateInvoiceNumber
-            }
-            return
+        let records = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
+        let hasDuplicate = records.contains {
+            normalizedInvoiceNumberKey($0.number) == normalizedNumber
         }
-
-        let hasDuplicate = workspace.projects
-            .flatMap(\.invoices)
-            .contains { normalizedInvoiceNumberKey($0.number) == normalizedNumber }
         guard !hasDuplicate else {
             throw WorkspaceStoreError.duplicateInvoiceNumber
         }
