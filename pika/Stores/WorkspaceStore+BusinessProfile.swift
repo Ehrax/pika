@@ -42,7 +42,7 @@ extension WorkspaceStore {
         )
 
         if isUsingNormalizedWorkspacePersistence() {
-            try updateBusinessProfileRecord(with: profile)
+            try updateBusinessProfileInNormalizedRecords(with: profile)
             try saveAndReloadNormalizedWorkspacePreservingActivity()
         } else {
             workspace.businessProfile = profile

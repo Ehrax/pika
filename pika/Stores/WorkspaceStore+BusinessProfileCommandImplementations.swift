@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 extension WorkspaceStore {
-    func updateBusinessProfileRecord(with profile: BusinessProfileProjection) throws {
+    func updateBusinessProfileInNormalizedRecords(with profile: BusinessProfileProjection) throws {
         let now = Date.now
         let record = try latestBusinessProfileRecord() ?? makeBusinessProfileRecord(
             from: profile,
