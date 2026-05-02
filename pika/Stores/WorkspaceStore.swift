@@ -25,6 +25,53 @@ enum WorkspaceStoreError: Error, Equatable {
     case projectNotArchived
 }
 
+extension WorkspaceStoreError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .projectNotFound:
+            "Project not found."
+        case .bucketNotFound:
+            "Bucket not found."
+        case .invoiceNotFound:
+            "Invoice not found."
+        case .persistenceFailed:
+            "The workspace could not be saved."
+        case .persistenceConflict:
+            "The workspace changed before this action completed. Refresh and try again."
+        case .invalidBusinessProfile:
+            "Business profile details are incomplete or invalid."
+        case .invalidClient:
+            "Client details are incomplete or invalid."
+        case .invalidProject:
+            "Project details are incomplete or invalid."
+        case .invalidBucket:
+            "Bucket details are incomplete or invalid."
+        case .bucketNotInvoiceable:
+            "This bucket has no billable work to invoice."
+        case .bucketStatusNotReady(let status):
+            "This bucket is \(status.rawValue), not ready to invoice."
+        case .bucketLocked(let status):
+            "This bucket is \(status.rawValue) and cannot be changed."
+        case .invalidTimeEntry:
+            "Time entry details are incomplete or invalid."
+        case .invalidFixedCost:
+            "Fixed cost details are incomplete or invalid."
+        case .entryNotFound:
+            "Entry not found."
+        case .invalidInvoiceStatusTransition(let from, let to):
+            "Invoice cannot move from \(from.rawValue) to \(to.rawValue)."
+        case .duplicateInvoiceNumber:
+            "That invoice number already exists."
+        case .clientHasLinkedProjects:
+            "This client still has linked projects."
+        case .clientNotArchived:
+            "Archive the client before removing it."
+        case .projectNotArchived:
+            "Archive the project before removing it."
+        }
+    }
+}
+
 @Observable
 final class WorkspaceStore {
     var workspace: WorkspaceSnapshot

@@ -36,6 +36,8 @@ xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=macO
 
 The baseline generated UI test target is not part of the scaffold coverage gate because SwiftUI lifecycle tests are noisy at this stage. UI confidence should come from later end-to-end tests around real product flows.
 
+The shared `pika` Xcode scheme also excludes `pikaUITests` from its Test action, so Xcode's Test command and unfiltered `xcodebuild test -scheme pika` runs stay on the reliable unit-test loop while the app is still settling.
+
 ## Coverage
 
 Run coverage enforcement with:

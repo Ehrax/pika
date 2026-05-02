@@ -37,6 +37,14 @@ extension WorkspaceStore {
         draft: InvoiceFinalizationDraft,
         occurredAt: Date = .now
     ) throws -> WorkspaceInvoice {
+        if let invoice = existingFinalizedInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            invoiceNumber: draft.invoiceNumber
+        ) {
+            return invoice
+        }
+
         if isUsingNormalizedWorkspacePersistence() {
             return try finalizeInvoiceInNormalizedRecords(
                 projectID: projectID,
@@ -82,5 +90,33 @@ extension WorkspaceStore {
 
     func cancelInvoice(invoiceID: WorkspaceInvoice.ID, occurredAt: Date = .now) throws {
         try updateInvoiceStatus(invoiceID: invoiceID, to: .cancelled, occurredAt: occurredAt)
+    }
+
+    func existingFinalizedInvoice(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        invoiceNumber: String
+    ) -> WorkspaceInvoice? {
+        guard let project = workspace.projects.first(where: { $0.id == projectID }),
+              let bucket = project.buckets.first(where: { $0.id == bucketID }),
+              bucket.status == .finalized
+        else {
+            return nil
+        }
+
+        let normalizedNumber = WorkspaceInvoice.normalizedNumberKey(invoiceNumber)
+        return project.invoices
+            .filter {
+                $0.matches(
+                    projectID: project.id,
+                    projectName: project.name,
+                    bucketID: bucket.id,
+                    bucketName: bucket.name
+                )
+            }
+            .first {
+                normalizedNumber.isEmpty ||
+                    WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber
+            }
     }
 }

@@ -3,13 +3,14 @@ import SwiftUI
 struct CreateInvoiceConfirmationSheet: View {
     let presentation: InvoiceDraftPresentation
     let onCancel: () -> Void
-    let onSave: (InvoiceFinalizationDraft) -> Void
+    let onSave: (InvoiceFinalizationDraft) -> Bool
     @State private var draft: InvoiceFinalizationDraft
+    @State private var isSaving = false
 
     init(
         presentation: InvoiceDraftPresentation,
         onCancel: @escaping () -> Void,
-        onSave: @escaping (InvoiceFinalizationDraft) -> Void
+        onSave: @escaping (InvoiceFinalizationDraft) -> Bool
     ) {
         self.presentation = presentation
         self.onCancel = onCancel
@@ -113,18 +114,26 @@ struct CreateInvoiceConfirmationSheet: View {
                 Spacer()
 
                 Button {
-                    onSave(draft)
+                    save()
                 } label: {
                     Label("Save as finalized", systemImage: "checkmark.circle")
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.pikaAction(.primary))
-                .disabled(draft.invoiceNumber.isEmpty || draft.recipientName.isEmpty)
+                .disabled(isSaving || draft.invoiceNumber.isEmpty || draft.recipientName.isEmpty)
             }
             .padding(PikaSpacing.md)
         }
         .frame(minWidth: 520, idealWidth: 560, minHeight: 620)
         .background(PikaColor.background)
+    }
+
+    private func save() {
+        guard !isSaving else { return }
+        isSaving = true
+        if !onSave(draft) {
+            isSaving = false
+        }
     }
 }
 

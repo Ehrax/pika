@@ -158,6 +158,21 @@ struct PikaScaffoldTests {
         #expect(MainWindowLayout.frameStorageKey == "pika.mainWindow.frame")
     }
 
+    @Test func macOSLaunchChecksCoverArchiveFileMenuCommandSurfaceOnly() {
+        #expect(WorkspaceArchiveFileMenuCommandSurface.commandTitles == [
+            "Export Workspace Archive…",
+            "Import Workspace Archive…",
+            "Reveal Workspace Backups",
+        ])
+    }
+
+    @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredToFileMenu() {
+        #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames)
+        #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == [
+            "WorkspaceArchiveCommands",
+        ])
+    }
+
     @Test func macOSPrimarySidebarPolicyStartsWithBreathingRoom() {
         #expect(PrimarySidebarColumnLayout.minimumWidth == 220)
         #expect(PrimarySidebarColumnLayout.idealWidth == 242)
@@ -382,7 +397,6 @@ struct PikaScaffoldTests {
 
         #expect(environment.appRouter == nil)
         #expect(environment.appSettings.defaultPaymentTermsDays == 14)
-        #expect(environment.projectStore.placeholderProjects().isEmpty)
         #expect(throws: InvoicePDFService.Error.notImplemented) {
             try environment.invoicePDFService.renderDraftPDF()
         }

@@ -2,7 +2,7 @@
 
 Fix issue #{{ISSUE_NUMBER}}: {{ISSUE_TITLE}}
 
-Pull in the issue using `gh issue view`, with comments. If it has a parent PRD, pull that in too.
+Read the issue body and comments carefully. Comments may contain the agent brief.
 
 Only work on the issue specified.
 
@@ -17,6 +17,18 @@ Here are the last 10 commits:
 !`git log -n 10 --format="%H%n%ad%n%B---" --date=short`
 
 </recent-commits>
+
+<issue>
+
+!`gh issue view {{ISSUE_NUMBER}} --json number,title,body,comments,labels,url --jq '{number, title, body, url, labels: [.labels[].name], comments: [.comments[].body]}'`
+
+</issue>
+
+<parent-prd>
+
+!`gh issue view ${SANDCASTLE_PRD_ISSUE_NUMBER:-1} --json number,title,body,comments,labels,url --jq '{number, title, body, url, labels: [.labels[].name], comments: [.comments[].body]}'`
+
+</parent-prd>
 
 # EXPLORATION
 

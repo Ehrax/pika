@@ -4,6 +4,9 @@ import SwiftUI
 @main
 struct PikaApp: App {
     static let defaultLaunchWindowSize = CGSize(width: 1_408, height: 813)
+#if os(macOS)
+    static let workspaceArchiveCommandGroupTypeNames = WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames
+#endif
 
     let launchConfiguration: AppLaunchConfiguration
     let sharedModelContainer: ModelContainer
@@ -42,6 +45,9 @@ struct PikaApp: App {
         .modelContainer(sharedModelContainer)
 #if os(macOS)
         .defaultSize(Self.defaultLaunchWindowSize)
+        .commands {
+            WorkspaceArchiveFileMenuCommandSurface.commands
+        }
 #endif
     }
 

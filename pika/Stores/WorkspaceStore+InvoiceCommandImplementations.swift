@@ -47,25 +47,55 @@ extension WorkspaceStore {
         draft: InvoiceFinalizationDraft,
         occurredAt: Date
     ) throws -> WorkspaceInvoice {
-        let result = try finalizeInvoiceWorkflowResult(
-            projectID: projectID,
-            bucketID: bucketID,
-            draft: draft
-        )
-        try applyInvoiceFinalizationResult(result, preservingActivity: workspace.activity)
+        var didRetryAfterReload = false
+        let activityBeforeFinalization = workspace.activity
 
-        let indices = try invoiceIndices(result.invoice.id)
-        let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
-        appendActivity(
-            message: "\(persistedInvoice.number) finalized",
-            detail: persistedInvoice.clientName,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketFinalized(bucketName: persistedInvoice.bucketName, projectName: persistedInvoice.projectName)
-        AppTelemetry.invoiceCreated(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
-        AppTelemetry.invoiceFinalized(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
-        try persistWorkspace()
-        return persistedInvoice
+        while true {
+            let result = try finalizeInvoiceWorkflowResult(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: draft
+            )
+            let finalizedActivity = WorkspaceActivity(
+                message: "\(result.invoice.number) finalized",
+                detail: result.invoice.clientName,
+                occurredAt: occurredAt
+            )
+
+            do {
+                try applyInvoiceFinalizationResult(
+                    result,
+                    preservingActivity: activityBeforeFinalization + [finalizedActivity]
+                )
+            } catch WorkspaceStoreError.persistenceConflict {
+                if let invoice = existingFinalizedInvoice(
+                    projectID: projectID,
+                    bucketID: bucketID,
+                    invoiceNumber: draft.invoiceNumber
+                ) {
+                    return invoice
+                }
+
+                guard !didRetryAfterReload,
+                      !result.inputFingerprint.matches(
+                          workspace: workspace,
+                          projectID: projectID,
+                          bucketID: bucketID
+                      )
+                else {
+                    throw WorkspaceStoreError.persistenceConflict
+                }
+                didRetryAfterReload = true
+                continue
+            }
+
+            let indices = try invoiceIndices(result.invoice.id)
+            let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
+            AppTelemetry.bucketFinalized(bucketName: persistedInvoice.bucketName, projectName: persistedInvoice.projectName)
+            AppTelemetry.invoiceCreated(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
+            AppTelemetry.invoiceFinalized(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
+            return persistedInvoice
+        }
     }
 
     private func updateInvoiceStatusInNormalizedRecords(
