@@ -3,6 +3,70 @@ import Testing
 @testable import pika
 
 struct WorkspaceProjectionTests {
+    @Test func dashboardSummaryProjectionMatchesWorkspaceSummaryBehavior() {
+        let workspace = WorkspaceFixtures.demoWorkspace
+
+        #expect(
+            WorkspaceDashboardProjections.summary(for: workspace, on: WorkspaceFixtures.today) ==
+                workspace.dashboardSummary(on: WorkspaceFixtures.today)
+        )
+    }
+
+    @Test func projectBucketProjectionOwnerPreservesProjectDetailValues() throws {
+        let launchSprint = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Launch sprint"))
+        let mobileQA = try #require(WorkspaceFixtures.demoWorkspace.project(named: "Mobile QA"))
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let projection = try #require(
+            WorkspaceProjectBucketProjections.detail(
+                for: launchSprint,
+                formatter: formatter,
+                on: WorkspaceFixtures.today
+            )
+        )
+
+        #expect(projection.selectedBucket.id == launchSprint.buckets[0].id)
+        #expect(projection.title == "April sprint")
+        #expect(projection.projectName == "Launch sprint")
+        #expect(projection.clientName == "Happ.ines")
+        #expect(projection.currencyCode == "EUR")
+        #expect(projection.totalLabel == "EUR 2,500.00")
+        #expect(projection.bucketRows.map(\.name) == [
+            "April sprint",
+            "Discovery notes",
+            "Internal planning",
+        ])
+        #expect(projection.bucketRows[0].meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
+        #expect(projection.bucketRows[0].statusTitle == "Ready")
+        #expect(projection.bucketRows[1].statusTitle == nil)
+        #expect(projection.lineItems.map(\.description) == [
+            "April sprint",
+            "Prototype hosting",
+        ])
+        #expect(
+            WorkspaceProjectBucketProjections.normalizedBucketID(
+                for: launchSprint,
+                selectedBucketID: mobileQA.buckets[0].id
+            ) == launchSprint.normalizedBucketID(mobileQA.buckets[0].id)
+        )
+    }
+
+    @Test func invoiceProjectionOwnerPreservesWorkspacePreviewBehavior() throws {
+        let workspace = WorkspaceFixtures.demoWorkspace
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        #expect(
+            WorkspaceInvoiceProjections.preview(
+                for: workspace,
+                on: WorkspaceFixtures.today,
+                formatter: formatter
+            ) == workspace.invoicePreviewProjection(
+                on: WorkspaceFixtures.today,
+                formatter: formatter
+            )
+        )
+    }
+
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
         let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
@@ -640,7 +704,7 @@ struct WorkspaceProjectionTests {
 
     @Test func projectOverviewSummaryTotalsActiveProjects() {
         let workspace = WorkspaceFixtures.demoWorkspace
-        let summary = workspace.projectOverviewSummary(
+        let summary = WorkspaceProjectProjections.overviewSummary(
             for: workspace.activeProjects,
             on: WorkspaceFixtures.today
         )

@@ -7,6 +7,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case bucketNotFound
     case invoiceNotFound
     case persistenceFailed
+    case persistenceConflict
     case invalidBusinessProfile
     case invalidClient
     case invalidProject
@@ -28,11 +29,10 @@ enum WorkspaceStoreError: Error, Equatable {
 final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
-    let modelContext: ModelContext
-    private let usesNormalizedPersistence: Bool
-    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
-    let persistenceAdapter: any WorkspacePersistenceAdapter
+    private let modelContext: ModelContext
+    let workspacePersistence: any WorkspacePersistence
     let mutationPolicy: any WorkspaceMutationPolicy
+    let invoicingWorkflow: any WorkspaceInvoicing
 
     init(
         seed: WorkspaceSnapshot = .empty,
@@ -40,38 +40,37 @@ final class WorkspaceStore {
         resetForSeedImport: Bool = false,
         projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
         mutationPolicy: any WorkspaceMutationPolicy = DefaultWorkspaceMutationPolicy(),
-        persistenceAdapter: any WorkspacePersistenceAdapter = SwiftDataWorkspacePersistenceAdapter()
+        invoicingWorkflow: any WorkspaceInvoicing = WorkspaceInvoicingWorkflow(),
+        persistenceAdapter: (any WorkspacePersistenceAdapter)? = nil,
+        workspacePersistence: (any WorkspacePersistence)? = nil
     ) {
-        self.projectionLoadingAdapter = projectionLoadingAdapter
         self.mutationPolicy = mutationPolicy
-        self.persistenceAdapter = persistenceAdapter
-        usesNormalizedPersistence = modelContext != nil
+        self.invoicingWorkflow = invoicingWorkflow
+        let usesNormalizedPersistence = modelContext != nil
         if let modelContext {
             self.modelContext = modelContext
         } else {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
         }
 
-        guard usesNormalizedPersistence else {
-            workspace = seed
-            workspace.normalizeMissingHourlyRates()
-            return
+        if let workspacePersistence {
+            self.workspacePersistence = workspacePersistence
+        } else {
+            let resolvedPersistenceAdapter = persistenceAdapter ?? SwiftDataWorkspacePersistenceAdapter(
+                modelContext: self.modelContext,
+                projectionLoadingAdapter: projectionLoadingAdapter
+            )
+            self.workspacePersistence = DefaultWorkspacePersistence(
+                modelContext: self.modelContext,
+                usesNormalizedPersistence: usesNormalizedPersistence,
+                projectionLoadingAdapter: projectionLoadingAdapter,
+                persistenceAdapter: resolvedPersistenceAdapter
+            )
         }
-
-        if resetForSeedImport {
-            workspace = seed
-            workspace.normalizeMissingHourlyRates()
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
-            return
-        }
-
-        let persistedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: self.modelContext)
-        workspace = persistedWorkspace ?? seed
-        workspace.normalizeMissingHourlyRates()
-
-        if persistedWorkspace == nil {
-            try? replacePersistentWorkspaceWithSeedImport(workspace)
-        }
+        self.workspace = self.workspacePersistence.bootstrapWorkspace(
+            seed: seed,
+            resetForSeedImport: resetForSeedImport
+        )
     }
 
     static func makeModelContainer(
@@ -94,6 +93,10 @@ final class WorkspaceStore {
     }
 
     func isUsingNormalizedWorkspacePersistence() -> Bool {
-        usesNormalizedPersistence && projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) != nil
+        workspacePersistence.isUsingNormalizedPersistence()
+    }
+
+    func workspacePersistenceModelContext() -> ModelContext {
+        modelContext
     }
 }

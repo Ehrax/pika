@@ -7,22 +7,334 @@ protocol WorkspaceProjectionLoadingAdapter {
 
 struct SwiftDataWorkspaceProjectionLoadingAdapter: WorkspaceProjectionLoadingAdapter {
     func loadNormalizedWorkspace(from context: ModelContext) -> WorkspaceSnapshot? {
-        WorkspaceStore.loadNormalizedWorkspace(from: context)
+        SwiftDataWorkspaceProjectionLoader.loadNormalizedWorkspace(from: context)
     }
 }
 
 protocol WorkspacePersistenceAdapter {
-    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws
-    func save(context: ModelContext) throws
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws
+    func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws
+    func save() throws
+    func rollback()
+}
+
+enum WorkspacePersistenceConflictError: Error, Equatable {
+    case invoiceFinalizationConflict
 }
 
 struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
+    let modelContext: ModelContext
+    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
+    let seedImportingAdapter: any WorkspaceSeedImportingAdapter
+
+    init(
+        modelContext: ModelContext,
+        projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
+        seedImportingAdapter: any WorkspaceSeedImportingAdapter = SwiftDataWorkspaceSeedImportingAdapter()
+    ) {
+        self.modelContext = modelContext
+        self.projectionLoadingAdapter = projectionLoadingAdapter
+        self.seedImportingAdapter = seedImportingAdapter
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        try seedImportingAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+    }
+
+    func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {
+        try ensureFinalizationInputsAreCurrent(result)
+        try ensureDurableInvoiceNumberIsAvailable(result.invoice.number)
+        try ensureDurableBucketHasNoInvoice(result.bucketID)
+
+        guard let projectRecord = try projectRecord(result.projectID) else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+        guard let bucketRecord = try bucketRecord(result.bucketID),
+              bucketRecord.projectID == result.projectID,
+              bucketRecord.status == .ready
+        else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+
+        let profileRecord = try existingBusinessProfileRecord()
+        let now = Date.now
+        insertInvoiceRecord(
+            for: result.invoice,
+            projectID: result.projectID,
+            bucketID: result.bucketID,
+            updatedAt: now,
+            project: projectRecord,
+            bucket: bucketRecord
+        )
+        bucketRecord.status = .finalized
+        bucketRecord.updatedAt = now
+        profileRecord.nextInvoiceNumber += 1
+        profileRecord.updatedAt = now
+    }
+
+    func save() throws {
+        try modelContext.save()
+    }
+
+    func rollback() {
+        modelContext.rollback()
+    }
+
+    private func ensureFinalizationInputsAreCurrent(_ result: InvoiceFinalizationResult) throws {
+        guard let currentWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext),
+              result.inputFingerprint.matches(
+                  workspace: currentWorkspace,
+                  projectID: result.projectID,
+                  bucketID: result.bucketID
+              )
+        else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+    }
+
+    private func projectRecord(_ id: WorkspaceProject.ID) throws -> ProjectRecord? {
+        var descriptor = FetchDescriptor<ProjectRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func bucketRecord(_ id: WorkspaceBucket.ID) throws -> BucketRecord? {
+        var descriptor = FetchDescriptor<BucketRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func existingBusinessProfileRecord() throws -> BusinessProfileRecord {
+        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
+        guard let record = records.max(by: {
+            if $0.updatedAt != $1.updatedAt {
+                return $0.updatedAt < $1.updatedAt
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt < $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
+        }) else {
+            throw WorkspaceStoreError.persistenceFailed
+        }
+
+        return record
+    }
+
+    private func ensureDurableInvoiceNumberIsAvailable(_ invoiceNumber: String) throws {
+        let normalizedNumber = WorkspaceInvoice.normalizedNumberKey(invoiceNumber)
+        guard !normalizedNumber.isEmpty else { return }
+
+        let records = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
+        let hasDuplicate = records.contains {
+            WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber
+        }
+        guard !hasDuplicate else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+    }
+
+    private func ensureDurableBucketHasNoInvoice(_ bucketID: WorkspaceBucket.ID) throws {
+        var descriptor = FetchDescriptor<InvoiceRecord>(
+            predicate: #Predicate { $0.bucketID == bucketID }
+        )
+        descriptor.fetchLimit = 1
+        let hasFinalizedInvoice = try !modelContext.fetch(descriptor).isEmpty
+        guard !hasFinalizedInvoice else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+    }
+
+    private func insertInvoiceRecord(
+        for invoice: WorkspaceInvoice,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        updatedAt: Date,
+        project projectRecord: ProjectRecord,
+        bucket bucketRecord: BucketRecord
+    ) {
+        let invoiceRecord = InvoiceRecord(
+            id: invoice.id,
+            projectID: projectID,
+            bucketID: bucketID,
+            number: invoice.number,
+            templateRaw: invoice.template.rawValue,
+            issueDate: invoice.issueDate,
+            dueDate: invoice.dueDate,
+            servicePeriod: invoice.servicePeriod,
+            statusRaw: invoice.status.rawValue,
+            totalMinorUnits: invoice.totalMinorUnits,
+            currencyCode: invoice.currencyCode,
+            note: invoice.note ?? "",
+            businessName: invoice.businessSnapshot?.businessName ?? "",
+            businessPersonName: invoice.businessSnapshot?.personName ?? "",
+            businessEmail: invoice.businessSnapshot?.email ?? "",
+            businessPhone: invoice.businessSnapshot?.phone ?? "",
+            businessAddress: invoice.businessSnapshot?.address ?? "",
+            businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
+            businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
+            businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
+            businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
+            clientName: invoice.clientSnapshot?.name ?? invoice.clientName,
+            clientEmail: invoice.clientSnapshot?.email ?? "",
+            clientBillingAddress: invoice.clientSnapshot?.billingAddress ?? "",
+            projectName: invoice.projectName,
+            bucketName: invoice.bucketName,
+            createdAt: invoice.issueDate,
+            updatedAt: updatedAt,
+            project: projectRecord,
+            bucket: bucketRecord
+        )
+        modelContext.insert(invoiceRecord)
+
+        for (lineItemIndex, lineItem) in invoice.lineItems.enumerated() {
+            modelContext.insert(InvoiceLineItemRecord(
+                id: lineItem.id,
+                invoiceID: invoice.id,
+                sortOrder: lineItemIndex,
+                descriptionText: lineItem.description,
+                quantityLabel: lineItem.quantityLabel,
+                amountMinorUnits: lineItem.amountMinorUnits,
+                createdAt: invoice.issueDate,
+                updatedAt: updatedAt,
+                invoice: invoiceRecord
+            ))
+        }
+    }
+}
+
+protocol WorkspaceSeedImportingAdapter {
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws
+}
+
+struct SwiftDataWorkspaceSeedImportingAdapter: WorkspaceSeedImportingAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws {
         try WorkspaceStore.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
     }
+}
 
-    func save(context: ModelContext) throws {
-        try context.save()
+protocol WorkspacePersistence {
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot
+    func isUsingNormalizedPersistence() -> Bool
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot
+    func persistWorkspace() throws
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
+}
+
+private enum WorkspacePersistenceOperation {
+    static let replacePersistentWorkspaceWithSeedImport = "replace_persistent_workspace_with_seed_import"
+    static let applyInvoiceFinalizationResult = "apply_invoice_finalization_result"
+    static let persistWorkspace = "persist_workspace"
+    static let saveAndReloadNormalizedWorkspace = "save_and_reload_normalized_workspace"
+}
+
+private final class WorkspaceInvoiceFinalizationWriteLock {
+    static let shared = WorkspaceInvoiceFinalizationWriteLock()
+
+    private let lock = NSLock()
+
+    func withLock<Result>(_ operation: () throws -> Result) rethrows -> Result {
+        lock.lock()
+        defer { lock.unlock() }
+        return try operation()
+    }
+}
+
+struct DefaultWorkspacePersistence: WorkspacePersistence {
+    let modelContext: ModelContext
+    let usesNormalizedPersistence: Bool
+    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
+    let persistenceAdapter: any WorkspacePersistenceAdapter
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        guard usesNormalizedPersistence else {
+            return normalizedWorkspace(seed)
+        }
+
+        if resetForSeedImport {
+            let workspace = normalizedWorkspace(seed)
+            replacePersistentWorkspaceWithSeedImportIfPossible(workspace)
+            return workspace
+        }
+
+        let persistedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext)
+        let workspace = normalizedWorkspace(persistedWorkspace ?? seed)
+        if persistedWorkspace == nil {
+            replacePersistentWorkspaceWithSeedImportIfPossible(workspace)
+        }
+        return workspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        usesNormalizedPersistence && projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) != nil
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
+        try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(normalizedWorkspace(snapshot))
+    }
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot {
+        try WorkspaceInvoiceFinalizationWriteLock.shared.withLock {
+            do {
+                try persistenceAdapter.applyInvoiceFinalizationResult(result)
+                try persistenceAdapter.save()
+            } catch {
+                persistenceAdapter.rollback()
+                throw error
+            }
+
+            return try reloadNormalizedWorkspace(preservingActivity: activity)
+        }
+    }
+
+    func persistWorkspace() throws {
+        try persistenceAdapter.save()
+    }
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        try persistenceAdapter.save()
+        return try reloadNormalizedWorkspace(preservingActivity: activity)
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
+            AppTelemetry.persistenceProjectionReloadFailed(
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
+            )
+            throw WorkspaceStoreError.persistenceFailed
+        }
+        reloadedWorkspace.normalizeMissingHourlyRates()
+        reloadedWorkspace.activity = activity
+        return reloadedWorkspace
+    }
+
+    private func normalizedWorkspace(_ snapshot: WorkspaceSnapshot) -> WorkspaceSnapshot {
+        var workspace = snapshot
+        workspace.normalizeMissingHourlyRates()
+        return workspace
+    }
+
+    private func replacePersistentWorkspaceWithSeedImportIfPossible(_ workspace: WorkspaceSnapshot) {
+        do {
+            try replacePersistentWorkspaceWithSeedImport(workspace)
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: WorkspacePersistenceOperation.replacePersistentWorkspaceWithSeedImport,
+                message: String(describing: error)
+            )
+        }
     }
 }
 
@@ -44,14 +356,37 @@ extension WorkspaceStore {
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
-        try performPersistentWorkspaceWrite(operation: "replace_persistent_workspace_with_seed_import") {
-            try persistenceAdapter.replacePersistentWorkspaceWithSeedImport(snapshot, in: modelContext)
+        try performPersistentWorkspaceWrite(
+            operation: WorkspacePersistenceOperation.replacePersistentWorkspaceWithSeedImport
+        ) {
+            try workspacePersistence.replacePersistentWorkspaceWithSeedImport(snapshot)
         }
     }
 
     func persistWorkspace() throws {
-        try performPersistentWorkspaceWrite(operation: "persist_workspace") {
-            try persistenceAdapter.save(context: modelContext)
+        try performPersistentWorkspaceWrite(operation: WorkspacePersistenceOperation.persistWorkspace) {
+            try workspacePersistence.persistWorkspace()
+        }
+    }
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws {
+        do {
+            workspace = try workspacePersistence.applyInvoiceFinalizationResult(
+                result,
+                preservingActivity: activity
+            )
+        } catch WorkspacePersistenceConflictError.invoiceFinalizationConflict {
+            try reloadNormalizedWorkspace(preservingActivity: activity)
+            throw WorkspaceStoreError.persistenceConflict
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: WorkspacePersistenceOperation.applyInvoiceFinalizationResult,
+                message: String(describing: error)
+            )
+            throw WorkspaceStoreError.persistenceFailed
         }
     }
 
@@ -544,21 +879,37 @@ extension WorkspaceStore {
     }
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
-        try performPersistentWorkspaceWrite(operation: "save_and_reload_normalized_workspace") {
-            try persistenceAdapter.save(context: modelContext)
-        }
-        guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
-            AppTelemetry.persistenceProjectionReloadFailed(
-                operation: "save_and_reload_normalized_workspace"
+        do {
+            workspace = try workspacePersistence.saveAndReloadNormalizedWorkspace(
+                preservingActivity: activity
+            )
+        } catch WorkspaceStoreError.persistenceFailed {
+            throw WorkspaceStoreError.persistenceFailed
+        } catch {
+            AppTelemetry.persistenceSaveFailed(
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace,
+                message: String(describing: error)
             )
             throw WorkspaceStoreError.persistenceFailed
         }
-        reloadedWorkspace.normalizeMissingHourlyRates()
-        reloadedWorkspace.activity = activity
-        workspace = reloadedWorkspace
     }
 
     func saveAndReloadNormalizedWorkspacePreservingActivity() throws {
         try saveAndReloadNormalizedWorkspace(preservingActivity: workspace.activity)
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
+        do {
+            workspace = try workspacePersistence.reloadNormalizedWorkspace(
+                preservingActivity: activity
+            )
+        } catch WorkspaceStoreError.persistenceFailed {
+            throw WorkspaceStoreError.persistenceFailed
+        } catch {
+            AppTelemetry.persistenceProjectionReloadFailed(
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
+            )
+            throw WorkspaceStoreError.persistenceFailed
+        }
     }
 }

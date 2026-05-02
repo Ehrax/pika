@@ -437,4 +437,5 @@ struct PikaScaffoldTests {
         #expect(workspacePersistence.contains("AppTelemetry.persistenceSaveFailed("))
         #expect(workspacePersistence.contains("AppTelemetry.persistenceProjectionReloadFailed("))
     }
+
 }

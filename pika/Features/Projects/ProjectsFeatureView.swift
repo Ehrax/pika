@@ -30,7 +30,7 @@ struct ProjectsFeatureView: View {
     }
 
     private var summary: ProjectOverviewSummary {
-        workspace.projectOverviewSummary(for: projects, on: currentDate)
+        WorkspaceProjectProjections.overviewSummary(for: projects, on: currentDate)
     }
 
     var body: some View {
