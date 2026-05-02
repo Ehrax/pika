@@ -16,11 +16,30 @@ import {
 import { completedIssuesFromSettled } from "./workflow-results.mts";
 
 const repoRoot = process.cwd();
-const prdIssueNumber = Number(
-  process.env.SANDCASTLE_PRD_ISSUE_NUMBER ??
-  process.env.SANDCASTLE_PRD_ISSUE ??
-  "1"
-);
+const prdIssueNumberInput =
+  process.env.SANDCASTLE_PRD_ISSUE_NUMBER ?? process.env.SANDCASTLE_PRD_ISSUE;
+
+if (!prdIssueNumberInput) {
+  throw new Error(
+    [
+      "Missing PRD issue number.",
+      "",
+      "Run with:",
+      "  SANDCASTLE_PRD_ISSUE_NUMBER=<issue-number> npm run sandcastle",
+      "",
+      "Example:",
+      "  SANDCASTLE_PRD_ISSUE_NUMBER=13 npm run sandcastle",
+    ].join("\n")
+  );
+}
+
+const prdIssueNumber = Number(prdIssueNumberInput);
+
+if (!Number.isInteger(prdIssueNumber) || prdIssueNumber <= 0) {
+  throw new Error(
+    `Invalid PRD issue number: ${prdIssueNumberInput}. Expected a positive integer.`
+  );
+}
 
 const prdIssue = await readPrdIssue(prdIssueNumber);
 const baseBranch = await currentBranch();
