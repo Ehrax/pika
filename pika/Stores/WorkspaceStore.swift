@@ -57,7 +57,8 @@ final class WorkspaceStore {
             self.workspacePersistence = workspacePersistence
         } else {
             let resolvedPersistenceAdapter = persistenceAdapter ?? SwiftDataWorkspacePersistenceAdapter(
-                modelContext: self.modelContext
+                modelContext: self.modelContext,
+                projectionLoadingAdapter: projectionLoadingAdapter
             )
             self.workspacePersistence = DefaultWorkspacePersistence(
                 modelContext: self.modelContext,

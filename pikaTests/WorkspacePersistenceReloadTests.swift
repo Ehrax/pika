@@ -429,6 +429,119 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedProject.invoices.isEmpty)
     }
 
+    @Test func persistentWorkspaceStoreRejectsReadyBucketFinalizationWhenDurableInputsChanged() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000615")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000615")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000615")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 5)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 19)
+
+        let profile = BusinessProfileRecord(
+            businessName: "North Coast Studio",
+            personName: "Avery North",
+            email: "billing@northcoast.example",
+            phone: "+49 555 0100",
+            address: "1 Harbour Way",
+            taxIdentifier: "DE123",
+            economicIdentifier: "ECO123",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 46,
+            currencyCode: "EUR",
+            paymentDetails: "IBAN DE00 1234",
+            taxNote: "VAT exempt",
+            defaultTermsDays: 14,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let client = ClientRecord(
+            id: clientID,
+            name: "Snapshot Client",
+            email: "billing@snapshot.example",
+            billingAddress: "1 Snapshot Way",
+            defaultTermsDays: 21,
+            createdAt: issueDate,
+            updatedAt: issueDate
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Snapshot Project",
+            currencyCode: "EUR",
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Ready Snapshot",
+            statusRaw: BucketStatus.ready.rawValue,
+            defaultHourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            project: project
+        )
+        let timeEntry = TimeEntryRecord(
+            bucketID: bucketID,
+            workDate: issueDate,
+            durationMinutes: 60,
+            descriptionText: "Original billable work",
+            isBillable: true,
+            hourlyRateMinorUnits: 10_000,
+            createdAt: issueDate,
+            updatedAt: issueDate,
+            bucket: bucket
+        )
+
+        modelContext.insert(profile)
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(timeEntry)
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let initialProject = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
+        #expect(initialProject.buckets.first(where: { $0.id == bucketID })?.status == .ready)
+
+        timeEntry.descriptionText = "Synced billable work"
+        timeEntry.durationMinutes = 120
+        timeEntry.updatedAt = issueDate.addingTimeInterval(60)
+        try modelContext.save()
+
+        #expect(throws: WorkspaceStoreError.persistenceConflict) {
+            try store.finalizeInvoice(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: InvoiceFinalizationDraft(
+                    recipientName: "Snapshot Client",
+                    recipientEmail: "billing@snapshot.example",
+                    recipientBillingAddress: "1 Snapshot Way",
+                    invoiceNumber: "NCS-2026-046",
+                    template: .kleinunternehmerClassic,
+                    issueDate: issueDate,
+                    dueDate: dueDate,
+                    servicePeriod: "May 2026",
+                    currencyCode: "EUR",
+                    taxNote: ""
+                ),
+                occurredAt: issueDate
+            )
+        }
+
+        let reloadedProject = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
+        let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucketID }))
+        #expect(reloadedBucket.status == .ready)
+        #expect(reloadedBucket.timeEntries.first?.description == "Synced billable work")
+        #expect(reloadedBucket.timeEntries.first?.durationMinutes == 120)
+        #expect(reloadedProject.invoices.isEmpty)
+    }
+
     @Test func persistentWorkspaceStoreReloadsAndThrowsConflictForStaleInvoiceNumberDuplicate() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {

@@ -13,6 +13,7 @@ private struct NoopPersistenceAdapter: WorkspacePersistenceAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
     func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {}
     func save() throws {}
+    func rollback() {}
 }
 
 private final class CapturingPersistenceAdapter: WorkspacePersistenceAdapter {
@@ -25,6 +26,31 @@ private final class CapturingPersistenceAdapter: WorkspacePersistenceAdapter {
     func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {}
 
     func save() throws {}
+
+    func rollback() {}
+}
+
+private final class SaveFailingPersistenceAdapter: WorkspacePersistenceAdapter {
+    enum Failure: Error {
+        case saveFailed
+    }
+
+    private(set) var applyCallCount = 0
+    private(set) var rollbackCallCount = 0
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {
+        applyCallCount += 1
+    }
+
+    func save() throws {
+        throw Failure.saveFailed
+    }
+
+    func rollback() {
+        rollbackCallCount += 1
+    }
 }
 
 private final class RecordingWorkspacePersistence: WorkspacePersistence {
@@ -567,5 +593,93 @@ struct WorkspaceStoreSeamTests {
         }
         #expect(persistence.reloadCallCount == 1)
         #expect(store.workspace.projects.first?.invoices.isEmpty == true)
+    }
+
+    @Test func defaultPersistenceRollsBackFinalizationWhenSaveFailsAfterMutation() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009995")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009995")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009995")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 7)
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Rollback Client",
+                    email: "billing@rollback.example",
+                    billingAddress: "7 Rollback Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Rollback Project",
+                    clientName: "Rollback Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Rollback",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: UUID(uuidString: "50000000-0000-0000-0000-000000009995")!,
+                                    date: issueDate,
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Rollback validation",
+                                    isBillable: true,
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let result = try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Rollback Client",
+                recipientEmail: "billing@rollback.example",
+                recipientBillingAddress: "7 Rollback Way",
+                invoiceNumber: "NCS-2026-995",
+                template: .kleinunternehmerClassic,
+                issueDate: issueDate,
+                dueDate: Date.pikaDate(year: 2026, month: 5, day: 21),
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            )
+        )
+        let adapter = SaveFailingPersistenceAdapter()
+        let persistence = DefaultWorkspacePersistence(
+            modelContext: modelContext,
+            usesNormalizedPersistence: true,
+            projectionLoadingAdapter: EmptyProjectionLoader(),
+            persistenceAdapter: adapter
+        )
+
+        #expect(throws: SaveFailingPersistenceAdapter.Failure.saveFailed) {
+            try persistence.applyInvoiceFinalizationResult(result, preservingActivity: [])
+        }
+        #expect(adapter.applyCallCount == 1)
+        #expect(adapter.rollbackCallCount == 1)
     }
 }

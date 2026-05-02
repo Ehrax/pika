@@ -15,6 +15,7 @@ protocol WorkspacePersistenceAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws
     func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws
     func save() throws
+    func rollback()
 }
 
 enum WorkspacePersistenceConflictError: Error, Equatable {
@@ -23,13 +24,16 @@ enum WorkspacePersistenceConflictError: Error, Equatable {
 
 struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
     let modelContext: ModelContext
+    let projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter
     let seedImportingAdapter: any WorkspaceSeedImportingAdapter
 
     init(
         modelContext: ModelContext,
+        projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
         seedImportingAdapter: any WorkspaceSeedImportingAdapter = SwiftDataWorkspaceSeedImportingAdapter()
     ) {
         self.modelContext = modelContext
+        self.projectionLoadingAdapter = projectionLoadingAdapter
         self.seedImportingAdapter = seedImportingAdapter
     }
 
@@ -38,6 +42,7 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
     }
 
     func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {
+        try ensureFinalizationInputsAreCurrent(result)
         try ensureDurableInvoiceNumberIsAvailable(result.invoice.number)
 
         guard let projectRecord = try projectRecord(result.projectID) else {
@@ -68,6 +73,22 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
 
     func save() throws {
         try modelContext.save()
+    }
+
+    func rollback() {
+        modelContext.rollback()
+    }
+
+    private func ensureFinalizationInputsAreCurrent(_ result: InvoiceFinalizationResult) throws {
+        guard let currentWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext),
+              result.inputFingerprint.matches(
+                  workspace: currentWorkspace,
+                  projectID: result.projectID,
+                  bucketID: result.bucketID
+              )
+        else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
     }
 
     private func projectRecord(_ id: WorkspaceProject.ID) throws -> ProjectRecord? {
@@ -241,8 +262,13 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
         _ result: InvoiceFinalizationResult,
         preservingActivity activity: [WorkspaceActivity]
     ) throws -> WorkspaceSnapshot {
-        try persistenceAdapter.applyInvoiceFinalizationResult(result)
-        return try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+        do {
+            try persistenceAdapter.applyInvoiceFinalizationResult(result)
+            return try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+        } catch {
+            persistenceAdapter.rollback()
+            throw error
+        }
     }
 
     func persistWorkspace() throws {

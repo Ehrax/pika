@@ -14,6 +14,53 @@ struct InvoiceFinalizationResult: Equatable {
     let projectID: WorkspaceProject.ID
     let bucketID: WorkspaceBucket.ID
     let invoice: WorkspaceInvoice
+    let inputFingerprint: InvoiceFinalizationInputFingerprint
+}
+
+struct InvoiceFinalizationInputFingerprint: Equatable {
+    let businessProfile: BusinessProfileProjection
+    let client: WorkspaceClient?
+    let projectID: WorkspaceProject.ID
+    let projectClientID: WorkspaceClient.ID?
+    let projectName: String
+    let projectClientName: String
+    let projectCurrencyCode: String
+    let projectIsArchived: Bool
+    let bucket: WorkspaceBucket
+
+    func matches(
+        workspace: WorkspaceSnapshot,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID
+    ) -> Bool {
+        guard let project = workspace.projects.first(where: { $0.id == projectID }),
+              let bucket = project.buckets.first(where: { $0.id == bucketID })
+        else {
+            return false
+        }
+
+        return self == Self(
+            workspace: workspace,
+            project: project,
+            bucket: bucket
+        )
+    }
+
+    init(
+        workspace: WorkspaceSnapshot,
+        project: WorkspaceProject,
+        bucket: WorkspaceBucket
+    ) {
+        businessProfile = workspace.businessProfile
+        client = workspace.clients.firstMatching(id: project.clientID, name: project.clientName)
+        projectID = project.id
+        projectClientID = project.clientID
+        projectName = project.name
+        projectClientName = project.clientName
+        projectCurrencyCode = project.currencyCode
+        projectIsArchived = project.isArchived
+        self.bucket = bucket
+    }
 }
 
 enum WorkspaceInvoicingWorkflowError: Error, Equatable {
@@ -85,7 +132,12 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
         return InvoiceFinalizationResult(
             projectID: project.id,
             bucketID: bucket.id,
-            invoice: invoice
+            invoice: invoice,
+            inputFingerprint: InvoiceFinalizationInputFingerprint(
+                workspace: workspace,
+                project: project,
+                bucket: bucket
+            )
         )
     }
 
