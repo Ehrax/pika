@@ -704,7 +704,7 @@ struct WorkspaceProjectionTests {
 
     @Test func projectOverviewSummaryTotalsActiveProjects() {
         let workspace = WorkspaceFixtures.demoWorkspace
-        let summary = workspace.projectOverviewSummary(
+        let summary = WorkspaceProjectProjections.overviewSummary(
             for: workspace.activeProjects,
             on: WorkspaceFixtures.today
         )

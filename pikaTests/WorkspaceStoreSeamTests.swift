@@ -68,6 +68,12 @@ private final class RecordingWorkspacePersistence: WorkspacePersistence {
         reloaded.activity = activity
         return reloaded
     }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        var reloaded = reloadedWorkspace
+        reloaded.activity = activity
+        return reloaded
+    }
 }
 
 private struct FailingInvoiceFinalizationWorkspacePersistence: WorkspacePersistence {
@@ -98,6 +104,53 @@ private struct FailingInvoiceFinalizationWorkspacePersistence: WorkspacePersiste
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
         bootWorkspace
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+}
+
+private final class ConflictingInvoiceFinalizationWorkspacePersistence: WorkspacePersistence {
+    enum Failure: Error {
+        case saveAndReloadShouldNotRun
+    }
+
+    private(set) var reloadCallCount = 0
+    let bootWorkspace: WorkspaceSnapshot
+
+    init(bootWorkspace: WorkspaceSnapshot) {
+        self.bootWorkspace = bootWorkspace
+    }
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        true
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot {
+        throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+    }
+
+    func persistWorkspace() throws {}
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        throw Failure.saveAndReloadShouldNotRun
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        reloadCallCount += 1
+        var reloaded = bootWorkspace
+        reloaded.activity = activity
+        return reloaded
     }
 }
 
@@ -434,5 +487,85 @@ struct WorkspaceStoreSeamTests {
         let project = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
         #expect(project.invoices.isEmpty)
         #expect(project.buckets.first(where: { $0.id == bucketID })?.status == .ready)
+    }
+
+    @Test func normalizedInvoiceFinalizationConflictReloadsWithoutSavingFirst() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009996")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009996")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009996")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 2)
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Conflict Client",
+                    email: "billing@conflict.example",
+                    billingAddress: "8 Conflict Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Conflict Project",
+                    clientName: "Conflict Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Conflict",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: UUID(uuidString: "50000000-0000-0000-0000-000000009996")!,
+                                    date: issueDate,
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Conflict validation",
+                                    isBillable: true,
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let persistence = ConflictingInvoiceFinalizationWorkspacePersistence(bootWorkspace: workspace)
+        let store = WorkspaceStore(
+            seed: workspace,
+            workspacePersistence: persistence
+        )
+
+        #expect(throws: WorkspaceStoreError.persistenceConflict) {
+            try store.finalizeInvoice(
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: InvoiceFinalizationDraft(
+                    recipientName: "Conflict Client",
+                    recipientEmail: "billing@conflict.example",
+                    recipientBillingAddress: "8 Conflict Way",
+                    invoiceNumber: "NCS-2026-996",
+                    template: .kleinunternehmerClassic,
+                    issueDate: issueDate,
+                    dueDate: Date.pikaDate(year: 2026, month: 5, day: 16),
+                    servicePeriod: "May 2026",
+                    currencyCode: "EUR",
+                    taxNote: ""
+                ),
+                occurredAt: issueDate
+            )
+        }
+        #expect(persistence.reloadCallCount == 1)
+        #expect(store.workspace.projects.first?.invoices.isEmpty == true)
     }
 }

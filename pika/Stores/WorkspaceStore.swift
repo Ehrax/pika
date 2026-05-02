@@ -29,7 +29,7 @@ enum WorkspaceStoreError: Error, Equatable {
 final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
-    let modelContext: ModelContext
+    private let modelContext: ModelContext
     let workspacePersistence: any WorkspacePersistence
     let mutationPolicy: any WorkspaceMutationPolicy
     let invoicingWorkflow: any WorkspaceInvoicing
@@ -93,5 +93,9 @@ final class WorkspaceStore {
 
     func isUsingNormalizedWorkspacePersistence() -> Bool {
         workspacePersistence.isUsingNormalizedPersistence()
+    }
+
+    func workspacePersistenceModelContext() -> ModelContext {
+        modelContext
     }
 }

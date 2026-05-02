@@ -55,7 +55,7 @@ extension WorkspaceStore {
             createdAt: now,
             updatedAt: now
         )
-        modelContext.insert(record)
+        workspacePersistenceModelContext().insert(record)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
@@ -165,7 +165,7 @@ extension WorkspaceStore {
 
         let clientName = record.name
         let clientEmail = record.email
-        modelContext.delete(record)
+        workspacePersistenceModelContext().delete(record)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         appendActivity(

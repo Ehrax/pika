@@ -7,7 +7,7 @@ protocol WorkspaceProjectionLoadingAdapter {
 
 struct SwiftDataWorkspaceProjectionLoadingAdapter: WorkspaceProjectionLoadingAdapter {
     func loadNormalizedWorkspace(from context: ModelContext) -> WorkspaceSnapshot? {
-        WorkspaceStore.loadNormalizedWorkspace(from: context)
+        SwiftDataWorkspaceProjectionLoader.loadNormalizedWorkspace(from: context)
     }
 }
 
@@ -194,6 +194,7 @@ protocol WorkspacePersistence {
     ) throws -> WorkspaceSnapshot
     func persistWorkspace() throws
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot
 }
 
 private enum WorkspacePersistenceOperation {
@@ -250,6 +251,10 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
 
     func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
         try persistenceAdapter.save()
+        return try reloadNormalizedWorkspace(preservingActivity: activity)
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
         guard var reloadedWorkspace = projectionLoadingAdapter.loadNormalizedWorkspace(from: modelContext) else {
             AppTelemetry.persistenceProjectionReloadFailed(
                 operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
@@ -320,7 +325,7 @@ extension WorkspaceStore {
                 preservingActivity: activity
             )
         } catch WorkspacePersistenceConflictError.invoiceFinalizationConflict {
-            try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+            try reloadNormalizedWorkspace(preservingActivity: activity)
             throw WorkspaceStoreError.persistenceConflict
         } catch {
             AppTelemetry.persistenceSaveFailed(
@@ -837,5 +842,20 @@ extension WorkspaceStore {
 
     func saveAndReloadNormalizedWorkspacePreservingActivity() throws {
         try saveAndReloadNormalizedWorkspace(preservingActivity: workspace.activity)
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws {
+        do {
+            workspace = try workspacePersistence.reloadNormalizedWorkspace(
+                preservingActivity: activity
+            )
+        } catch WorkspaceStoreError.persistenceFailed {
+            throw WorkspaceStoreError.persistenceFailed
+        } catch {
+            AppTelemetry.persistenceProjectionReloadFailed(
+                operation: WorkspacePersistenceOperation.saveAndReloadNormalizedWorkspace
+            )
+            throw WorkspaceStoreError.persistenceFailed
+        }
     }
 }

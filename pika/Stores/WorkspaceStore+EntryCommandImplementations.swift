@@ -40,7 +40,7 @@ extension WorkspaceStore {
             updatedAt: now,
             bucket: bucketRecord
         )
-        modelContext.insert(record)
+        workspacePersistenceModelContext().insert(record)
 
         if bucketRecord.status == .ready {
             bucketRecord.status = .open
@@ -90,7 +90,7 @@ extension WorkspaceStore {
             updatedAt: now,
             bucket: bucketRecord
         )
-        modelContext.insert(record)
+        workspacePersistenceModelContext().insert(record)
 
         if bucketRecord.status == .ready {
             bucketRecord.status = .open
@@ -198,11 +198,11 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try modelContext.fetch(descriptor).first else {
+        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
             return false
         }
 
-        modelContext.delete(record)
+        workspacePersistenceModelContext().delete(record)
         return true
     }
 
@@ -212,11 +212,11 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try modelContext.fetch(descriptor).first else {
+        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
             return false
         }
 
-        modelContext.delete(record)
+        workspacePersistenceModelContext().delete(record)
         return true
     }
 }

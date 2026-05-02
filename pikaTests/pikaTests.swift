@@ -438,36 +438,4 @@ struct PikaScaffoldTests {
         #expect(workspacePersistence.contains("AppTelemetry.persistenceProjectionReloadFailed("))
     }
 
-    @Test func workspaceStoreCommandExtensionsRemainCommandMapsAfterExtractions() throws {
-        let repositoryRoot = URL(filePath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let commandMapPaths = [
-            "pika/Stores/WorkspaceStore+BusinessProfile.swift",
-            "pika/Stores/WorkspaceStore+Clients.swift",
-            "pika/Stores/WorkspaceStore+Projects.swift",
-            "pika/Stores/WorkspaceStore+Buckets.swift",
-            "pika/Stores/WorkspaceStore+Entries.swift",
-            "pika/Stores/WorkspaceStore+Invoices.swift",
-        ]
-        let implementationMarkers = [
-            "import SwiftData",
-            "FetchDescriptor<",
-            "modelContext",
-            "Record(",
-            "private func",
-            "fileprivate func",
-        ]
-
-        for relativePath in commandMapPaths {
-            let source = try String(
-                contentsOf: repositoryRoot.appendingPathComponent(relativePath),
-                encoding: .utf8
-            )
-            #expect(source.contains("extension WorkspaceStore"))
-            for marker in implementationMarkers {
-                #expect(source.contains(marker) == false)
-            }
-        }
-    }
 }

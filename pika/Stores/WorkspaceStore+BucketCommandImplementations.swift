@@ -67,7 +67,7 @@ extension WorkspaceStore {
             updatedAt: now,
             project: projectRecord
         )
-        modelContext.insert(bucketRecord)
+        workspacePersistenceModelContext().insert(bucketRecord)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let project = workspace.projects.first(where: { $0.id == projectID }),
@@ -216,7 +216,7 @@ extension WorkspaceStore {
             .name ?? bucketRecord.name
 
         try deleteNormalizedBucketDependencies(bucketID)
-        modelContext.delete(bucketRecord)
+        workspacePersistenceModelContext().delete(bucketRecord)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         appendActivity(
@@ -230,11 +230,11 @@ extension WorkspaceStore {
 
     private func deleteNormalizedBucketDependencies(_ bucketID: WorkspaceBucket.ID) throws {
         for timeEntry in try timeEntryRecords(for: bucketID) {
-            modelContext.delete(timeEntry)
+            workspacePersistenceModelContext().delete(timeEntry)
         }
 
         for fixedCost in try fixedCostRecords(for: bucketID) {
-            modelContext.delete(fixedCost)
+            workspacePersistenceModelContext().delete(fixedCost)
         }
     }
 }

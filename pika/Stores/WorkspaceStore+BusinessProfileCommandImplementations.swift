@@ -33,7 +33,7 @@ extension WorkspaceStore {
             createdAt: createdAt,
             updatedAt: createdAt
         )
-        modelContext.insert(record)
+        workspacePersistenceModelContext().insert(record)
         return record
     }
 
@@ -59,7 +59,7 @@ extension WorkspaceStore {
     }
 
     private func latestBusinessProfileRecord() throws -> BusinessProfileRecord? {
-        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
+        let records = try workspacePersistenceModelContext().fetch(FetchDescriptor<BusinessProfileRecord>())
         return records.max {
             if $0.updatedAt != $1.updatedAt {
                 return $0.updatedAt < $1.updatedAt

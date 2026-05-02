@@ -16,7 +16,7 @@ extension FixedCostRecord: NormalizedRecordSortable {}
 extension InvoiceRecord: NormalizedRecordSortable {}
 extension InvoiceLineItemRecord: NormalizedRecordSortable {}
 
-extension WorkspaceStore {
+enum SwiftDataWorkspaceProjectionLoader {
     static func loadNormalizedWorkspace(from context: ModelContext) -> WorkspaceSnapshot? {
         guard
             let profileRecords = try? context.fetch(FetchDescriptor<BusinessProfileRecord>()),

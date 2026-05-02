@@ -77,8 +77,8 @@ extension WorkspaceStore {
             project: projectRecord
         )
 
-        modelContext.insert(projectRecord)
-        modelContext.insert(bucketRecord)
+        workspacePersistenceModelContext().insert(projectRecord)
+        workspacePersistenceModelContext().insert(bucketRecord)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
 
@@ -183,7 +183,7 @@ extension WorkspaceStore {
         let projectName = projectRecord.name
         let projectClientName = workspace.projects.first(where: { $0.id == projectID })?.clientName ?? ""
         try deleteProjectDependenciesFromNormalizedRecords(projectID: projectID)
-        modelContext.delete(projectRecord)
+        workspacePersistenceModelContext().delete(projectRecord)
 
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         appendActivity(
@@ -200,12 +200,12 @@ extension WorkspaceStore {
     ) throws {
         for bucketRecord in try bucketRecords(for: projectID) {
             try deleteBucketDependenciesFromNormalizedRecords(bucketRecord.id)
-            modelContext.delete(bucketRecord)
+            workspacePersistenceModelContext().delete(bucketRecord)
         }
 
         for invoiceRecord in try invoiceRecords(for: projectID) {
             try deleteInvoiceDependenciesFromNormalizedRecords(invoiceRecord.id)
-            modelContext.delete(invoiceRecord)
+            workspacePersistenceModelContext().delete(invoiceRecord)
         }
     }
 
@@ -213,11 +213,11 @@ extension WorkspaceStore {
         _ bucketID: WorkspaceBucket.ID
     ) throws {
         for timeEntry in try timeEntryRecords(for: bucketID) {
-            modelContext.delete(timeEntry)
+            workspacePersistenceModelContext().delete(timeEntry)
         }
 
         for fixedCost in try fixedCostRecords(for: bucketID) {
-            modelContext.delete(fixedCost)
+            workspacePersistenceModelContext().delete(fixedCost)
         }
     }
 
@@ -225,7 +225,7 @@ extension WorkspaceStore {
         _ invoiceID: WorkspaceInvoice.ID
     ) throws {
         for lineItem in try invoiceLineItemRecords(for: invoiceID) {
-            modelContext.delete(lineItem)
+            workspacePersistenceModelContext().delete(lineItem)
         }
     }
 }
