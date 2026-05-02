@@ -10,7 +10,7 @@ struct WorkspaceArchiveImportCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Divider()
-            Button("Import Workspace Archive…") {
+            Button(WorkspaceArchiveFileMenuCommandTitles.importWorkspaceArchive) {
                 importWorkspaceArchive()
             }
             .keyboardShortcut("I", modifiers: [.command, .shift])

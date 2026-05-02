@@ -158,6 +158,21 @@ struct PikaScaffoldTests {
         #expect(MainWindowLayout.frameStorageKey == "pika.mainWindow.frame")
     }
 
+    @Test func macOSLaunchChecksCoverArchiveFileMenuCommandSurfaceOnly() {
+        #expect(WorkspaceArchiveFileMenuCommandTitles.all == [
+            "Export Workspace Archive…",
+            "Import Workspace Archive…",
+            "Reveal Workspace Backups",
+        ])
+    }
+
+    @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredAtAppLevel() {
+        #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == [
+            "WorkspaceArchiveCommands",
+            "WorkspaceArchiveImportCommands",
+        ])
+    }
+
     @Test func macOSPrimarySidebarPolicyStartsWithBreathingRoom() {
         #expect(PrimarySidebarColumnLayout.minimumWidth == 220)
         #expect(PrimarySidebarColumnLayout.idealWidth == 242)

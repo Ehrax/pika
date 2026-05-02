@@ -1,16 +1,27 @@
 import SwiftUI
 
+enum WorkspaceArchiveFileMenuCommandTitles {
+    static let exportWorkspaceArchive = "Export Workspace Archive…"
+    static let importWorkspaceArchive = "Import Workspace Archive…"
+    static let revealWorkspaceBackups = "Reveal Workspace Backups"
+    static let all = [
+        exportWorkspaceArchive,
+        importWorkspaceArchive,
+        revealWorkspaceBackups,
+    ]
+}
+
 struct WorkspaceArchiveCommands: Commands {
     @Environment(\.workspaceStore) private var workspaceStore
 
     var body: some Commands {
         CommandGroup(after: .saveItem) {
-            Button("Export Workspace Archive…") {
+            Button(WorkspaceArchiveFileMenuCommandTitles.exportWorkspaceArchive) {
                 exportWorkspaceArchive()
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
 
-            Button("Reveal Workspace Backups") {
+            Button(WorkspaceArchiveFileMenuCommandTitles.revealWorkspaceBackups) {
                 revealWorkspaceBackups()
             }
         }
