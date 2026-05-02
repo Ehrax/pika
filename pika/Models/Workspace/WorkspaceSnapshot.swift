@@ -956,7 +956,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
         servicePeriod = invoice.servicePeriod
         status = invoice.status
         isOverdue = invoice.status.isOverdue(dueDate: invoice.dueDate, on: date)
-        statusTitle = isOverdue ? "Overdue" : invoice.status.rawValue.capitalized
+        statusTitle = InvoiceWorkflowPolicy.statusTitle(status: invoice.status, isOverdue: isOverdue)
         totalLabel = formatter.string(fromMinorUnits: invoice.totalMinorUnits)
         self.billingAddress = invoice.clientSnapshot?.billingAddress ?? billingAddress
         lineItems = Self.lineItems(for: invoice, formatter: formatter)
@@ -984,8 +984,7 @@ struct WorkspaceInvoiceRowProjection: Equatable, Identifiable {
                 description: item.description,
                 quantityLabel: item.quantityLabel,
                 amountMinorUnits: item.amountMinorUnits,
-                formatter: formatter,
-                amountLabel: formatter.string(fromMinorUnits: item.amountMinorUnits)
+                formatter: formatter
             )
         }
     }
@@ -1005,13 +1004,12 @@ struct WorkspaceInvoiceLineItemProjection: Equatable, Identifiable {
         description: String,
         quantityLabel: String,
         amountMinorUnits: Int,
-        formatter: MoneyFormatting,
-        amountLabel: String
+        formatter: MoneyFormatting
     ) {
         self.id = id
         self.description = description
         self.quantityLabel = quantityLabel
-        self.amountLabel = amountLabel
+        amountLabel = formatter.string(fromMinorUnits: amountMinorUnits)
 
         let quantityUnit = Self.quantityUnit(from: quantityLabel)
         quantityValueLabel = quantityUnit.quantity
