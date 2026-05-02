@@ -13,20 +13,18 @@ enum WorkspaceDashboardProjections {
                 }
         }
 
-        let overdueInvoices = workspace.projects.flatMap { project in
-            project.invoices
-                .filter { $0.status.isOverdue(dueDate: $0.dueDate, on: date) }
-                .map { invoice in
-                    DashboardAttentionItem(
-                        id: "overdue-invoice-\(invoice.id.uuidString)",
-                        target: .invoice(invoice.id),
-                        title: "\(invoice.clientName) invoice overdue",
-                        detail: "\(invoice.number) due \(invoice.dueDate.formatted(date: .abbreviated, time: .omitted))",
-                        amountMinorUnits: invoice.totalMinorUnits,
-                        tone: .danger
-                    )
-                }
-        }
+        let overdueItems = invoices
+            .filter { $0.status.isOverdue(dueDate: $0.dueDate, on: date) }
+            .map { invoice in
+                DashboardAttentionItem(
+                    id: "overdue-invoice-\(invoice.id.uuidString)",
+                    target: .invoice(invoice.id),
+                    title: "\(invoice.clientName) invoice overdue",
+                    detail: "\(invoice.number) due \(invoice.dueDate.formatted(date: .abbreviated, time: .omitted))",
+                    amountMinorUnits: invoice.totalMinorUnits,
+                    tone: .danger
+                )
+            }
 
         let readyItems = readyBuckets
             .sorted { left, right in
@@ -49,7 +47,7 @@ enum WorkspaceDashboardProjections {
 
         return DashboardSummary(
             outstandingMinorUnits: unpaidInvoices.map(\.totalMinorUnits).reduce(0, +),
-            overdueMinorUnits: overdueInvoices.map(\.amountMinorUnits).reduce(0, +),
+            overdueMinorUnits: overdueItems.map(\.amountMinorUnits).reduce(0, +),
             readyToInvoiceMinorUnits: readyBuckets.map(\.bucket.effectiveTotalMinorUnits).reduce(0, +),
             thisMonthMinorUnits: paidInvoices
                 .filter { Calendar.pikaGregorian.isDate($0.issueDate, equalTo: date, toGranularity: .month) }
@@ -57,7 +55,7 @@ enum WorkspaceDashboardProjections {
                 .reduce(0, +),
             activeProjectCount: workspace.activeProjects.count,
             clientCount: workspace.clients.count,
-            needsAttention: overdueInvoices + readyItems,
+            needsAttention: overdueItems + readyItems,
             revenueHistory: paidInvoices
                 .sorted { left, right in
                     if left.issueDate == right.issueDate {
@@ -110,22 +108,6 @@ struct DashboardAttentionItem: Equatable, Identifiable {
     var detail: String
     var amountMinorUnits: Int
     var tone: PikaStatusTone
-
-    init(
-        id: String,
-        target: DashboardAttentionTarget,
-        title: String,
-        detail: String,
-        amountMinorUnits: Int,
-        tone: PikaStatusTone
-    ) {
-        self.id = id
-        self.target = target
-        self.title = title
-        self.detail = detail
-        self.amountMinorUnits = amountMinorUnits
-        self.tone = tone
-    }
 }
 
 struct RevenuePoint: Equatable, Identifiable {
