@@ -51,6 +51,22 @@ struct WorkspaceProjectionTests {
         )
     }
 
+    @Test func invoiceProjectionOwnerPreservesWorkspacePreviewBehavior() throws {
+        let workspace = WorkspaceFixtures.demoWorkspace
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        #expect(
+            WorkspaceInvoiceProjections.preview(
+                for: workspace,
+                on: WorkspaceFixtures.today,
+                formatter: formatter
+            ) == workspace.invoicePreviewProjection(
+                on: WorkspaceFixtures.today,
+                formatter: formatter
+            )
+        )
+    }
+
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
         let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
