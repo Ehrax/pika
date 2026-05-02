@@ -1,112 +1,50 @@
-import * as sandcastle from "@ai-hero/sandcastle";
-import {
-  IMPLEMENTER_EFFORT,
-  IMPLEMENTER_MODEL,
-  MAX_ITERATIONS,
-  MAX_PARALLEL,
-  MERGER_EFFORT,
-  MERGER_MODEL,
-  PLANNER_EFFORT,
-  PLANNER_MODEL,
-  REVIEWER_EFFORT,
-  REVIEWER_MODEL,
-} from "./agent-config.mts";
-import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
+import { MAX_ITERATIONS, MAX_PARALLEL } from "./agent-config.mts";
 import { runWithConcurrencyLimit } from "./concurrency.mts";
+import {
+  cleanupPrdWorktree,
+  currentBranch,
+  readPrdIssue,
+} from "./git-helpers.mts";
+import { createPrdWorktree } from "./prd-worktree.mts";
+import {
+  implementAndReviewIssue,
+  mergeCompletedBranches,
+  runPrCreatorAgent,
+  runPlanner,
+} from "./sandcastle-runs.mts";
+import { completedIssuesFromSettled } from "./workflow-results.mts";
 
-type IssuePlan = {
-  number: number;
-  title: string;
-  branch: string;
-};
+const repoRoot = process.cwd();
+const prdIssueNumber = Number(
+  process.env.SANDCASTLE_PRD_ISSUE_NUMBER ??
+  process.env.SANDCASTLE_PRD_ISSUE ??
+  "1"
+);
 
-const hostSandbox = noSandbox();
+const prdIssue = await readPrdIssue(prdIssueNumber);
+const baseBranch = await currentBranch();
+const { branch: prdBranch, worktreePath } = await createPrdWorktree(
+  prdIssue,
+  baseBranch,
+  repoRoot
+);
 
-const parsePlan = (stdout: string) => {
-  const planMatch = stdout.match(/<plan>([\s\S]*?)<\/plan>/);
-  if (!planMatch) {
-    throw new Error("Orchestrator did not produce a <plan> tag.\n\n" + stdout);
-  }
+console.log(`PRD branch: ${prdBranch}`);
+console.log(`PRD worktree: ${worktreePath}`);
 
-  return JSON.parse(planMatch[1]) as { issues: IssuePlan[] };
-};
-
-const runPlanner = async () => {
-  const plan = await sandcastle.run({
-    sandbox: hostSandbox,
-    branchStrategy: { type: "head" },
-    name: "Planner",
-    agent: sandcastle.codex(PLANNER_MODEL, { effort: PLANNER_EFFORT }),
-    promptFile: "./.sandcastle/plan-prompt.md",
-  });
-
-  return parsePlan(plan.stdout).issues;
-};
-
-const implementAndReviewIssue = async (issue: IssuePlan) => {
-  const result = await sandcastle.run({
-    sandbox: hostSandbox,
-    branchStrategy: { type: "branch", branch: issue.branch },
-    name: "Implementer #" + issue.number,
-    agent: sandcastle.codex(IMPLEMENTER_MODEL, {
-      effort: IMPLEMENTER_EFFORT,
-    }),
-    promptFile: "./.sandcastle/implement-prompt.md",
-    promptArgs: {
-      ISSUE_NUMBER: String(issue.number),
-      ISSUE_TITLE: issue.title,
-      BRANCH: issue.branch,
-    },
-  });
-
-  if (result.commits.length === 0) {
-    return result;
-  }
-
-  await sandcastle.run({
-    sandbox: hostSandbox,
-    branchStrategy: { type: "branch", branch: issue.branch },
-    name: "Reviewer #" + issue.number,
-    agent: sandcastle.codex(REVIEWER_MODEL, {
-      effort: REVIEWER_EFFORT,
-    }),
-    promptFile: "./.sandcastle/review-prompt.md",
-    promptArgs: {
-      ISSUE_NUMBER: String(issue.number),
-      ISSUE_TITLE: issue.title,
-      BRANCH: issue.branch,
-    },
-  });
-
-  return result;
-};
-
-const mergeCompletedBranches = async (completedIssues: IssuePlan[]) => {
-  const completedBranches = completedIssues.map((issue) => issue.branch);
-
-  await sandcastle.run({
-    sandbox: hostSandbox,
-    branchStrategy: { type: "head" },
-    name: "Merger",
-    maxIterations: 10,
-    agent: sandcastle.codex(MERGER_MODEL, { effort: MERGER_EFFORT }),
-    promptFile: "./.sandcastle/merge-prompt.md",
-    promptArgs: {
-      BRANCHES: completedBranches.map((branch) => `- ${branch}`).join("\n"),
-      ISSUES: completedIssues
-        .map((issue) => `- #${issue.number}: ${issue.title}`)
-        .join("\n"),
-    },
-  });
-};
+let prCreated = false;
 
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
 
-  const issues = await runPlanner();
+  const issues = await runPlanner(worktreePath, repoRoot, prdIssueNumber);
 
   if (issues.length === 0) {
-    console.log("No issues to work on. Exiting.");
+    console.log("No ready child issues left. Creating PR.");
+    await runPrCreatorAgent(prdIssue, worktreePath, repoRoot, prdBranch, baseBranch);
+    await cleanupPrdWorktree(worktreePath);
+    console.log("PRD worktree cleaned up.");
+    prCreated = true;
     break;
   }
 
@@ -117,10 +55,8 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     console.log(`  #${issue.number}: ${issue.title} -> ${issue.branch}`);
   }
 
-  const settled = await runWithConcurrencyLimit(
-    issues,
-    MAX_PARALLEL,
-    implementAndReviewIssue
+  const settled = await runWithConcurrencyLimit(issues, MAX_PARALLEL, (issue) =>
+    implementAndReviewIssue(issue, worktreePath, repoRoot, prdBranch)
   );
 
   for (const [i, outcome] of settled.entries()) {
@@ -131,21 +67,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     }
   }
 
-  const completedIssues = settled
-    .map((outcome, i) => ({ outcome, issue: issues[i] }))
-    .filter(
-      (
-        entry
-      ): entry is {
-        outcome: PromiseFulfilledResult<
-          Awaited<ReturnType<typeof sandcastle.run>>
-        >;
-        issue: IssuePlan;
-      } =>
-        entry.outcome.status === "fulfilled" &&
-        entry.outcome.value.commits.length > 0
-    )
-    .map((entry) => entry.issue);
+  const completedIssues = completedIssuesFromSettled(settled, issues);
 
   console.log(
     `\nExecution complete. ${completedIssues.length} branch(es) with commits:`
@@ -159,8 +81,19 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     continue;
   }
 
-  await mergeCompletedBranches(completedIssues);
-  console.log("\nBranches merged.");
+  await mergeCompletedBranches(
+    completedIssues,
+    worktreePath,
+    repoRoot,
+    prdBranch
+  );
+  console.log(`\nBranches merged into ${prdBranch}.`);
+}
+
+if (!prCreated) {
+  console.log(
+    `Reached ${MAX_ITERATIONS} iteration(s) without exhausting child issues. PR not created yet.`
+  );
 }
 
 console.log("\nAll done.");
