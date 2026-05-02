@@ -16,9 +16,15 @@ Here are the last 10 commits:
 
 <issue>
 
-!`gh issue view {{ISSUE_NUMBER}}`
+!`gh issue view {{ISSUE_NUMBER}} --json number,title,body,comments,labels,url --jq '{number, title, body, url, labels: [.labels[].name], comments: [.comments[].body]}'`
 
 </issue>
+
+<parent-prd>
+
+!`gh issue view ${SANDCASTLE_PRD_ISSUE_NUMBER:-1} --json number,title,body,comments,labels,url --jq '{number, title, body, url, labels: [.labels[].name], comments: [.comments[].body]}'`
+
+</parent-prd>
 
 <diff-to-main>
 
