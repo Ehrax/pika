@@ -200,7 +200,6 @@ protocol WorkspacePersistence {
 
 private enum WorkspacePersistenceOperation {
     static let replacePersistentWorkspaceWithSeedImport = "replace_persistent_workspace_with_seed_import"
-    static let applyInvoiceFinalizationResult = "apply_invoice_finalization_result"
     static let persistWorkspace = "persist_workspace"
     static let saveAndReloadNormalizedWorkspace = "save_and_reload_normalized_workspace"
 }
@@ -309,6 +308,21 @@ extension WorkspaceStore {
     func persistWorkspace() throws {
         try performPersistentWorkspaceWrite(operation: WorkspacePersistenceOperation.persistWorkspace) {
             try workspacePersistence.persistWorkspace()
+        }
+    }
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws {
+        do {
+            workspace = try workspacePersistence.applyInvoiceFinalizationResult(
+                result,
+                preservingActivity: activity
+            )
+        } catch WorkspacePersistenceConflictError.invoiceFinalizationConflict {
+            try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+            throw WorkspaceStoreError.persistenceConflict
         }
     }
 

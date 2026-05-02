@@ -135,15 +135,7 @@ extension WorkspaceStore {
             bucketID: bucketID,
             draft: draft
         )
-        do {
-            workspace = try workspacePersistence.applyInvoiceFinalizationResult(
-                result,
-                preservingActivity: workspace.activity
-            )
-        } catch WorkspacePersistenceConflictError.invoiceFinalizationConflict {
-            try saveAndReloadNormalizedWorkspacePreservingActivity()
-            throw WorkspaceStoreError.persistenceConflict
-        }
+        try applyInvoiceFinalizationResult(result, preservingActivity: workspace.activity)
 
         let indices = try invoiceIndices(result.invoice.id)
         let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
@@ -204,7 +196,6 @@ extension WorkspaceStore {
         descriptor.fetchLimit = 1
         return try modelContext.fetch(descriptor).first
     }
-
 
     private func finalizeInvoiceWorkflowResult(
         projectID: WorkspaceProject.ID,
