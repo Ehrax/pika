@@ -3,6 +3,20 @@ import Testing
 @testable import pika
 
 struct WorkspaceInvoicingWorkflowTests {
+    @Test func workflowValidatesInvoiceStatusTransitions() throws {
+        let workflow = WorkspaceInvoicingWorkflow()
+
+        try workflow.ensureInvoiceStatusTransition(from: .finalized, to: .sent)
+        try workflow.ensureInvoiceStatusTransition(from: .finalized, to: .paid)
+        try workflow.ensureInvoiceStatusTransition(from: .finalized, to: .cancelled)
+        try workflow.ensureInvoiceStatusTransition(from: .sent, to: .paid)
+        try workflow.ensureInvoiceStatusTransition(from: .sent, to: .cancelled)
+
+        #expect(throws: WorkspaceInvoicingWorkflowError.invalidInvoiceStatusTransition(from: .paid, to: .sent)) {
+            try workflow.ensureInvoiceStatusTransition(from: .paid, to: .sent)
+        }
+    }
+
     @Test func workflowFinalizesReadyBucketIntoInvoiceOutcome() throws {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000001601")!
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001601")!

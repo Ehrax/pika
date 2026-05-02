@@ -81,14 +81,36 @@ private struct RejectPaidInvoicePolicy: WorkspaceMutationPolicy {
             throw WorkspaceStoreError.bucketStatusNotReady(currentStatus)
         }
     }
+}
 
+private struct RejectPaidInvoicingWorkflow: WorkspaceInvoicing {
     func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws {
         if targetStatus == .paid {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
+            throw WorkspaceInvoicingWorkflowError.invalidInvoiceStatusTransition(
+                from: sourceStatus,
+                to: targetStatus
+            )
         }
         guard InvoiceWorkflowPolicy.canTransition(from: sourceStatus, to: targetStatus) else {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
+            throw WorkspaceInvoicingWorkflowError.invalidInvoiceStatusTransition(
+                from: sourceStatus,
+                to: targetStatus
+            )
         }
+    }
+
+    func finalizeInvoice(
+        workspace: WorkspaceSnapshot,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: InvoiceFinalizationDraft
+    ) throws -> InvoiceFinalizationResult {
+        try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: draft
+        )
     }
 }
 
@@ -167,7 +189,7 @@ struct WorkspaceStoreSeamTests {
         #expect(store.workspace.clients.count == seed.clients.count)
     }
 
-    @Test func mutationPolicyCanOverrideInvoiceTransitions() throws {
+    @Test func invoicingWorkflowCanOverrideInvoiceTransitions() throws {
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000009999")!
         var workspace = WorkspaceFixtures.demoWorkspace
         workspace.projects = [
@@ -192,7 +214,11 @@ struct WorkspaceStoreSeamTests {
             ),
         ]
 
-        let store = WorkspaceStore(seed: workspace, mutationPolicy: RejectPaidInvoicePolicy())
+        let store = WorkspaceStore(
+            seed: workspace,
+            mutationPolicy: RejectPaidInvoicePolicy(),
+            invoicingWorkflow: RejectPaidInvoicingWorkflow()
+        )
         #expect(throws: WorkspaceStoreError.invalidInvoiceStatusTransition(from: .finalized, to: .paid)) {
             try store.markInvoicePaid(invoiceID: invoiceID)
         }

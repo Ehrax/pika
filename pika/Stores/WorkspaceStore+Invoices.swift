@@ -101,7 +101,7 @@ extension WorkspaceStore {
 
         let indices = try invoiceIndices(invoiceID)
         let invoice = workspace.projects[indices.project].invoices[indices.invoice]
-        try mutationPolicy.ensureInvoiceStatusTransition(from: invoice.status, to: newStatus)
+        try ensureInvoiceStatusTransition(from: invoice.status, to: newStatus)
 
         workspace.projects[indices.project].invoices[indices.invoice].status = newStatus
         appendActivity(
@@ -192,7 +192,7 @@ extension WorkspaceStore {
         }
 
         let oldStatus = invoiceRecord.status
-        try mutationPolicy.ensureInvoiceStatusTransition(from: oldStatus, to: newStatus)
+        try ensureInvoiceStatusTransition(from: oldStatus, to: newStatus)
 
         invoiceRecord.status = newStatus
         invoiceRecord.updatedAt = .now
@@ -310,11 +310,25 @@ extension WorkspaceStore {
         draft: InvoiceFinalizationDraft
     ) throws -> InvoiceFinalizationResult {
         do {
-            return try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            return try invoicingWorkflow.finalizeInvoice(
                 workspace: workspace,
                 projectID: projectID,
                 bucketID: bucketID,
                 draft: draft
+            )
+        } catch let workflowError as WorkspaceInvoicingWorkflowError {
+            throw mapFinalizationWorkflowError(workflowError)
+        }
+    }
+
+    private func ensureInvoiceStatusTransition(
+        from sourceStatus: InvoiceStatus,
+        to targetStatus: InvoiceStatus
+    ) throws {
+        do {
+            try invoicingWorkflow.ensureInvoiceStatusTransition(
+                from: sourceStatus,
+                to: targetStatus
             )
         } catch let workflowError as WorkspaceInvoicingWorkflowError {
             throw mapFinalizationWorkflowError(workflowError)
@@ -335,6 +349,8 @@ extension WorkspaceStore {
             return .bucketNotInvoiceable
         case .duplicateInvoiceNumber:
             return .duplicateInvoiceNumber
+        case let .invalidInvoiceStatusTransition(from, to):
+            return .invalidInvoiceStatusTransition(from: from, to: to)
         }
     }
 
