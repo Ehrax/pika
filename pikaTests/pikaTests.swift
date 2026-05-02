@@ -450,6 +450,14 @@ struct PikaScaffoldTests {
             "pika/Stores/WorkspaceStore+Entries.swift",
             "pika/Stores/WorkspaceStore+Invoices.swift",
         ]
+        let implementationMarkers = [
+            "import SwiftData",
+            "FetchDescriptor<",
+            "modelContext",
+            "Record(",
+            "private func",
+            "fileprivate func",
+        ]
 
         for relativePath in commandMapPaths {
             let source = try String(
@@ -457,7 +465,9 @@ struct PikaScaffoldTests {
                 encoding: .utf8
             )
             #expect(source.contains("extension WorkspaceStore"))
-            #expect(source.contains("private func ") == false)
+            for marker in implementationMarkers {
+                #expect(source.contains(marker) == false)
+            }
         }
     }
 }
