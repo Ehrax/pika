@@ -140,81 +140,46 @@ enum WorkspaceArchiveImportValidator {
     }
 
     private static func validateMoneyAndAccounting(in workspace: WorkspaceArchiveWorkspace) throws {
-        if workspace.businessProfile.defaultTermsDays <= 0 {
-            throw WorkspaceArchiveImportError.invalidTermsDays(
-                field: "businessProfile.defaultTermsDays",
-                value: workspace.businessProfile.defaultTermsDays
-            )
+        try ensurePositiveTermsDays(
+            workspace.businessProfile.defaultTermsDays,
+            field: "businessProfile.defaultTermsDays"
+        )
+        try ensurePositiveMoneyValue(
+            workspace.businessProfile.nextInvoiceNumber,
+            field: "businessProfile.nextInvoiceNumber"
+        )
+
+        for client in workspace.clients {
+            try ensurePositiveTermsDays(client.defaultTermsDays, field: "client.defaultTermsDays")
         }
 
-        if workspace.businessProfile.nextInvoiceNumber <= 0 {
-            throw WorkspaceArchiveImportError.invalidMoneyValue(
-                field: "businessProfile.nextInvoiceNumber",
-                value: workspace.businessProfile.nextInvoiceNumber
-            )
-        }
-
-        for client in workspace.clients where client.defaultTermsDays <= 0 {
-            throw WorkspaceArchiveImportError.invalidTermsDays(
-                field: "client.defaultTermsDays",
-                value: client.defaultTermsDays
-            )
-        }
-
-        for bucket in workspace.buckets where bucket.defaultHourlyRateMinorUnits <= 0 {
-            throw WorkspaceArchiveImportError.invalidMoneyValue(
-                field: "bucket.defaultHourlyRateMinorUnits",
-                value: bucket.defaultHourlyRateMinorUnits
+        for bucket in workspace.buckets {
+            try ensurePositiveMoneyValue(
+                bucket.defaultHourlyRateMinorUnits,
+                field: "bucket.defaultHourlyRateMinorUnits"
             )
         }
 
         for entry in workspace.timeEntries {
-            if entry.durationMinutes <= 0 {
-                throw WorkspaceArchiveImportError.invalidMoneyValue(
-                    field: "timeEntry.durationMinutes",
-                    value: entry.durationMinutes
-                )
-            }
-
-            if entry.hourlyRateMinorUnits < 0 {
-                throw WorkspaceArchiveImportError.invalidMoneyValue(
-                    field: "timeEntry.hourlyRateMinorUnits",
-                    value: entry.hourlyRateMinorUnits
-                )
-            }
+            try ensurePositiveMoneyValue(entry.durationMinutes, field: "timeEntry.durationMinutes")
+            try ensureNonNegativeMoneyValue(entry.hourlyRateMinorUnits, field: "timeEntry.hourlyRateMinorUnits")
         }
 
         for fixedCost in workspace.fixedCosts {
-            if fixedCost.quantity <= 0 {
-                throw WorkspaceArchiveImportError.invalidMoneyValue(
-                    field: "fixedCost.quantity",
-                    value: fixedCost.quantity
-                )
-            }
-
-            if fixedCost.unitPriceMinorUnits < 0 {
-                throw WorkspaceArchiveImportError.invalidMoneyValue(
-                    field: "fixedCost.unitPriceMinorUnits",
-                    value: fixedCost.unitPriceMinorUnits
-                )
-            }
+            try ensurePositiveMoneyValue(fixedCost.quantity, field: "fixedCost.quantity")
+            try ensureNonNegativeMoneyValue(fixedCost.unitPriceMinorUnits, field: "fixedCost.unitPriceMinorUnits")
         }
 
-        for lineItem in workspace.invoiceLineItems where lineItem.amountMinorUnits < 0 {
-            throw WorkspaceArchiveImportError.invalidMoneyValue(
-                field: "invoiceLineItem.amountMinorUnits",
-                value: lineItem.amountMinorUnits
+        for lineItem in workspace.invoiceLineItems {
+            try ensureNonNegativeMoneyValue(
+                lineItem.amountMinorUnits,
+                field: "invoiceLineItem.amountMinorUnits"
             )
         }
 
         let groupedLineItems = Dictionary(grouping: workspace.invoiceLineItems, by: \.invoiceID)
         for invoice in workspace.invoices {
-            if invoice.totalMinorUnits < 0 {
-                throw WorkspaceArchiveImportError.invalidMoneyValue(
-                    field: "invoice.totalMinorUnits",
-                    value: invoice.totalMinorUnits
-                )
-            }
+            try ensureNonNegativeMoneyValue(invoice.totalMinorUnits, field: "invoice.totalMinorUnits")
 
             let totalFromLineItems = groupedLineItems[invoice.id, default: []]
                 .map(\.amountMinorUnits)
@@ -227,6 +192,24 @@ enum WorkspaceArchiveImportValidator {
                     actual: totalFromLineItems
                 )
             }
+        }
+    }
+
+    private static func ensurePositiveTermsDays(_ value: Int, field: String) throws {
+        guard value > 0 else {
+            throw WorkspaceArchiveImportError.invalidTermsDays(field: field, value: value)
+        }
+    }
+
+    private static func ensurePositiveMoneyValue(_ value: Int, field: String) throws {
+        guard value > 0 else {
+            throw WorkspaceArchiveImportError.invalidMoneyValue(field: field, value: value)
+        }
+    }
+
+    private static func ensureNonNegativeMoneyValue(_ value: Int, field: String) throws {
+        guard value >= 0 else {
+            throw WorkspaceArchiveImportError.invalidMoneyValue(field: field, value: value)
         }
     }
 

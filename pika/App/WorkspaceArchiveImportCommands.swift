@@ -78,7 +78,14 @@ private enum WorkspaceArchiveImportCommand {
     }
 
     private static func formattedSummary(_ summary: WorkspaceArchiveImportSummary) -> String {
-        "Clients: \(summary.clientCount) · Projects: \(summary.projectCount) · Buckets: \(summary.bucketCount) · Time Entries: \(summary.timeEntryCount) · Fixed Costs: \(summary.fixedCostCount) · Invoices: \(summary.invoiceCount)"
+        [
+            "Clients: \(summary.clientCount)",
+            "Projects: \(summary.projectCount)",
+            "Buckets: \(summary.bucketCount)",
+            "Time Entries: \(summary.timeEntryCount)",
+            "Fixed Costs: \(summary.fixedCostCount)",
+            "Invoices: \(summary.invoiceCount)",
+        ].joined(separator: " · ")
     }
 
     private static func message(for error: Error) -> String {
