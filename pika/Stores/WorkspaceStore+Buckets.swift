@@ -48,9 +48,7 @@ extension WorkspaceStore {
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
-        guard bucket.status == .archived else {
-            throw WorkspaceStoreError.bucketLocked(bucket.status)
-        }
+        try mutationPolicy.ensureBucketCanBeRemoved(status: bucket.status)
 
         workspace.projects[projectIndex].buckets.remove(at: bucketIndex)
         appendActivity(
@@ -373,9 +371,7 @@ extension WorkspaceStore {
         }
 
         let status = bucketRecord.status
-        guard status == .archived else {
-            throw WorkspaceStoreError.bucketLocked(status)
-        }
+        try mutationPolicy.ensureBucketCanBeRemoved(status: status)
 
         let projectName = workspace.projects.first(where: { $0.id == projectID })?.name ?? ""
         let bucketName = workspace.projects
