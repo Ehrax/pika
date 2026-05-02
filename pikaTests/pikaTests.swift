@@ -166,11 +166,10 @@ struct PikaScaffoldTests {
         ])
     }
 
-    @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredAtAppLevel() {
+    @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredToFileMenu() {
         #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames)
         #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == [
             "WorkspaceArchiveCommands",
-            "WorkspaceArchiveImportCommands",
         ])
     }
 

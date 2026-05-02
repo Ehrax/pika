@@ -183,6 +183,7 @@ struct WorkspaceArchiveImportValidationTests {
         #expect(clientRecords.map(\.name).contains("Legacy Persistent Client") == false)
         #expect(projectRecords.count == 1)
         #expect(bucketRecords.count == 1)
+        #expect(bucketRecords[0].defaultHourlyRateMinorUnits == 10_000)
         #expect(timeEntryRecords.count == 2)
         #expect(timeEntryRecords.filter(\.isBillable).count == 1)
         #expect(timeEntryRecords.filter { !$0.isBillable }.count == 1)
@@ -191,6 +192,10 @@ struct WorkspaceArchiveImportValidationTests {
         #expect(fixedCostRecords[0].unitPriceMinorUnits == 32_000)
         #expect(invoiceRecords.count == 1)
         #expect(invoiceRecords[0].note == "Archive invoice note")
+        #expect(lineItemRecords.map(\.id) == [
+            UUID(uuidString: "80000000-0000-0000-0000-000000000011")!,
+            UUID(uuidString: "80000000-0000-0000-0000-000000000012")!,
+        ])
         #expect(lineItemRecords.map(\.descriptionText) == ["Billable work", "Design package"])
         #expect(lineItemRecords.map(\.amountMinorUnits) == [10_000, 32_000])
     }
@@ -254,6 +259,24 @@ struct WorkspaceArchiveImportValidationTests {
             id: UUID(uuidString: "50000000-0000-0000-0000-000000000001")!,
             relationship: "bucketID",
             targetID: UUID(uuidString: "49999999-0000-0000-0000-000000000001")!
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
+
+    @Test func invoiceBucketFromDifferentProjectFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeCrossProjectInvoiceBucketEnvelope()
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.inconsistentRelationship(
+            entity: "invoice",
+            id: UUID(uuidString: "70000000-0000-0000-0000-000000000001")!,
+            relationship: "bucketID",
+            targetID: UUID(uuidString: "40000000-0000-0000-0000-000000000002")!
         )) {
             _ = try store.validateImportedWorkspaceArchive(archiveData)
         }
@@ -372,6 +395,28 @@ private enum WorkspaceArchiveImportFixture {
     static func makeMissingBucketRelationshipEnvelope() -> WorkspaceArchiveEnvelope {
         var workspace = makeValidWorkspace()
         workspace.timeEntries[0].bucketID = UUID(uuidString: "49999999-0000-0000-0000-000000000001")!
+        return makeEnvelope(workspace: workspace)
+    }
+
+    static func makeCrossProjectInvoiceBucketEnvelope() -> WorkspaceArchiveEnvelope {
+        var workspace = makeValidWorkspace()
+        let otherProjectID = UUID(uuidString: "30000000-0000-0000-0000-000000000002")!
+        let otherBucketID = UUID(uuidString: "40000000-0000-0000-0000-000000000002")!
+        workspace.projects.append(WorkspaceArchiveV1Workspace.Project(
+            id: otherProjectID,
+            clientID: workspace.clients[0].id,
+            name: "Other Project",
+            currencyCode: "EUR",
+            isArchived: false
+        ))
+        workspace.buckets.append(WorkspaceArchiveV1Workspace.Bucket(
+            id: otherBucketID,
+            projectID: otherProjectID,
+            name: "Other Bucket",
+            status: .ready,
+            defaultHourlyRateMinorUnits: 20_000
+        ))
+        workspace.invoices[0].bucketID = otherBucketID
         return makeEnvelope(workspace: workspace)
     }
 

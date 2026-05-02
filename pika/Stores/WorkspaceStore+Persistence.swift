@@ -597,6 +597,7 @@ extension WorkspaceStore {
                 projectID: projectID,
                 name: bucket.name,
                 statusRaw: bucket.status.rawValue,
+                defaultHourlyRateMinorUnits: bucket.defaultHourlyRateMinorUnits ?? 0,
                 createdAt: importedAt,
                 updatedAt: importedAt,
                 project: projectRecord
@@ -753,7 +754,7 @@ extension WorkspaceStore {
     ) {
         for (lineItemIndex, lineItem) in lineItems.enumerated() {
             context.insert(InvoiceLineItemRecord(
-                id: derivedUUID(from: invoice.id, variant: UInt8((lineItemIndex + 1) % 255)),
+                id: lineItem.id,
                 invoiceID: invoice.id,
                 sortOrder: lineItemIndex,
                 descriptionText: lineItem.description,

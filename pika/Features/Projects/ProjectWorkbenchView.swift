@@ -509,7 +509,7 @@ struct ProjectWorkbenchView: View {
     private func finalizeInvoice(
         presentation: InvoiceDraftPresentation,
         draft: InvoiceFinalizationDraft
-    ) {
+    ) -> Bool {
         do {
             try workspaceStore.finalizeInvoice(
                 projectID: presentation.projectID,
@@ -517,8 +517,10 @@ struct ProjectWorkbenchView: View {
                 draft: draft
             )
             invoiceDraft = nil
+            return true
         } catch {
             actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            return false
         }
     }
 

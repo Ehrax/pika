@@ -12,6 +12,7 @@ struct WorkspaceArchiveImportSummary: Equatable {
 enum WorkspaceArchiveImportError: Error, Equatable {
     case duplicateEntityID(entity: String, id: UUID)
     case missingRelationship(entity: String, id: UUID, relationship: String, targetID: UUID)
+    case inconsistentRelationship(entity: String, id: UUID, relationship: String, targetID: UUID)
     case invalidCurrencyCode(field: String, value: String)
     case invalidMoneyValue(field: String, value: Int)
     case invalidTermsDays(field: String, value: Int)
@@ -57,6 +58,7 @@ enum WorkspaceArchiveImportValidator {
         let clientIDs = Set(workspace.clients.map(\.id))
         let projectIDs = Set(workspace.projects.map(\.id))
         let bucketIDs = Set(workspace.buckets.map(\.id))
+        let bucketProjectIDByID = Dictionary(uniqueKeysWithValues: workspace.buckets.map { ($0.id, $0.projectID) })
         let invoiceIDs = Set(workspace.invoices.map(\.id))
 
         for project in workspace.projects where !clientIDs.contains(project.clientID) {
@@ -107,6 +109,15 @@ enum WorkspaceArchiveImportValidator {
 
             if !bucketIDs.contains(invoice.bucketID) {
                 throw WorkspaceArchiveImportError.missingRelationship(
+                    entity: "invoice",
+                    id: invoice.id,
+                    relationship: "bucketID",
+                    targetID: invoice.bucketID
+                )
+            }
+
+            if bucketProjectIDByID[invoice.bucketID] != invoice.projectID {
+                throw WorkspaceArchiveImportError.inconsistentRelationship(
                     entity: "invoice",
                     id: invoice.id,
                     relationship: "bucketID",

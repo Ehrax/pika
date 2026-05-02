@@ -52,19 +52,21 @@ extension WorkspaceStore {
             bucketID: bucketID,
             draft: draft
         )
-        try applyInvoiceFinalizationResult(result, preservingActivity: workspace.activity)
+        let finalizedActivity = WorkspaceActivity(
+            message: "\(result.invoice.number) finalized",
+            detail: result.invoice.clientName,
+            occurredAt: occurredAt
+        )
+        try applyInvoiceFinalizationResult(
+            result,
+            preservingActivity: workspace.activity + [finalizedActivity]
+        )
 
         let indices = try invoiceIndices(result.invoice.id)
         let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
-        appendActivity(
-            message: "\(persistedInvoice.number) finalized",
-            detail: persistedInvoice.clientName,
-            occurredAt: occurredAt
-        )
         AppTelemetry.bucketFinalized(bucketName: persistedInvoice.bucketName, projectName: persistedInvoice.projectName)
         AppTelemetry.invoiceCreated(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
         AppTelemetry.invoiceFinalized(invoiceNumber: persistedInvoice.number, clientName: persistedInvoice.clientName)
-        try persistWorkspace()
         return persistedInvoice
     }
 

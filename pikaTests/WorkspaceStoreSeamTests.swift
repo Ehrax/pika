@@ -157,6 +157,59 @@ private struct FailingInvoiceFinalizationWorkspacePersistence: WorkspacePersiste
     }
 }
 
+private final class SuccessfulInvoiceFinalizationWithFailingExtraSavePersistence: WorkspacePersistence {
+    enum Failure: Error {
+        case extraSaveShouldNotRun
+        case missingCommittedRecord
+    }
+
+    private(set) var persistCallCount = 0
+    let bootWorkspace: WorkspaceSnapshot
+
+    init(bootWorkspace: WorkspaceSnapshot) {
+        self.bootWorkspace = bootWorkspace
+    }
+
+    func bootstrapWorkspace(seed: WorkspaceSnapshot, resetForSeedImport: Bool) -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+
+    func isUsingNormalizedPersistence() -> Bool {
+        true
+    }
+
+    func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot {
+        var reloaded = bootWorkspace
+        guard let projectIndex = reloaded.projects.firstIndex(where: { $0.id == result.projectID }),
+              let bucketIndex = reloaded.projects[projectIndex].buckets.firstIndex(where: { $0.id == result.bucketID })
+        else {
+            throw Failure.missingCommittedRecord
+        }
+        reloaded.projects[projectIndex].buckets[bucketIndex].status = .finalized
+        reloaded.projects[projectIndex].invoices = [result.invoice]
+        reloaded.activity = activity
+        return reloaded
+    }
+
+    func persistWorkspace() throws {
+        persistCallCount += 1
+        throw Failure.extraSaveShouldNotRun
+    }
+
+    func saveAndReloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+
+    func reloadNormalizedWorkspace(preservingActivity activity: [WorkspaceActivity]) throws -> WorkspaceSnapshot {
+        bootWorkspace
+    }
+}
+
 private final class ConflictingInvoiceFinalizationWorkspacePersistence: WorkspacePersistence {
     enum Failure: Error {
         case saveAndReloadShouldNotRun
@@ -533,6 +586,170 @@ struct WorkspaceStoreSeamTests {
         let project = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
         #expect(project.invoices.isEmpty)
         #expect(project.buckets.first(where: { $0.id == bucketID })?.status == .ready)
+    }
+
+    @Test func normalizedInvoiceFinalizationDoesNotFailAfterSuccessfulCommitWithExtraSave() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009993")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009993")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009993")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 9)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 23)
+        let draft = InvoiceFinalizationDraft(
+            recipientName: "Committed Client",
+            recipientEmail: "billing@committed.example",
+            recipientBillingAddress: "5 Committed Way",
+            invoiceNumber: "NCS-2026-993",
+            template: .kleinunternehmerClassic,
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "May 2026",
+            currencyCode: "EUR",
+            taxNote: ""
+        )
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Committed Client",
+                    email: "billing@committed.example",
+                    billingAddress: "5 Committed Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Committed Project",
+                    clientName: "Committed Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Committed",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: UUID(uuidString: "50000000-0000-0000-0000-000000009993")!,
+                                    date: issueDate,
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Commit validation",
+                                    isBillable: true,
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+        let persistence = SuccessfulInvoiceFinalizationWithFailingExtraSavePersistence(
+            bootWorkspace: workspace
+        )
+        let store = WorkspaceStore(
+            seed: workspace,
+            workspacePersistence: persistence
+        )
+
+        let invoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: draft,
+            occurredAt: issueDate
+        )
+
+        #expect(invoice.number == "NCS-2026-993")
+        #expect(persistence.persistCallCount == 0)
+        #expect(store.workspace.projects.first?.buckets.first?.status == .finalized)
+        #expect(store.workspace.activity.map(\.message) == ["NCS-2026-993 finalized"])
+    }
+
+    @Test func repeatedInvoiceFinalizationForSameFinalizedBucketReturnsExistingInvoice() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000009992")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009992")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009992")!
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000009992")!
+        let issueDate = Date.pikaDate(year: 2026, month: 5, day: 10)
+        let dueDate = Date.pikaDate(year: 2026, month: 5, day: 24)
+        let invoice = WorkspaceInvoice(
+            id: invoiceID,
+            number: "NCS-2026-992",
+            clientName: "Replay Client",
+            projectID: projectID,
+            projectName: "Replay Project",
+            bucketID: bucketID,
+            bucketName: "Replay Bucket",
+            issueDate: issueDate,
+            dueDate: dueDate,
+            status: .finalized,
+            totalMinorUnits: 10_000
+        )
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Replay Client",
+                    email: "billing@replay.example",
+                    billingAddress: "4 Replay Way",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Replay Project",
+                    clientName: "Replay Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Replay Bucket",
+                            status: .finalized,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: [invoice]
+                ),
+            ],
+            activity: []
+        )
+        let store = WorkspaceStore(seed: workspace)
+
+        let replayedInvoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Replay Client",
+                recipientEmail: "billing@replay.example",
+                recipientBillingAddress: "4 Replay Way",
+                invoiceNumber: " NCS-2026-992 ",
+                template: .kleinunternehmerClassic,
+                issueDate: issueDate,
+                dueDate: dueDate,
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            ),
+            occurredAt: issueDate
+        )
+
+        #expect(replayedInvoice.id == invoiceID)
+        #expect(store.workspace.projects.first?.invoices.count == 1)
+        #expect(store.workspace.activity.isEmpty)
     }
 
     @Test func normalizedInvoiceFinalizationConflictReloadsWithoutSavingFirst() throws {
