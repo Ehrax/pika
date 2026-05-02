@@ -3,7 +3,6 @@ import Foundation
 protocol WorkspaceMutationPolicy {
     func ensureBucketCanBeMarkedReady(_ bucket: WorkspaceBucket) throws
     func ensureBucketStatusTransition(from currentStatus: BucketStatus, to targetStatus: BucketStatus) throws
-    func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws
 }
 
 struct DefaultWorkspaceMutationPolicy: WorkspaceMutationPolicy {
@@ -25,12 +24,6 @@ struct DefaultWorkspaceMutationPolicy: WorkspaceMutationPolicy {
             }
         case .ready, .finalized:
             throw WorkspaceStoreError.bucketStatusNotReady(currentStatus)
-        }
-    }
-
-    func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws {
-        guard InvoiceWorkflowPolicy.canTransition(from: sourceStatus, to: targetStatus) else {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
         }
     }
 }

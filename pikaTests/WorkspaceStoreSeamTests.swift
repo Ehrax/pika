@@ -70,35 +70,31 @@ private final class RecordingWorkspacePersistence: WorkspacePersistence {
     }
 }
 
-private struct RejectPaidInvoicePolicy: WorkspaceMutationPolicy {
-    func ensureBucketCanBeMarkedReady(_ bucket: WorkspaceBucket) throws {
-        if bucket.status != .open || bucket.effectiveTotalMinorUnits <= 0 {
-            throw WorkspaceStoreError.bucketNotInvoiceable
-        }
-    }
-
-    func ensureBucketStatusTransition(from currentStatus: BucketStatus, to targetStatus: BucketStatus) throws {
-        switch targetStatus {
-        case .archived:
-            guard !currentStatus.isInvoiceLocked else {
-                throw WorkspaceStoreError.bucketLocked(currentStatus)
-            }
-        case .open:
-            guard currentStatus == .archived else {
-                throw WorkspaceStoreError.bucketLocked(currentStatus)
-            }
-        case .ready, .finalized:
-            throw WorkspaceStoreError.bucketStatusNotReady(currentStatus)
-        }
-    }
+private struct RejectPaidInvoicingWorkflow: WorkspaceInvoicing {
+    private let defaultWorkflow = WorkspaceInvoicingWorkflow()
 
     func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws {
         if targetStatus == .paid {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
+            throw WorkspaceInvoicingWorkflowError.invalidInvoiceStatusTransition(
+                from: sourceStatus,
+                to: targetStatus
+            )
         }
-        guard InvoiceWorkflowPolicy.canTransition(from: sourceStatus, to: targetStatus) else {
-            throw WorkspaceStoreError.invalidInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
-        }
+        try defaultWorkflow.ensureInvoiceStatusTransition(from: sourceStatus, to: targetStatus)
+    }
+
+    func finalizeInvoice(
+        workspace: WorkspaceSnapshot,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: InvoiceFinalizationDraft
+    ) throws -> InvoiceFinalizationResult {
+        try defaultWorkflow.finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: draft
+        )
     }
 }
 
@@ -177,7 +173,7 @@ struct WorkspaceStoreSeamTests {
         #expect(store.workspace.clients.count == seed.clients.count)
     }
 
-    @Test func mutationPolicyCanOverrideInvoiceTransitions() throws {
+    @Test func invoicingWorkflowCanOverrideInvoiceTransitions() throws {
         let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000009999")!
         var workspace = WorkspaceFixtures.demoWorkspace
         workspace.projects = [
@@ -202,7 +198,10 @@ struct WorkspaceStoreSeamTests {
             ),
         ]
 
-        let store = WorkspaceStore(seed: workspace, mutationPolicy: RejectPaidInvoicePolicy())
+        let store = WorkspaceStore(
+            seed: workspace,
+            invoicingWorkflow: RejectPaidInvoicingWorkflow()
+        )
         #expect(throws: WorkspaceStoreError.invalidInvoiceStatusTransition(from: .finalized, to: .paid)) {
             try store.markInvoicePaid(invoiceID: invoiceID)
         }

@@ -86,9 +86,3 @@ extension WorkspaceBucket {
 private extension Int {
     var formattedItemCount: String { self == 1 ? "1 item" : "\(self) items" }
 }
-
-extension InvoiceStatus {
-    func canTransition(to status: InvoiceStatus) -> Bool {
-        InvoiceWorkflowPolicy.canTransition(from: self, to: status)
-    }
-}

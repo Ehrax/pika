@@ -1,5 +1,15 @@
 import Foundation
 
+protocol WorkspaceInvoicing {
+    func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws
+    func finalizeInvoice(
+        workspace: WorkspaceSnapshot,
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        draft: InvoiceFinalizationDraft
+    ) throws -> InvoiceFinalizationResult
+}
+
 struct InvoiceFinalizationResult: Equatable {
     let projectID: WorkspaceProject.ID
     let bucketID: WorkspaceBucket.ID
@@ -12,9 +22,19 @@ enum WorkspaceInvoicingWorkflowError: Error, Equatable {
     case bucketStatusNotReady(BucketStatus)
     case bucketNotInvoiceable
     case duplicateInvoiceNumber
+    case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
 }
 
-struct WorkspaceInvoicingWorkflow {
+struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
+    func ensureInvoiceStatusTransition(from sourceStatus: InvoiceStatus, to targetStatus: InvoiceStatus) throws {
+        guard InvoiceWorkflowPolicy.canTransition(from: sourceStatus, to: targetStatus) else {
+            throw WorkspaceInvoicingWorkflowError.invalidInvoiceStatusTransition(
+                from: sourceStatus,
+                to: targetStatus
+            )
+        }
+    }
+
     func finalizeInvoice(
         workspace: WorkspaceSnapshot,
         projectID: WorkspaceProject.ID,

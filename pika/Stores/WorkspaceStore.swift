@@ -32,6 +32,7 @@ final class WorkspaceStore {
     let modelContext: ModelContext
     let workspacePersistence: any WorkspacePersistence
     let mutationPolicy: any WorkspaceMutationPolicy
+    let invoicingWorkflow: any WorkspaceInvoicing
 
     init(
         seed: WorkspaceSnapshot = .empty,
@@ -39,10 +40,12 @@ final class WorkspaceStore {
         resetForSeedImport: Bool = false,
         projectionLoadingAdapter: any WorkspaceProjectionLoadingAdapter = SwiftDataWorkspaceProjectionLoadingAdapter(),
         mutationPolicy: any WorkspaceMutationPolicy = DefaultWorkspaceMutationPolicy(),
+        invoicingWorkflow: any WorkspaceInvoicing = WorkspaceInvoicingWorkflow(),
         persistenceAdapter: (any WorkspacePersistenceAdapter)? = nil,
         workspacePersistence: (any WorkspacePersistence)? = nil
     ) {
         self.mutationPolicy = mutationPolicy
+        self.invoicingWorkflow = invoicingWorkflow
         let usesNormalizedPersistence = modelContext != nil
         if let modelContext {
             self.modelContext = modelContext
