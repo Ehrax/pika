@@ -3,6 +3,15 @@ import Testing
 @testable import pika
 
 struct WorkspaceProjectionTests {
+    @Test func dashboardSummaryProjectionMatchesWorkspaceSummaryBehavior() {
+        let workspace = WorkspaceFixtures.demoWorkspace
+
+        #expect(
+            WorkspaceDashboardProjections.summary(for: workspace, on: WorkspaceFixtures.today) ==
+                workspace.dashboardSummary(on: WorkspaceFixtures.today)
+        )
+    }
+
     @Test func sampleWorkspaceComputesDashboardSummaryFromSeedData() {
         let workspace = WorkspaceFixtures.demoWorkspace
         let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
