@@ -19,6 +19,9 @@ import type { IssuePlan, PlannedIssue, PrdIssue } from "./workflow-types.mts";
 
 const hostSandbox = noSandbox();
 
+const logPath = (repoRoot: string, filename: string) =>
+  join(repoRoot, ".sandcastle", "logs", filename);
+
 const parsePlan = (stdout: string) => {
   const planMatch = stdout.match(/<plan>([\s\S]*?)<\/plan>/);
   if (!planMatch) {
@@ -38,6 +41,10 @@ export const runPlanner = async (
     sandbox: hostSandbox,
     branchStrategy: { type: "head" },
     name: "Planner",
+    logging: {
+      type: "file",
+      path: logPath(repoRoot, "main-planner.log"),
+    },
     agent: sandcastle.codex(PLANNER_MODEL, { effort: PLANNER_EFFORT }),
     promptFile: join(repoRoot, ".sandcastle", "plan-prompt.md"),
     promptArgs: {
@@ -66,6 +73,13 @@ export const implementAndReviewIssue = async (
       baseBranch: prdBranch,
     },
     name: "Implementer #" + issue.number,
+    logging: {
+      type: "file",
+      path: logPath(
+        repoRoot,
+        `${issue.branch.replaceAll("/", "-")}-implementer-${issue.number}.log`
+      ),
+    },
     agent: sandcastle.codex(IMPLEMENTER_MODEL, {
       effort: IMPLEMENTER_EFFORT,
     }),
@@ -90,6 +104,13 @@ export const implementAndReviewIssue = async (
       baseBranch: prdBranch,
     },
     name: "Reviewer #" + issue.number,
+    logging: {
+      type: "file",
+      path: logPath(
+        repoRoot,
+        `${issue.branch.replaceAll("/", "-")}-reviewer-${issue.number}.log`
+      ),
+    },
     agent: sandcastle.codex(REVIEWER_MODEL, {
       effort: REVIEWER_EFFORT,
     }),
@@ -117,6 +138,10 @@ export const mergeCompletedBranches = async (
     sandbox: hostSandbox,
     branchStrategy: { type: "head" },
     name: "Merger",
+    logging: {
+      type: "file",
+      path: logPath(repoRoot, "main-merger.log"),
+    },
     maxIterations: 10,
     agent: sandcastle.codex(MERGER_MODEL, { effort: MERGER_EFFORT }),
     promptFile: join(repoRoot, ".sandcastle", "merge-prompt.md"),
@@ -144,6 +169,10 @@ export const runPrCreatorAgent = async (
     sandbox: hostSandbox,
     branchStrategy: { type: "head" },
     name: "PR Creator",
+    logging: {
+      type: "file",
+      path: logPath(repoRoot, "main-pr-creator.log"),
+    },
     maxIterations: 5,
     agent: sandcastle.codex(FINALIZER_MODEL, { effort: FINALIZER_EFFORT }),
     promptFile: join(repoRoot, ".sandcastle", "final-pr-prompt.md"),
