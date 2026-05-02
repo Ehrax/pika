@@ -11,18 +11,12 @@ extension WorkspaceStore {
 
     func invoiceTermsDays(for client: WorkspaceClient?) -> Int {
         guard let client,
-              Self.clientHasExplicitInvoiceDefaults(client)
+              client.hasExplicitInvoiceDefaults
         else {
             return workspace.businessProfile.defaultTermsDays
         }
 
         return client.defaultTermsDays
-    }
-
-    private static func clientHasExplicitInvoiceDefaults(_ client: WorkspaceClient) -> Bool {
-        let email = client.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let billingAddress = client.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !email.isEmpty || !billingAddress.isEmpty
     }
 
     func defaultServicePeriod(for bucket: WorkspaceBucket?) -> String {

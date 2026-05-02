@@ -339,19 +339,15 @@ extension WorkspaceStore {
     }
 
     private func ensureLocalInvoiceNumberIsAvailable(_ invoiceNumber: String) throws {
-        let normalizedNumber = normalizedInvoiceNumberKey(invoiceNumber)
+        let normalizedNumber = WorkspaceInvoice.normalizedNumberKey(invoiceNumber)
         guard !normalizedNumber.isEmpty else { return }
 
         let records = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
         let hasDuplicate = records.contains {
-            normalizedInvoiceNumberKey($0.number) == normalizedNumber
+            WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber
         }
         guard !hasDuplicate else {
             throw WorkspaceStoreError.duplicateInvoiceNumber
         }
-    }
-
-    private func normalizedInvoiceNumberKey(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

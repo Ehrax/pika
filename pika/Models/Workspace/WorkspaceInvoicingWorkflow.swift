@@ -73,12 +73,12 @@ struct WorkspaceInvoicingWorkflow {
         _ invoiceNumber: String,
         in workspace: WorkspaceSnapshot
     ) throws {
-        let normalizedNumber = normalizedInvoiceNumberKey(invoiceNumber)
+        let normalizedNumber = WorkspaceInvoice.normalizedNumberKey(invoiceNumber)
         guard !normalizedNumber.isEmpty else { return }
 
         let hasDuplicate = workspace.projects
             .flatMap(\.invoices)
-            .contains { normalizedInvoiceNumberKey($0.number) == normalizedNumber }
+            .contains { WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber }
         guard !hasDuplicate else {
             throw WorkspaceInvoicingWorkflowError.duplicateInvoiceNumber
         }
@@ -105,21 +105,11 @@ struct WorkspaceInvoicingWorkflow {
 
     private func invoiceTermsDays(in workspace: WorkspaceSnapshot, for client: WorkspaceClient?) -> Int {
         guard let client,
-              clientHasExplicitInvoiceDefaults(client)
+              client.hasExplicitInvoiceDefaults
         else {
             return workspace.businessProfile.defaultTermsDays
         }
 
         return client.defaultTermsDays
-    }
-
-    private func clientHasExplicitInvoiceDefaults(_ client: WorkspaceClient) -> Bool {
-        let email = client.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let billingAddress = client.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !email.isEmpty || !billingAddress.isEmpty
-    }
-
-    private func normalizedInvoiceNumberKey(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
