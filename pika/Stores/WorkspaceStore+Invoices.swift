@@ -317,7 +317,7 @@ extension WorkspaceStore {
                 draft: draft
             )
         } catch let workflowError as WorkspaceInvoicingWorkflowError {
-            throw mapFinalizationWorkflowError(workflowError)
+            throw mapInvoicingWorkflowError(workflowError)
         }
     }
 
@@ -331,11 +331,11 @@ extension WorkspaceStore {
                 to: targetStatus
             )
         } catch let workflowError as WorkspaceInvoicingWorkflowError {
-            throw mapFinalizationWorkflowError(workflowError)
+            throw mapInvoicingWorkflowError(workflowError)
         }
     }
 
-    private func mapFinalizationWorkflowError(
+    private func mapInvoicingWorkflowError(
         _ workflowError: WorkspaceInvoicingWorkflowError
     ) -> WorkspaceStoreError {
         switch workflowError {
