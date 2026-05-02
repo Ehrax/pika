@@ -219,13 +219,7 @@ extension WorkspaceStore {
     }
 
     private static func dateOnly(_ value: String, field: String) throws -> Date {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.isLenient = false
-        guard let date = formatter.date(from: value), formatter.string(from: date) == value else {
+        guard let date = WorkspaceArchiveDateCoding.date(fromDateOnly: value) else {
             throw WorkspaceArchiveError.invalidDate(field: field, value: value)
         }
         return date

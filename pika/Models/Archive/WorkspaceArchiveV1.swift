@@ -271,7 +271,7 @@ enum WorkspaceArchiveCodec {
     }
 }
 
-private enum WorkspaceArchiveDateCoding {
+enum WorkspaceArchiveDateCoding {
     static func timestampString(from date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
@@ -286,18 +286,31 @@ private enum WorkspaceArchiveDateCoding {
         return formatter.date(from: timestamp)
     }
 
+    static func dateOnlyString(from date: Date) -> String {
+        dateOnlyFormatter().string(from: date)
+    }
+
+    static func date(fromDateOnly value: String) -> Date? {
+        let formatter = dateOnlyFormatter()
+        guard let date = formatter.date(from: value), formatter.string(from: date) == value else {
+            return nil
+        }
+        return date
+    }
+
     static func validateDateOnly(_ value: String, field: String) throws {
+        guard date(fromDateOnly: value) != nil else {
+            throw WorkspaceArchiveError.invalidDate(field: field, value: value)
+        }
+    }
+
+    private static func dateOnlyFormatter() -> DateFormatter {
         let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.isLenient = false
-
-        guard
-            let date = formatter.date(from: value),
-            formatter.string(from: date) == value
-        else {
-            throw WorkspaceArchiveError.invalidDate(field: field, value: value)
-        }
+        return formatter
     }
 }

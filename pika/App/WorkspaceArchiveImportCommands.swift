@@ -40,7 +40,7 @@ struct WorkspaceArchiveImportCommands: Commands {
             let summary = try workspaceStore.validateImportedWorkspaceArchive(archiveData)
             try runConfirmedReplacement(summary: summary, archiveData: archiveData)
         } catch {
-            showValidationError(error)
+            showImportError(error)
         }
     }
 
@@ -67,7 +67,7 @@ struct WorkspaceArchiveImportCommands: Commands {
         successAlert.runModal()
     }
 
-    private func showValidationError(_ error: Error) {
+    private func showImportError(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .critical
         alert.messageText = "Archive Import Failed"
