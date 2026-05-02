@@ -116,6 +116,10 @@ enum AppTelemetry {
         projectLogger.info("bucket.finalized bucket=\(bucketName, privacy: .private) project=\(projectName, privacy: .private)")
     }
 
+    static func projectWorkflowActionFailed(action: String, message: String) {
+        projectLogger.error("project.workflow_action_failed action=\(action, privacy: .public) error=\(message, privacy: .private)")
+    }
+
     static func invoicesLoaded(invoiceCount: Int) {
         invoiceLogger.info("invoices.loaded count=\(invoiceCount, privacy: .public)")
     }

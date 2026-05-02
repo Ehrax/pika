@@ -11,6 +11,7 @@ struct ProjectsFeatureView: View {
     @State private var listActionFailure: ProjectListActionFailure?
     @State private var showsArchiveProjectConfirmation = false
     @State private var showsDeleteProjectConfirmation = false
+    @State private var projectBeingEdited: WorkspaceProject?
     @State private var projectPendingListActionID: WorkspaceProject.ID?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
@@ -74,6 +75,14 @@ struct ProjectsFeatureView: View {
                 defaultCurrencyCode: workspace.businessProfile.currencyCode,
                 onCancel: { showsCreateProject = false },
                 onSave: createProject
+            )
+        }
+        .sheet(item: $projectBeingEdited) { project in
+            ProjectEditorSheet(
+                project: project,
+                clients: workspace.clients,
+                onCancel: { projectBeingEdited = nil },
+                onSave: { draft in updateProjectFromList(project.id, draft) }
             )
         }
         .alert(item: $creationFailure) { failure in
@@ -173,6 +182,12 @@ struct ProjectsFeatureView: View {
 
     @ViewBuilder
     private func projectMenuActions(for project: WorkspaceProject) -> some View {
+        Button {
+            projectBeingEdited = project
+        } label: {
+            Label("Edit Project", systemImage: "pencil")
+        }
+
         if project.isArchived {
             Button(role: .destructive) {
                 projectPendingListActionID = project.id
@@ -187,6 +202,15 @@ struct ProjectsFeatureView: View {
             } label: {
                 Label("Archive Project", systemImage: "archivebox")
             }
+        }
+    }
+
+    private func updateProjectFromList(_ projectID: WorkspaceProject.ID, _ draft: WorkspaceProjectUpdateDraft) {
+        do {
+            try workspaceStore.updateProject(projectID: projectID, draft)
+            projectBeingEdited = nil
+        } catch {
+            listActionFailure = ProjectListActionFailure(message: "Project could not be updated.")
         }
     }
 

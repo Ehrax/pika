@@ -92,7 +92,7 @@ extension WorkspaceStore {
         try updateInvoiceStatus(invoiceID: invoiceID, to: .cancelled, occurredAt: occurredAt)
     }
 
-    private func existingFinalizedInvoice(
+    func existingFinalizedInvoice(
         projectID: WorkspaceProject.ID,
         bucketID: WorkspaceBucket.ID,
         invoiceNumber: String

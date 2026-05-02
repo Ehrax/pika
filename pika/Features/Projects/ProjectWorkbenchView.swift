@@ -343,7 +343,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.markBucketReady(projectID: project.id, bucketID: bucketID)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("mark_bucket_ready", error)
         }
     }
 
@@ -354,7 +354,7 @@ struct ProjectWorkbenchView: View {
             try workspaceStore.updateBucket(projectID: project.id, bucketID: bucketID, draft)
             showsEditBucket = false
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("update_bucket", error)
         }
     }
 
@@ -364,7 +364,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.archiveProject(projectID: project.id)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("archive_project", error)
         }
     }
 
@@ -374,7 +374,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.archiveBucket(projectID: project.id, bucketID: bucketID)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("archive_bucket", error)
         }
     }
 
@@ -384,7 +384,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.restoreBucket(projectID: project.id, bucketID: bucketID)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("restore_bucket", error)
         }
     }
 
@@ -404,7 +404,7 @@ struct ProjectWorkbenchView: View {
             }
             bucketPendingRemovalID = nil
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("remove_bucket", error)
         }
     }
 
@@ -414,7 +414,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.restoreProject(projectID: project.id)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("restore_project", error)
         }
     }
 
@@ -429,7 +429,7 @@ struct ProjectWorkbenchView: View {
             )
             showsFixedCostSheet = false
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("add_fixed_cost", error)
         }
     }
 
@@ -444,7 +444,7 @@ struct ProjectWorkbenchView: View {
             selectedBucketID = bucket.id
             showsCreateBucket = false
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("create_bucket", error)
         }
     }
 
@@ -460,7 +460,7 @@ struct ProjectWorkbenchView: View {
                 draft: draft
             )
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("add_time_entry", error)
         }
     }
 
@@ -478,7 +478,7 @@ struct ProjectWorkbenchView: View {
                 isBillable: row.isBillable
             )
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("delete_entry", error)
         }
     }
 
@@ -502,7 +502,7 @@ struct ProjectWorkbenchView: View {
                 lineItems: lineItems.filter(\.isBillable)
             )
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("prepare_invoice_draft", error)
         }
     }
 
@@ -519,7 +519,7 @@ struct ProjectWorkbenchView: View {
             invoiceDraft = nil
             return true
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("finalize_invoice", error)
             return false
         }
     }
@@ -528,7 +528,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.markInvoiceSent(invoiceID: row.id)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("mark_invoice_sent", error)
         }
     }
 
@@ -536,7 +536,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.markInvoicePaid(invoiceID: row.id)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("mark_invoice_paid", error)
         }
     }
 
@@ -544,7 +544,7 @@ struct ProjectWorkbenchView: View {
         do {
             try workspaceStore.cancelInvoice(invoiceID: row.id)
         } catch {
-            actionFailure = WorkflowActionFailure(message: error.localizedDescription)
+            reportWorkflowActionFailure("cancel_invoice", error)
         }
     }
 
@@ -576,6 +576,12 @@ struct ProjectWorkbenchView: View {
             actionFailure = WorkflowActionFailure(message: message)
             AppTelemetry.invoicePDFActionFailed(action: action, message: message)
         }
+    }
+
+    private func reportWorkflowActionFailure(_ action: String, _ error: Error) {
+        let message = error.localizedDescription
+        actionFailure = WorkflowActionFailure(message: "\(action): \(message)")
+        AppTelemetry.projectWorkflowActionFailed(action: action, message: String(describing: error))
     }
 
 }
