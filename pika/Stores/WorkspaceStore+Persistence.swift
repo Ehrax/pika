@@ -44,6 +44,7 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
     func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {
         try ensureFinalizationInputsAreCurrent(result)
         try ensureDurableInvoiceNumberIsAvailable(result.invoice.number)
+        try ensureDurableBucketHasNoInvoice(result.bucketID)
 
         guard let projectRecord = try projectRecord(result.projectID) else {
             throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
@@ -133,6 +134,17 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
             WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber
         }
         guard !hasDuplicate else {
+            throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
+        }
+    }
+
+    private func ensureDurableBucketHasNoInvoice(_ bucketID: WorkspaceBucket.ID) throws {
+        var descriptor = FetchDescriptor<InvoiceRecord>(
+            predicate: #Predicate { $0.bucketID == bucketID }
+        )
+        descriptor.fetchLimit = 1
+        let hasFinalizedInvoice = try !modelContext.fetch(descriptor).isEmpty
+        guard !hasFinalizedInvoice else {
             throw WorkspacePersistenceConflictError.invoiceFinalizationConflict
         }
     }
@@ -277,11 +289,13 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
         try WorkspaceInvoiceFinalizationWriteLock.shared.withLock {
             do {
                 try persistenceAdapter.applyInvoiceFinalizationResult(result)
-                return try saveAndReloadNormalizedWorkspace(preservingActivity: activity)
+                try persistenceAdapter.save()
             } catch {
                 persistenceAdapter.rollback()
                 throw error
             }
+
+            return try reloadNormalizedWorkspace(preservingActivity: activity)
         }
     }
 

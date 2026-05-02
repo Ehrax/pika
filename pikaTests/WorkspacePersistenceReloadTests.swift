@@ -680,7 +680,7 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedProject.invoices.map(\.number) == ["NCS-2026-045"])
     }
 
-    @Test func persistentWorkspaceStoreSerializesDuplicateInvoiceNumbersAcrossContexts() throws {
+    @Test func persistentWorkspaceStoreSerializesBucketFinalizationAcrossContexts() throws {
         let storeURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("pika-workspace-\(UUID().uuidString)")
             .appendingPathComponent("workspace.store")
@@ -773,11 +773,13 @@ struct WorkspacePersistenceReloadTests {
         )
 
         #expect(firstInvoice.number == "NCS-2026-047")
+        var secondDraft = draft
+        secondDraft.invoiceNumber = "NCS-2026-048"
         #expect(throws: WorkspaceStoreError.persistenceConflict) {
             try staleSecondStore.finalizeInvoice(
                 projectID: projectID,
                 bucketID: bucketID,
-                draft: draft,
+                draft: secondDraft,
                 occurredAt: issueDate
             )
         }
