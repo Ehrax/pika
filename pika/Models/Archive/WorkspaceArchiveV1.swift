@@ -5,6 +5,7 @@ enum WorkspaceArchiveError: Error, Equatable {
     case unsupportedVersion(expected: Int, found: Int)
     case invalidExportedAt(String)
     case invalidDate(field: String, value: String)
+    case unknownField(String)
     case decodingFailed(String)
 }
 
@@ -233,6 +234,7 @@ enum WorkspaceArchiveCodec {
         let decoder = JSONDecoder()
 
         do {
+            try validateStrictSchemaKeys(in: data)
             let header = try decoder.decode(EnvelopeHeader.self, from: data)
 
             guard header.format == WorkspaceArchiveEnvelope.formatMarker else {
@@ -267,6 +269,202 @@ enum WorkspaceArchiveCodec {
             throw error
         } catch {
             throw WorkspaceArchiveError.decodingFailed(String(describing: error))
+        }
+    }
+
+    private static func validateStrictSchemaKeys(in data: Data) throws {
+        let rawObject = try JSONSerialization.jsonObject(with: data)
+        guard let envelope = rawObject as? [String: Any] else {
+            throw WorkspaceArchiveError.decodingFailed("Archive root must be an object.")
+        }
+
+        try ensureAllowedKeys(
+            in: envelope,
+            path: "archive",
+            allowedKeys: ["format", "version", "exportedAt", "generator", "workspace"]
+        )
+
+        if let generator = envelope["generator"] as? [String: Any] {
+            try ensureAllowedKeys(
+                in: generator,
+                path: "generator",
+                allowedKeys: ["app", "version", "build"]
+            )
+        }
+
+        guard let workspace = envelope["workspace"] as? [String: Any] else {
+            return
+        }
+
+        try ensureAllowedKeys(
+            in: workspace,
+            path: "workspace",
+            allowedKeys: [
+                "businessProfile",
+                "clients",
+                "projects",
+                "buckets",
+                "timeEntries",
+                "fixedCosts",
+                "invoices",
+                "invoiceLineItems",
+            ]
+        )
+
+        if let businessProfile = workspace["businessProfile"] as? [String: Any] {
+            try ensureAllowedKeys(
+                in: businessProfile,
+                path: "workspace.businessProfile",
+                allowedKeys: [
+                    "businessName",
+                    "personName",
+                    "email",
+                    "phone",
+                    "address",
+                    "taxIdentifier",
+                    "economicIdentifier",
+                    "invoicePrefix",
+                    "nextInvoiceNumber",
+                    "currencyCode",
+                    "paymentDetails",
+                    "taxNote",
+                    "defaultTermsDays",
+                ]
+            )
+        }
+
+        try validateArrayObjects(
+            workspace["clients"],
+            path: "workspace.clients",
+            allowedKeys: ["id", "name", "email", "billingAddress", "defaultTermsDays", "isArchived"]
+        )
+        try validateArrayObjects(
+            workspace["projects"],
+            path: "workspace.projects",
+            allowedKeys: ["id", "clientID", "name", "currencyCode", "isArchived"]
+        )
+        try validateArrayObjects(
+            workspace["buckets"],
+            path: "workspace.buckets",
+            allowedKeys: ["id", "projectID", "name", "status", "defaultHourlyRateMinorUnits"]
+        )
+        try validateArrayObjects(
+            workspace["timeEntries"],
+            path: "workspace.timeEntries",
+            allowedKeys: [
+                "id",
+                "bucketID",
+                "date",
+                "startMinuteOfDay",
+                "endMinuteOfDay",
+                "durationMinutes",
+                "description",
+                "isBillable",
+                "hourlyRateMinorUnits",
+            ]
+        )
+        try validateArrayObjects(
+            workspace["fixedCosts"],
+            path: "workspace.fixedCosts",
+            allowedKeys: ["id", "bucketID", "date", "description", "amountMinorUnits"]
+        )
+        try validateInvoices(workspace["invoices"])
+        try validateArrayObjects(
+            workspace["invoiceLineItems"],
+            path: "workspace.invoiceLineItems",
+            allowedKeys: ["id", "invoiceID", "sortOrder", "description", "quantityLabel", "amountMinorUnits"]
+        )
+    }
+
+    private static func validateInvoices(_ value: Any?) throws {
+        guard let invoices = value as? [Any] else {
+            return
+        }
+
+        for (index, element) in invoices.enumerated() {
+            guard let invoice = element as? [String: Any] else {
+                continue
+            }
+
+            let path = "workspace.invoices[\(index)]"
+            try ensureAllowedKeys(
+                in: invoice,
+                path: path,
+                allowedKeys: [
+                    "id",
+                    "projectID",
+                    "bucketID",
+                    "number",
+                    "businessSnapshot",
+                    "clientSnapshot",
+                    "template",
+                    "issueDate",
+                    "dueDate",
+                    "servicePeriod",
+                    "status",
+                    "totalMinorUnits",
+                    "currencyCode",
+                    "note",
+                ]
+            )
+
+            if let businessSnapshot = invoice["businessSnapshot"] as? [String: Any] {
+                try ensureAllowedKeys(
+                    in: businessSnapshot,
+                    path: "\(path).businessSnapshot",
+                    allowedKeys: [
+                        "businessName",
+                        "personName",
+                        "email",
+                        "phone",
+                        "address",
+                        "taxIdentifier",
+                        "economicIdentifier",
+                        "paymentDetails",
+                        "taxNote",
+                    ]
+                )
+            }
+
+            if let clientSnapshot = invoice["clientSnapshot"] as? [String: Any] {
+                try ensureAllowedKeys(
+                    in: clientSnapshot,
+                    path: "\(path).clientSnapshot",
+                    allowedKeys: ["name", "email", "billingAddress"]
+                )
+            }
+        }
+    }
+
+    private static func validateArrayObjects(
+        _ value: Any?,
+        path: String,
+        allowedKeys: Set<String>
+    ) throws {
+        guard let elements = value as? [Any] else {
+            return
+        }
+
+        for (index, element) in elements.enumerated() {
+            guard let object = element as? [String: Any] else {
+                continue
+            }
+
+            try ensureAllowedKeys(
+                in: object,
+                path: "\(path)[\(index)]",
+                allowedKeys: allowedKeys
+            )
+        }
+    }
+
+    private static func ensureAllowedKeys(
+        in object: [String: Any],
+        path: String,
+        allowedKeys: Set<String>
+    ) throws {
+        for key in object.keys where !allowedKeys.contains(key) {
+            throw WorkspaceArchiveError.unknownField("\(path).\(key)")
         }
     }
 }

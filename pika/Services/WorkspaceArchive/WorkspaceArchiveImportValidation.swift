@@ -16,6 +16,7 @@ enum WorkspaceArchiveImportError: Error, Equatable {
     case invalidCurrencyCode(field: String, value: String)
     case invalidMoneyValue(field: String, value: Int)
     case invalidTermsDays(field: String, value: Int)
+    case invalidInvoiceTemplate(String)
     case duplicateInvoiceNumber(String)
     case invoiceTotalMismatch(invoiceID: UUID, expected: Int, actual: Int)
 }
@@ -31,6 +32,7 @@ enum WorkspaceArchiveImportValidator {
         try validateUniqueIDs(in: workspace)
         try validateRelationships(in: workspace)
         try validateCurrencies(in: workspace)
+        try validateInvoiceTemplates(in: workspace)
         try validateMoneyAndAccounting(in: workspace)
         try validateInvoiceNumbers(in: workspace)
 
@@ -172,6 +174,7 @@ enum WorkspaceArchiveImportValidator {
         for entry in workspace.timeEntries {
             try ensurePositiveMoneyValue(entry.durationMinutes, field: "timeEntry.durationMinutes")
             try ensureNonNegativeMoneyValue(entry.hourlyRateMinorUnits, field: "timeEntry.hourlyRateMinorUnits")
+            _ = try billableTimeAmount(for: entry)
         }
 
         for fixedCost in workspace.fixedCosts {
@@ -185,13 +188,31 @@ enum WorkspaceArchiveImportValidator {
             )
         }
 
+        let groupedTimeEntries = Dictionary(grouping: workspace.timeEntries, by: \.bucketID)
+        let groupedFixedCosts = Dictionary(grouping: workspace.fixedCosts, by: \.bucketID)
+        for bucket in workspace.buckets {
+            let billableTimeTotal = try sumMoneyValues(
+                groupedTimeEntries[bucket.id, default: []].map { try billableTimeAmount(for: $0) },
+                field: "timeEntry.hourlyRateMinorUnits"
+            )
+            let fixedCostTotal = try sumMoneyValues(
+                groupedFixedCosts[bucket.id, default: []].map(\.amountMinorUnits),
+                field: "fixedCost.amountMinorUnits"
+            )
+            _ = try sumMoneyValues(
+                [billableTimeTotal, fixedCostTotal],
+                field: "bucket.totalMinorUnits"
+            )
+        }
+
         let groupedLineItems = Dictionary(grouping: workspace.invoiceLineItems, by: \.invoiceID)
         for invoice in workspace.invoices {
             try ensureNonNegativeMoneyValue(invoice.totalMinorUnits, field: "invoice.totalMinorUnits")
 
-            let totalFromLineItems = groupedLineItems[invoice.id, default: []]
-                .map(\.amountMinorUnits)
-                .reduce(0, +)
+            let totalFromLineItems = try sumMoneyValues(
+                groupedLineItems[invoice.id, default: []].map(\.amountMinorUnits),
+                field: "invoiceLineItem.amountMinorUnits"
+            )
 
             if totalFromLineItems != invoice.totalMinorUnits {
                 throw WorkspaceArchiveImportError.invoiceTotalMismatch(
@@ -200,6 +221,35 @@ enum WorkspaceArchiveImportValidator {
                     actual: totalFromLineItems
                 )
             }
+        }
+    }
+
+    private static func validateInvoiceTemplates(in workspace: WorkspaceArchiveV1Workspace) throws {
+        for invoice in workspace.invoices where InvoiceTemplate(rawValue: invoice.template) == nil {
+            throw WorkspaceArchiveImportError.invalidInvoiceTemplate(invoice.template)
+        }
+    }
+
+    private static func billableTimeAmount(for entry: WorkspaceArchiveV1Workspace.TimeEntry) throws -> Int {
+        guard entry.isBillable else { return 0 }
+
+        let product = entry.durationMinutes.multipliedReportingOverflow(by: entry.hourlyRateMinorUnits)
+        if product.overflow {
+            throw WorkspaceArchiveImportError.invalidMoneyValue(
+                field: "timeEntry.hourlyRateMinorUnits",
+                value: entry.hourlyRateMinorUnits
+            )
+        }
+        return product.partialValue / 60
+    }
+
+    private static func sumMoneyValues(_ values: [Int], field: String) throws -> Int {
+        try values.reduce(0) { partialTotal, value in
+            let result = partialTotal.addingReportingOverflow(value)
+            if result.overflow {
+                throw WorkspaceArchiveImportError.invalidMoneyValue(field: field, value: value)
+            }
+            return result.partialValue
         }
     }
 

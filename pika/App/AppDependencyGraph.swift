@@ -104,6 +104,12 @@ private struct WorkspaceStoreKey: EnvironmentKey {
     static let defaultValue = WorkspaceStore(seed: .empty)
 }
 
+#if os(macOS)
+private struct FocusedWorkspaceStoreKey: FocusedValueKey {
+    typealias Value = WorkspaceStore
+}
+#endif
+
 private struct InvoicePDFServiceKey: EnvironmentKey {
     static let defaultValue = InvoicePDFService.placeholder()
 }
@@ -129,3 +135,12 @@ extension EnvironmentValues {
         set { self[InvoicePDFServiceKey.self] = newValue }
     }
 }
+
+#if os(macOS)
+extension FocusedValues {
+    var workspaceStore: WorkspaceStore? {
+        get { self[FocusedWorkspaceStoreKey.self] }
+        set { self[FocusedWorkspaceStoreKey.self] = newValue }
+    }
+}
+#endif

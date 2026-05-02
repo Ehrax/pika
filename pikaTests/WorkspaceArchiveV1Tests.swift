@@ -75,6 +75,39 @@ struct WorkspaceArchiveV1Tests {
         }
     }
 
+    @Test func decodeRejectsUnknownTopLevelField() throws {
+        let invalidData = try archiveData(
+            replacing: "\"workspace\" : {",
+            with: "\"unexpected\" : true,\n  \"workspace\" : {"
+        )
+
+        #expect(throws: WorkspaceArchiveError.unknownField("archive.unexpected")) {
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
+        }
+    }
+
+    @Test func decodeRejectsUnknownWorkspaceFieldIncludingActivity() throws {
+        let invalidData = try archiveData(
+            replacing: "\"workspace\" : {",
+            with: "\"workspace\" : {\n    \"activity\" : [],"
+        )
+
+        #expect(throws: WorkspaceArchiveError.unknownField("workspace.activity")) {
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
+        }
+    }
+
+    @Test func decodeRejectsUnknownNestedField() throws {
+        let invalidData = try archiveData(
+            replacing: "\"billingAddress\" : \"1 Snapshot Way\"",
+            with: "\"billingAddress\" : \"1 Snapshot Way\",\n      \"nickname\" : \"Snapshot\""
+        )
+
+        #expect(throws: WorkspaceArchiveError.unknownField("workspace.clients[0].nickname")) {
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
+        }
+    }
+
     private func fixtureWorkspace() -> WorkspaceArchiveV1Workspace {
         WorkspaceArchiveV1Workspace(
             businessProfile: .init(
