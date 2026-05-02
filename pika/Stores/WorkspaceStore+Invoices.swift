@@ -135,40 +135,17 @@ extension WorkspaceStore {
             bucketID: bucketID,
             draft: draft
         )
-        try ensureLocalInvoiceNumberIsAvailable(result.invoice.number)
-
-        guard let projectRecord = try projectRecord(projectID) else {
-            throw WorkspaceStoreError.projectNotFound
-        }
-        guard let bucketRecord = try bucketRecord(bucketID),
-              bucketRecord.projectID == projectID
-        else {
-            throw WorkspaceStoreError.bucketNotFound
-        }
-        guard bucketRecord.status == .ready else {
-            throw WorkspaceStoreError.bucketStatusNotReady(bucketRecord.status)
+        do {
+            workspace = try workspacePersistence.applyInvoiceFinalizationResult(
+                result,
+                preservingActivity: workspace.activity
+            )
+        } catch WorkspacePersistenceConflictError.invoiceFinalizationConflict {
+            try saveAndReloadNormalizedWorkspacePreservingActivity()
+            throw WorkspaceStoreError.persistenceConflict
         }
 
-        let profileRecord = try existingBusinessProfileRecord()
-        let now = Date.now
-
-        let invoice = result.invoice
-        _ = insertInvoiceRecord(
-            for: invoice,
-            projectID: projectID,
-            bucketID: bucketID,
-            updatedAt: now,
-            project: projectRecord,
-            bucket: bucketRecord
-        )
-
-        bucketRecord.status = .finalized
-        bucketRecord.updatedAt = now
-        profileRecord.nextInvoiceNumber += 1
-        profileRecord.updatedAt = now
-
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let indices = try invoiceIndices(invoice.id)
+        let indices = try invoiceIndices(result.invoice.id)
         let persistedInvoice = workspace.projects[indices.project].invoices[indices.invoice]
         appendActivity(
             message: "\(persistedInvoice.number) finalized",
@@ -220,65 +197,6 @@ extension WorkspaceStore {
         try persistWorkspace()
     }
 
-    private func insertInvoiceRecord(
-        for invoice: WorkspaceInvoice,
-        projectID: WorkspaceProject.ID,
-        bucketID: WorkspaceBucket.ID,
-        updatedAt: Date,
-        project projectRecord: ProjectRecord,
-        bucket bucketRecord: BucketRecord
-    ) -> InvoiceRecord {
-        let invoiceRecord = InvoiceRecord(
-            id: invoice.id,
-            projectID: projectID,
-            bucketID: bucketID,
-            number: invoice.number,
-            templateRaw: invoice.template.rawValue,
-            issueDate: invoice.issueDate,
-            dueDate: invoice.dueDate,
-            servicePeriod: invoice.servicePeriod,
-            statusRaw: invoice.status.rawValue,
-            totalMinorUnits: invoice.totalMinorUnits,
-            currencyCode: invoice.currencyCode,
-            note: invoice.note ?? "",
-            businessName: invoice.businessSnapshot?.businessName ?? "",
-            businessPersonName: invoice.businessSnapshot?.personName ?? "",
-            businessEmail: invoice.businessSnapshot?.email ?? "",
-            businessPhone: invoice.businessSnapshot?.phone ?? "",
-            businessAddress: invoice.businessSnapshot?.address ?? "",
-            businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
-            businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
-            businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
-            businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
-            clientName: invoice.clientSnapshot?.name ?? invoice.clientName,
-            clientEmail: invoice.clientSnapshot?.email ?? "",
-            clientBillingAddress: invoice.clientSnapshot?.billingAddress ?? "",
-            projectName: invoice.projectName,
-            bucketName: invoice.bucketName,
-            createdAt: invoice.issueDate,
-            updatedAt: updatedAt,
-            project: projectRecord,
-            bucket: bucketRecord
-        )
-        modelContext.insert(invoiceRecord)
-
-        for (lineItemIndex, lineItem) in invoice.lineItems.enumerated() {
-            modelContext.insert(InvoiceLineItemRecord(
-                id: lineItem.id,
-                invoiceID: invoice.id,
-                sortOrder: lineItemIndex,
-                descriptionText: lineItem.description,
-                quantityLabel: lineItem.quantityLabel,
-                amountMinorUnits: lineItem.amountMinorUnits,
-                createdAt: invoice.issueDate,
-                updatedAt: updatedAt,
-                invoice: invoiceRecord
-            ))
-        }
-
-        return invoiceRecord
-    }
-
     private func invoiceRecord(_ id: WorkspaceInvoice.ID) throws -> InvoiceRecord? {
         var descriptor = FetchDescriptor<InvoiceRecord>(
             predicate: #Predicate { $0.id == id }
@@ -287,22 +205,6 @@ extension WorkspaceStore {
         return try modelContext.fetch(descriptor).first
     }
 
-    private func existingBusinessProfileRecord() throws -> BusinessProfileRecord {
-        let records = try modelContext.fetch(FetchDescriptor<BusinessProfileRecord>())
-        guard let record = records.max(by: {
-            if $0.updatedAt != $1.updatedAt {
-                return $0.updatedAt < $1.updatedAt
-            }
-            if $0.createdAt != $1.createdAt {
-                return $0.createdAt < $1.createdAt
-            }
-            return $0.id.uuidString < $1.id.uuidString
-        }) else {
-            throw WorkspaceStoreError.persistenceFailed
-        }
-
-        return record
-    }
 
     private func finalizeInvoiceWorkflowResult(
         projectID: WorkspaceProject.ID,
@@ -335,19 +237,6 @@ extension WorkspaceStore {
             return .bucketNotInvoiceable
         case .duplicateInvoiceNumber:
             return .duplicateInvoiceNumber
-        }
-    }
-
-    private func ensureLocalInvoiceNumberIsAvailable(_ invoiceNumber: String) throws {
-        let normalizedNumber = WorkspaceInvoice.normalizedNumberKey(invoiceNumber)
-        guard !normalizedNumber.isEmpty else { return }
-
-        let records = try modelContext.fetch(FetchDescriptor<InvoiceRecord>())
-        let hasDuplicate = records.contains {
-            WorkspaceInvoice.normalizedNumberKey($0.number) == normalizedNumber
-        }
-        guard !hasDuplicate else {
-            throw WorkspaceStoreError.duplicateInvoiceNumber
         }
     }
 }

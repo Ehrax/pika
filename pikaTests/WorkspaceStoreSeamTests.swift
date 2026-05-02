@@ -11,6 +11,7 @@ private struct EmptyProjectionLoader: WorkspaceProjectionLoadingAdapter {
 
 private struct NoopPersistenceAdapter: WorkspacePersistenceAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+    func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {}
     func save() throws {}
 }
 
@@ -20,6 +21,8 @@ private final class CapturingPersistenceAdapter: WorkspacePersistenceAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {
         replacedSnapshots.append(snapshot)
     }
+
+    func applyInvoiceFinalizationResult(_ result: InvoiceFinalizationResult) throws {}
 
     func save() throws {}
 }
@@ -48,6 +51,13 @@ private final class RecordingWorkspacePersistence: WorkspacePersistence {
     }
 
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot) throws {}
+
+    func applyInvoiceFinalizationResult(
+        _ result: InvoiceFinalizationResult,
+        preservingActivity activity: [WorkspaceActivity]
+    ) throws -> WorkspaceSnapshot {
+        reloadedWorkspace
+    }
 
     func persistWorkspace() throws {}
 

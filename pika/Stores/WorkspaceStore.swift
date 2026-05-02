@@ -7,6 +7,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case bucketNotFound
     case invoiceNotFound
     case persistenceFailed
+    case persistenceConflict
     case invalidBusinessProfile
     case invalidClient
     case invalidProject
