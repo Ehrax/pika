@@ -42,6 +42,9 @@ struct PikaApp: App {
         .modelContainer(sharedModelContainer)
 #if os(macOS)
         .defaultSize(Self.defaultLaunchWindowSize)
+        .commands {
+            WorkspaceArchiveCommands()
+        }
 #endif
     }
 
