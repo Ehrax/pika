@@ -28,7 +28,7 @@ enum WorkspaceArchiveFileMenuCommandSurface {
 
 #if os(macOS)
 struct WorkspaceArchiveCommands: Commands {
-    @Environment(\.workspaceStore) private var workspaceStore
+    @FocusedValue(\.workspaceStore) private var workspaceStore
 
     var body: some Commands {
         CommandGroup(after: .saveItem) {
@@ -43,6 +43,7 @@ struct WorkspaceArchiveCommands: Commands {
                 )
             }
             .keyboardShortcut("I", modifiers: [.command, .shift])
+            .disabled(workspaceStore == nil)
 
             Button {
                 exportWorkspaceArchive()
@@ -53,6 +54,7 @@ struct WorkspaceArchiveCommands: Commands {
                 )
             }
             .keyboardShortcut("E", modifiers: [.command, .shift])
+            .disabled(workspaceStore == nil)
 
             Button {
                 revealWorkspaceBackups()
@@ -66,6 +68,8 @@ struct WorkspaceArchiveCommands: Commands {
     }
 
     private func importWorkspaceArchive() {
+        guard let workspaceStore else { return }
+
         let panel = NSOpenPanel()
         panel.title = "Import Workspace Archive"
         panel.message = "Choose a .pikaarchive file to validate before replacing your workspace."
@@ -86,13 +90,19 @@ struct WorkspaceArchiveCommands: Commands {
         do {
             let archiveData = try Data(contentsOf: archiveURL)
             let summary = try workspaceStore.validateImportedWorkspaceArchive(archiveData)
-            try runConfirmedReplacement(summary: summary, archiveData: archiveData)
+            try runConfirmedReplacement(
+                summary: summary,
+                archiveData: archiveData,
+                workspaceStore: workspaceStore
+            )
         } catch {
             showImportError(error)
         }
     }
 
     private func exportWorkspaceArchive() {
+        guard let workspaceStore else { return }
+
         do {
             try WorkspaceArchiveActions.export(workspaceStore: workspaceStore)
         } catch {
@@ -108,7 +118,11 @@ struct WorkspaceArchiveCommands: Commands {
         }
     }
 
-    private func runConfirmedReplacement(summary: WorkspaceArchiveImportSummary, archiveData: Data) throws {
+    private func runConfirmedReplacement(
+        summary: WorkspaceArchiveImportSummary,
+        archiveData: Data,
+        workspaceStore: WorkspaceStore
+    ) throws {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Replace Current Workspace?"
@@ -161,6 +175,8 @@ struct WorkspaceArchiveCommands: Commands {
             return "Invalid export timestamp: \(value)."
         case WorkspaceArchiveError.invalidDate(let field, let value):
             return "Invalid date value in \(field): \(value)."
+        case WorkspaceArchiveError.unknownField(let field):
+            return "Unsupported archive field: \(field)."
         case WorkspaceArchiveError.decodingFailed(let message):
             return "Archive decoding failed: \(message)"
         case WorkspaceArchiveImportError.duplicateEntityID(let entity, let id):
@@ -175,6 +191,8 @@ struct WorkspaceArchiveCommands: Commands {
             return "Invalid numeric value in \(field): \(value)."
         case WorkspaceArchiveImportError.invalidTermsDays(let field, let value):
             return "Invalid terms value in \(field): \(value)."
+        case WorkspaceArchiveImportError.invalidInvoiceTemplate(let value):
+            return "Invalid invoice template: \(value)."
         case WorkspaceArchiveImportError.duplicateInvoiceNumber(let normalizedNumber):
             if normalizedNumber.isEmpty {
                 return "Invoice numbers must not be empty."

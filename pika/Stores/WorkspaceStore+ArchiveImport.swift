@@ -138,6 +138,7 @@ extension WorkspaceStore {
                 }
                 let projectName = archiveProject.name
                 let bucketName = bucketsByID[archiveInvoice.bucketID]?.name ?? ""
+                let template = try invoiceTemplate(archiveInvoice.template)
 
                 return WorkspaceInvoice(
                     id: archiveInvoice.id,
@@ -171,7 +172,7 @@ extension WorkspaceStore {
                     projectName: projectName,
                     bucketID: archiveInvoice.bucketID,
                     bucketName: bucketName,
-                    template: InvoiceTemplate(rawValue: archiveInvoice.template) ?? .kleinunternehmerClassic,
+                    template: template,
                     issueDate: try dateOnly(archiveInvoice.issueDate, field: "workspace.invoices.issueDate"),
                     dueDate: try dateOnly(archiveInvoice.dueDate, field: "workspace.invoices.dueDate"),
                     servicePeriod: archiveInvoice.servicePeriod,
@@ -227,6 +228,13 @@ extension WorkspaceStore {
         case .cancelled:
             return .cancelled
         }
+    }
+
+    private static func invoiceTemplate(_ rawValue: String) throws -> InvoiceTemplate {
+        guard let template = InvoiceTemplate(rawValue: rawValue) else {
+            throw WorkspaceArchiveImportError.invalidInvoiceTemplate(rawValue)
+        }
+        return template
     }
 
     private static func dateOnly(_ value: String, field: String) throws -> Date {

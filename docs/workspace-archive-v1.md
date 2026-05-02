@@ -134,14 +134,33 @@ Each line item requires:
 
 ## Validation Expectations
 
-v1 decoding rejects archives when:
+v1 archives are strict. Decoding rejects archives when:
 
 - `format` is not `pika.workspace-archive`
 - `version` is not `1`
 - `exportedAt` is not a valid ISO 8601 timestamp
+- any top-level, workspace-level, or record-level field is not defined by this v1 schema
 - date-only fields (`timeEntries.date`, `fixedCosts.date`, `invoices.issueDate`, `invoices.dueDate`) are not valid `YYYY-MM-DD`
 
-Money values are integer minor units across the schema.
+Validation rejects archives when:
+
+- any UUID is duplicated within its table
+- any relationship points to a missing record:
+  `projects.clientID`, `buckets.projectID`, `timeEntries.bucketID`, `fixedCosts.bucketID`, `invoices.projectID`,
+  `invoices.bucketID`, or `invoiceLineItems.invoiceID`
+- an invoice references a bucket that belongs to a different project than `invoices.projectID`
+- `businessProfile.currencyCode`, `projects.currencyCode`, or `invoices.currencyCode` is not a non-empty three-letter uppercase code
+- `businessProfile.defaultTermsDays` or `clients.defaultTermsDays` is not positive
+- `businessProfile.nextInvoiceNumber` is not positive
+- `buckets.defaultHourlyRateMinorUnits`, `timeEntries.hourlyRateMinorUnits`, `fixedCosts.amountMinorUnits`,
+  `invoices.totalMinorUnits`, or `invoiceLineItems.amountMinorUnits` is negative
+- `timeEntries.durationMinutes` is not positive
+- a billable time amount, bucket derived total, or invoice line item sum overflows integer minor units
+- `invoices.template` is not one of Pika's known invoice template raw values
+- `invoices.number` is empty after trimming whitespace, or duplicates another invoice number after trimming and case folding
+- `invoices.totalMinorUnits` does not equal the sum of its invoice line item `amountMinorUnits`
+
+Money values are integer minor units across the schema. Bucket totals are derived from row-level time entries and fixed costs; they are not stored as canonical archive fields. Activity history is excluded from v1 archives.
 
 ## Example Archive
 

@@ -86,11 +86,13 @@ enum WorkspaceArchiveActions {
     #endif
 
     static func exportDestinationURL(from selectedURL: URL) -> URL {
-        guard selectedURL.pathExtension.isEmpty else {
+        if selectedURL.pathExtension.localizedCaseInsensitiveCompare(fileExtension) == .orderedSame {
             return selectedURL
         }
 
-        return selectedURL.appendingPathExtension(fileExtension)
+        return selectedURL
+            .deletingPathExtension()
+            .appendingPathExtension(fileExtension)
     }
 
     private static var archiveUTType: UTType {

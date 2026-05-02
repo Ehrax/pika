@@ -30,6 +30,9 @@ struct RootView: View {
         .onAppear {
             AppTelemetry.shellSelectionChanged(selection.telemetryName)
         }
+#if os(macOS)
+        .focusedSceneValue(\.workspaceStore, workspaceStore)
+#endif
     }
 
     @ViewBuilder

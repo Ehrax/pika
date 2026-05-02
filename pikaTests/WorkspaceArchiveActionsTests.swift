@@ -20,12 +20,13 @@ struct WorkspaceArchiveActionsTests {
         #expect(destinationURL == selectedURL)
     }
 
-    @Test func exportDestinationPreservesExistingNonArchiveExtension() {
+    @Test func exportDestinationReplacesExistingNonArchiveExtension() {
         let selectedURL = URL(filePath: "/tmp/workspace-2026-05-02.json")
 
         let destinationURL = WorkspaceArchiveActions.exportDestinationURL(from: selectedURL)
 
-        #expect(destinationURL == selectedURL)
+        #expect(destinationURL.pathExtension == WorkspaceArchiveActions.fileExtension)
+        #expect(destinationURL.lastPathComponent == "workspace-2026-05-02.\(WorkspaceArchiveActions.fileExtension)")
     }
 
     @Test func preImportBackupWritesV1ArchiveInAppSupportBackupsDirectory() throws {

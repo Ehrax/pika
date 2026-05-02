@@ -309,6 +309,51 @@ struct WorkspaceArchiveImportValidationTests {
         }
         #expect(store.workspace == originalWorkspace)
     }
+
+    @Test func invalidInvoiceTemplateFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeInvalidInvoiceTemplateEnvelope()
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidInvoiceTemplate("unknown-template")) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
+
+    @Test func overflowingInvoiceLineItemTotalFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeOverflowingInvoiceTotalEnvelope()
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidMoneyValue(
+            field: "invoiceLineItem.amountMinorUnits",
+            value: 1
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
+
+    @Test func overflowingBillableTimeAmountFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeOverflowingBillableTimeEnvelope()
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidMoneyValue(
+            field: "timeEntry.hourlyRateMinorUnits",
+            value: 2
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
 }
 
 private enum WorkspaceArchiveImportFixture {
@@ -431,6 +476,43 @@ private enum WorkspaceArchiveImportFixture {
     static func makeLowercaseCurrencyEnvelope() -> WorkspaceArchiveEnvelope {
         var workspace = makeValidWorkspace()
         workspace.businessProfile.currencyCode = "eur"
+        return makeEnvelope(workspace: workspace)
+    }
+
+    static func makeInvalidInvoiceTemplateEnvelope() -> WorkspaceArchiveEnvelope {
+        var workspace = makeValidWorkspace()
+        workspace.invoices[0].template = "unknown-template"
+        return makeEnvelope(workspace: workspace)
+    }
+
+    static func makeOverflowingInvoiceTotalEnvelope() -> WorkspaceArchiveEnvelope {
+        var workspace = makeValidWorkspace()
+        workspace.invoices[0].totalMinorUnits = Int.max
+        workspace.invoiceLineItems = [
+            WorkspaceArchiveV1Workspace.InvoiceLineItem(
+                id: UUID(uuidString: "80000000-0000-0000-0000-000000000021")!,
+                invoiceID: workspace.invoices[0].id,
+                sortOrder: 0,
+                description: "Huge line A",
+                quantityLabel: "1 item",
+                amountMinorUnits: Int.max
+            ),
+            WorkspaceArchiveV1Workspace.InvoiceLineItem(
+                id: UUID(uuidString: "80000000-0000-0000-0000-000000000022")!,
+                invoiceID: workspace.invoices[0].id,
+                sortOrder: 1,
+                description: "Huge line B",
+                quantityLabel: "1 item",
+                amountMinorUnits: 1
+            ),
+        ]
+        return makeEnvelope(workspace: workspace)
+    }
+
+    static func makeOverflowingBillableTimeEnvelope() -> WorkspaceArchiveEnvelope {
+        var workspace = makeValidWorkspace()
+        workspace.timeEntries[0].durationMinutes = Int.max
+        workspace.timeEntries[0].hourlyRateMinorUnits = 2
         return makeEnvelope(workspace: workspace)
     }
 
