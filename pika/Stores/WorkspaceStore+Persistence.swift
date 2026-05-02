@@ -52,7 +52,7 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
 
         let profileRecord = try existingBusinessProfileRecord()
         let now = Date.now
-        _ = insertInvoiceRecord(
+        insertInvoiceRecord(
             for: result.invoice,
             projectID: result.projectID,
             bucketID: result.bucketID,
@@ -123,7 +123,7 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
         updatedAt: Date,
         project projectRecord: ProjectRecord,
         bucket bucketRecord: BucketRecord
-    ) -> InvoiceRecord {
+    ) {
         let invoiceRecord = InvoiceRecord(
             id: invoice.id,
             projectID: projectID,
@@ -171,8 +171,6 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
                 invoice: invoiceRecord
             ))
         }
-
-        return invoiceRecord
     }
 }
 

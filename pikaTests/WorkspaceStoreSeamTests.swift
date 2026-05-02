@@ -411,7 +411,7 @@ struct WorkspaceStoreSeamTests {
         )
 
         #expect(store.isUsingNormalizedWorkspacePersistence())
-        do {
+        #expect(throws: WorkspaceStoreError.persistenceFailed) {
             try store.finalizeInvoice(
                 projectID: projectID,
                 bucketID: bucketID,
@@ -429,11 +429,6 @@ struct WorkspaceStoreSeamTests {
                 ),
                 occurredAt: issueDate
             )
-            Issue.record("Expected persistence failure during normalized invoice finalization")
-        } catch let error as WorkspaceStoreError {
-            #expect(error == .persistenceFailed)
-        } catch {
-            Issue.record("Unexpected error type: \(String(describing: error))")
         }
 
         let project = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
