@@ -79,6 +79,22 @@ struct WorkspaceArchiveImportValidationTests {
         #expect(summary.invoiceCount == 1)
         #expect(summary.bucketCount == 1)
     }
+
+    @Test func lowercaseCurrencyCodeFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeLowercaseCurrencyEnvelope()
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidCurrencyCode(
+            field: "businessProfile.currencyCode",
+            value: "eur"
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
 }
 
 private enum WorkspaceArchiveImportFixture {
@@ -272,6 +288,12 @@ private enum WorkspaceArchiveImportFixture {
         envelope.workspace.buckets[0].status = .archived
         envelope.workspace.projects[0].isArchived = false
         envelope.workspace.invoices[0].status = .paid
+        return envelope
+    }
+
+    static func makeLowercaseCurrencyEnvelope() -> WorkspaceArchiveEnvelope {
+        var envelope = makeValidEnvelope()
+        envelope.workspace.businessProfile.currencyCode = "eur"
         return envelope
     }
 }

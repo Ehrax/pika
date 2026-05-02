@@ -20,8 +20,6 @@ enum WorkspaceArchiveImportError: Error, Equatable {
 }
 
 enum WorkspaceArchiveImportValidator {
-    private static let validCurrencyCodes = Set(Locale.commonISOCurrencyCodes)
-
     static func validateAndSummarize(_ data: Data) throws -> WorkspaceArchiveImportSummary {
         let envelope = try WorkspaceArchiveCodec.decode(data)
         return try validateAndSummarize(envelope)
@@ -262,13 +260,9 @@ enum WorkspaceArchiveImportValidator {
     }
 
     private static func ensureValidCurrencyCode(_ rawValue: String, field: String) throws {
-        let normalized = rawValue
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .uppercased()
-
-        guard normalized.count == 3,
-              normalized.allSatisfy(\.isLetter),
-              validCurrencyCodes.contains(normalized)
+        guard rawValue.count == 3,
+              rawValue.allSatisfy(\.isLetter),
+              rawValue == rawValue.uppercased()
         else {
             throw WorkspaceArchiveImportError.invalidCurrencyCode(field: field, value: rawValue)
         }
