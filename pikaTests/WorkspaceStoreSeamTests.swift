@@ -157,10 +157,13 @@ struct WorkspaceStoreSeamTests {
             try policy.ensureBucketStatusTransition(from: .ready, to: .open)
         }
 
-        try policy.ensureBucketCanBeRemoved(status: .archived)
-        #expect(throws: WorkspaceStoreError.bucketLocked(.ready)) {
-            try policy.ensureBucketCanBeRemoved(status: .ready)
+        for lockedStatus in [BucketStatus.open, .ready, .finalized] {
+            #expect(throws: WorkspaceStoreError.bucketLocked(lockedStatus)) {
+                try policy.ensureBucketCanBeRemoved(status: lockedStatus)
+            }
         }
+
+        try policy.ensureBucketCanBeRemoved(status: .archived)
     }
 
     @Test func workspacePersistenceNormalizesSeedImportBeforeDelegatingToAdapter() throws {
@@ -268,7 +271,7 @@ struct WorkspaceStoreSeamTests {
         }
     }
 
-    @Test func mutationPolicyCanOverrideArchivedBucketRemovalRule() throws {
+    @Test func mutationPolicyCanOverrideArchivedBucketRemovalRuleAcrossStorePaths() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000009998")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000009998")!
         let workspace = WorkspaceSnapshot(
@@ -296,10 +299,27 @@ struct WorkspaceStoreSeamTests {
             ],
             activity: []
         )
-        let store = WorkspaceStore(seed: workspace, mutationPolicy: RejectArchivedBucketRemovalPolicy())
+        let inMemoryStore = WorkspaceStore(seed: workspace, mutationPolicy: RejectArchivedBucketRemovalPolicy())
 
         #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
-            try store.removeBucket(projectID: projectID, bucketID: bucketID)
+            try inMemoryStore.removeBucket(projectID: projectID, bucketID: bucketID)
         }
+        #expect(inMemoryStore.workspace.projects.first?.buckets.map(\.id) == [bucketID])
+
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+        let persistentStore = WorkspaceStore(
+            seed: workspace,
+            modelContext: modelContext,
+            mutationPolicy: RejectArchivedBucketRemovalPolicy()
+        )
+
+        #expect(persistentStore.isUsingNormalizedWorkspacePersistence())
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try persistentStore.removeBucket(projectID: projectID, bucketID: bucketID)
+        }
+        #expect(persistentStore.workspace.projects.first?.buckets.map(\.id) == [bucketID])
     }
 }
