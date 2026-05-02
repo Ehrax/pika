@@ -3,6 +3,7 @@ import { runWithConcurrencyLimit } from "./concurrency.mts";
 import {
   cleanupPrdWorktree,
   currentBranch,
+  pushBranch,
   readPrdIssue,
 } from "./git-helpers.mts";
 import { createPrdWorktree } from "./prd-worktree.mts";
@@ -32,7 +33,11 @@ const { branch: prdBranch, worktreePath } = await createPrdWorktree(
 console.log(`PRD branch: ${prdBranch}`);
 console.log(`PRD worktree: ${worktreePath}`);
 
-let prCreated = false;
+console.log("Pushing PRD branch and creating/reusing GitHub PR.");
+await pushBranch(prdBranch, worktreePath);
+await runPrCreatorAgent(prdIssue, worktreePath, repoRoot, prdBranch, baseBranch);
+
+let workflowComplete = false;
 
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
@@ -40,11 +45,17 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   const issues = await runPlanner(worktreePath, repoRoot, prdIssueNumber);
 
   if (issues.length === 0) {
-    console.log("No ready child issues left. Creating PR.");
-    await runPrCreatorAgent(prdIssue, worktreePath, repoRoot, prdBranch, baseBranch);
+    console.log("No ready child issues left. Finalizing PR.");
+    await runPrCreatorAgent(
+      prdIssue,
+      worktreePath,
+      repoRoot,
+      prdBranch,
+      baseBranch
+    );
     await cleanupPrdWorktree(worktreePath);
     console.log("PRD worktree cleaned up.");
-    prCreated = true;
+    workflowComplete = true;
     break;
   }
 
@@ -87,12 +98,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     repoRoot,
     prdBranch
   );
+  await pushBranch(prdBranch, worktreePath);
   console.log(`\nBranches merged into ${prdBranch}.`);
 }
 
-if (!prCreated) {
+if (!workflowComplete) {
   console.log(
-    `Reached ${MAX_ITERATIONS} iteration(s) without exhausting child issues. PR not created yet.`
+    `Reached ${MAX_ITERATIONS} iteration(s) without exhausting child issues. PR remains open for the next run.`
   );
 }
 

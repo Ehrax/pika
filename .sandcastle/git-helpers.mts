@@ -64,6 +64,10 @@ export const copyLocalEnvToWorktree = async (
   await chmod(target, 0o600);
 };
 
+export const pushBranch = async (branch: string, worktreePath: string) => {
+  await runCommand("git", ["push", "-u", "origin", branch], worktreePath);
+};
+
 export const cleanupPrdWorktree = async (worktreePath: string) => {
   const worktrees = await runCommand("git", ["worktree", "list", "--porcelain"]);
   const nestedWorktrees = worktrees

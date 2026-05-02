@@ -1,5 +1,5 @@
-export const MAX_ITERATIONS = 10;
-export const MAX_PARALLEL = 2;
+export const MAX_ITERATIONS = 100;
+export const MAX_PARALLEL = 4;
 
 export const PLANNER_MODEL = "gpt-5.4-mini";
 export const PLANNER_EFFORT = "high";

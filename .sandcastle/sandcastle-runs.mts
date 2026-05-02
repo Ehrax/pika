@@ -1,5 +1,6 @@
 import * as sandcastle from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   FINALIZER_EFFORT,
@@ -17,7 +18,15 @@ import { issueBranchName } from "./branch-names.mts";
 import { tryRunCommand } from "./git-helpers.mts";
 import type { IssuePlan, PlannedIssue, PrdIssue } from "./workflow-types.mts";
 
-const hostSandbox = noSandbox();
+const sandboxForRun = (repoRoot: string, scope: string) => {
+  const gitConfigDir = join(repoRoot, ".sandcastle", "gitconfigs");
+  mkdirSync(gitConfigDir, { recursive: true });
+  return noSandbox({
+    env: {
+      GIT_CONFIG_GLOBAL: join(gitConfigDir, `${scope}.gitconfig`),
+    },
+  });
+};
 
 const logPath = (repoRoot: string, filename: string) =>
   join(repoRoot, ".sandcastle", "logs", filename);
@@ -38,7 +47,7 @@ export const runPlanner = async (
 ) => {
   const plan = await sandcastle.run({
     cwd: worktreePath,
-    sandbox: hostSandbox,
+    sandbox: sandboxForRun(repoRoot, "planner"),
     branchStrategy: { type: "head" },
     name: "Planner",
     logging: {
@@ -65,8 +74,8 @@ export const implementAndReviewIssue = async (
   prdBranch: string
 ) => {
   const result = await sandcastle.run({
-    cwd: worktreePath,
-    sandbox: hostSandbox,
+    cwd: repoRoot,
+    sandbox: sandboxForRun(repoRoot, `implementer-${issue.number}`),
     branchStrategy: {
       type: "branch",
       branch: issue.branch,
@@ -96,8 +105,8 @@ export const implementAndReviewIssue = async (
   }
 
   await sandcastle.run({
-    cwd: worktreePath,
-    sandbox: hostSandbox,
+    cwd: repoRoot,
+    sandbox: sandboxForRun(repoRoot, `reviewer-${issue.number}`),
     branchStrategy: {
       type: "branch",
       branch: issue.branch,
@@ -135,7 +144,7 @@ export const mergeCompletedBranches = async (
 
   await sandcastle.run({
     cwd: worktreePath,
-    sandbox: hostSandbox,
+    sandbox: sandboxForRun(repoRoot, "merger"),
     branchStrategy: { type: "head" },
     name: "Merger",
     logging: {
@@ -166,7 +175,7 @@ export const runPrCreatorAgent = async (
 ) =>
   sandcastle.run({
     cwd: worktreePath,
-    sandbox: hostSandbox,
+    sandbox: sandboxForRun(repoRoot, "pr-creator"),
     branchStrategy: { type: "head" },
     name: "PR Creator",
     logging: {

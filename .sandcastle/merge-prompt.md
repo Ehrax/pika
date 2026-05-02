@@ -15,7 +15,13 @@ After all branches are merged, make a single commit summarizing the merge if the
 
 # CLOSE ISSUES
 
-For each branch that was merged, close its child issue. Do not close the parent PRD issue here; the final GitHub PR will reference it.
+For each branch that was merged, close its child issue after checks pass. Do not close the parent PRD issue here; the GitHub PR tracks the PRD work.
+
+Keep child issue closure quiet:
+
+1. Prefer closing without an explanatory comment.
+2. If GitHub requires a comment, mention only that the issue is included in `{{PRD_BRANCH}}`.
+3. Do not mention local worktree paths or local machine state.
 
 Here are all the issues:
 
