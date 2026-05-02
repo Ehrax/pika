@@ -44,6 +44,7 @@ struct PikaApp: App {
         .defaultSize(Self.defaultLaunchWindowSize)
         .commands {
             WorkspaceArchiveCommands()
+            WorkspaceArchiveImportCommands()
         }
 #endif
     }
