@@ -4,14 +4,7 @@ import Testing
 
 struct WorkspaceArchiveV1Tests {
     @Test func v1ArchiveEncodesAndDecodesRepresentativeWorkspace() throws {
-        let exportedAt = try #require(isoTimestamp("2026-05-02T10:00:00Z"))
-        let archive = WorkspaceArchiveEnvelope.v1(
-            exportedAt: exportedAt,
-            generator: WorkspaceArchiveGenerator(app: "Pika", version: "0.1.0", build: "27"),
-            workspace: fixtureWorkspace()
-        )
-
-        let data = try WorkspaceArchiveCodec.encode(archive)
+        let data = try WorkspaceArchiveCodec.encode(fixtureArchive())
         let json = try #require(String(data: data, encoding: .utf8))
 
         #expect(json.contains("\n  \"format\""))
@@ -30,156 +23,55 @@ struct WorkspaceArchiveV1Tests {
     }
 
     @Test func decodeRejectsWrongFormatMarker() throws {
-        let payload = """
-        {
-          "format" : "other.workspace-archive",
-          "version" : 1,
-          "exportedAt" : "2026-05-02T10:00:00Z",
-          "workspace" : {
-            "businessProfile" : {
-              "businessName" : "North Coast Studio",
-              "personName" : "Avery North",
-              "email" : "billing@northcoast.example",
-              "phone" : "+49 555 0100",
-              "address" : "1 Harbour Way",
-              "taxIdentifier" : "DE123",
-              "economicIdentifier" : "ECO123",
-              "invoicePrefix" : "NCS",
-              "nextInvoiceNumber" : 42,
-              "currencyCode" : "EUR",
-              "paymentDetails" : "IBAN DE00 1234",
-              "taxNote" : "VAT exempt",
-              "defaultTermsDays" : 14
-            },
-            "clients" : [],
-            "projects" : [],
-            "buckets" : [],
-            "timeEntries" : [],
-            "fixedCosts" : [],
-            "invoices" : [],
-            "invoiceLineItems" : []
-          }
-        }
-        """
+        let invalidData = try archiveData(
+            replacing: "\"format\" : \"pika.workspace-archive\"",
+            with: "\"format\" : \"other.workspace-archive\""
+        )
 
         #expect(throws: WorkspaceArchiveError.invalidFormatMarker(
             expected: WorkspaceArchiveEnvelope.formatMarker,
             found: "other.workspace-archive"
         )) {
-            _ = try WorkspaceArchiveCodec.decode(data(payload))
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
         }
     }
 
     @Test func decodeRejectsUnsupportedVersion() throws {
-        let payload = """
-        {
-          "format" : "pika.workspace-archive",
-          "version" : 2,
-          "exportedAt" : "2026-05-02T10:00:00Z",
-          "workspace" : {
-            "businessProfile" : {
-              "businessName" : "North Coast Studio",
-              "personName" : "Avery North",
-              "email" : "billing@northcoast.example",
-              "phone" : "+49 555 0100",
-              "address" : "1 Harbour Way",
-              "taxIdentifier" : "DE123",
-              "economicIdentifier" : "ECO123",
-              "invoicePrefix" : "NCS",
-              "nextInvoiceNumber" : 42,
-              "currencyCode" : "EUR",
-              "paymentDetails" : "IBAN DE00 1234",
-              "taxNote" : "VAT exempt",
-              "defaultTermsDays" : 14
-            },
-            "clients" : [],
-            "projects" : [],
-            "buckets" : [],
-            "timeEntries" : [],
-            "fixedCosts" : [],
-            "invoices" : [],
-            "invoiceLineItems" : []
-          }
-        }
-        """
+        let invalidData = try archiveData(
+            replacing: "\"version\" : 1",
+            with: "\"version\" : 2"
+        )
 
         #expect(throws: WorkspaceArchiveError.unsupportedVersion(
             expected: WorkspaceArchiveEnvelope.supportedVersion,
             found: 2
         )) {
-            _ = try WorkspaceArchiveCodec.decode(data(payload))
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
+        }
+    }
+
+    @Test func decodeRejectsInvalidExportedAt() throws {
+        let invalidData = try archiveData(
+            replacing: "\"exportedAt\" : \"2026-05-02T10:00:00Z\"",
+            with: "\"exportedAt\" : \"not-a-date\""
+        )
+
+        #expect(throws: WorkspaceArchiveError.invalidExportedAt("not-a-date")) {
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
         }
     }
 
     @Test func decodeRejectsInvalidDateOnlyField() throws {
-        let payload = """
-        {
-          "format" : "pika.workspace-archive",
-          "version" : 1,
-          "exportedAt" : "2026-05-02T10:00:00Z",
-          "workspace" : {
-            "businessProfile" : {
-              "businessName" : "North Coast Studio",
-              "personName" : "Avery North",
-              "email" : "billing@northcoast.example",
-              "phone" : "+49 555 0100",
-              "address" : "1 Harbour Way",
-              "taxIdentifier" : "DE123",
-              "economicIdentifier" : "ECO123",
-              "invoicePrefix" : "NCS",
-              "nextInvoiceNumber" : 42,
-              "currencyCode" : "EUR",
-              "paymentDetails" : "IBAN DE00 1234",
-              "taxNote" : "VAT exempt",
-              "defaultTermsDays" : 14
-            },
-            "clients" : [],
-            "projects" : [],
-            "buckets" : [],
-            "timeEntries" : [],
-            "fixedCosts" : [],
-            "invoices" : [
-              {
-                "id" : "40000000-0000-0000-0000-000000000001",
-                "projectID" : "20000000-0000-0000-0000-000000000001",
-                "bucketID" : "30000000-0000-0000-0000-000000000001",
-                "number" : "NCS-2026-042",
-                "businessSnapshot" : {
-                  "businessName" : "North Coast Studio",
-                  "personName" : "Avery North",
-                  "email" : "billing@northcoast.example",
-                  "phone" : "+49 555 0100",
-                  "address" : "1 Harbour Way",
-                  "taxIdentifier" : "DE123",
-                  "economicIdentifier" : "ECO123",
-                  "paymentDetails" : "IBAN DE00 1234",
-                  "taxNote" : "VAT exempt"
-                },
-                "clientSnapshot" : {
-                  "name" : "Snapshot Client",
-                  "email" : "billing@snapshot.example",
-                  "billingAddress" : "1 Snapshot Way"
-                },
-                "template" : "kleinunternehmer-classic",
-                "issueDate" : "2026-15-01",
-                "dueDate" : "2026-05-15",
-                "servicePeriod" : "May 2026",
-                "status" : "finalized",
-                "totalMinorUnits" : 52000,
-                "currencyCode" : "EUR",
-                "note" : "Thank you."
-              }
-            ],
-            "invoiceLineItems" : []
-          }
-        }
-        """
+        let invalidData = try archiveData(
+            replacing: "\"issueDate\" : \"2026-05-01\"",
+            with: "\"issueDate\" : \"2026-15-01\""
+        )
 
         #expect(throws: WorkspaceArchiveError.invalidDate(
             field: "workspace.invoices.issueDate",
             value: "2026-15-01"
         )) {
-            _ = try WorkspaceArchiveCodec.decode(data(payload))
+            _ = try WorkspaceArchiveCodec.decode(invalidData)
         }
     }
 
@@ -303,11 +195,28 @@ struct WorkspaceArchiveV1Tests {
         )
     }
 
+    private func fixtureArchive() throws -> WorkspaceArchiveEnvelope {
+        let exportedAt = try #require(isoTimestamp("2026-05-02T10:00:00Z"))
+        return WorkspaceArchiveEnvelope.v1(
+            exportedAt: exportedAt,
+            generator: WorkspaceArchiveGenerator(app: "Pika", version: "0.1.0", build: "27"),
+            workspace: fixtureWorkspace()
+        )
+    }
+
     private func isoTimestamp(_ value: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: value)
+    }
+
+    private func archiveData(replacing target: String, with replacement: String) throws -> Data {
+        let data = try WorkspaceArchiveCodec.encode(fixtureArchive())
+        let json = try #require(String(data: data, encoding: .utf8))
+        let targetRange = try #require(json.range(of: target))
+        let invalidJSON = json.replacingCharacters(in: targetRange, with: replacement)
+        return self.data(invalidJSON)
     }
 
     private func data(_ payload: String) -> Data {
