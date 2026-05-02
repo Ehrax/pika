@@ -5,10 +5,7 @@ import SwiftUI
 struct PikaApp: App {
     static let defaultLaunchWindowSize = CGSize(width: 1_408, height: 813)
 #if os(macOS)
-    static let workspaceArchiveCommandGroupTypeNames = [
-        String(describing: WorkspaceArchiveCommands.self),
-        String(describing: WorkspaceArchiveImportCommands.self),
-    ]
+    static let workspaceArchiveCommandGroupTypeNames = WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames
 #endif
 
     let launchConfiguration: AppLaunchConfiguration
@@ -49,18 +46,10 @@ struct PikaApp: App {
 #if os(macOS)
         .defaultSize(Self.defaultLaunchWindowSize)
         .commands {
-            Self.workspaceArchiveMenuCommands
+            WorkspaceArchiveFileMenuCommandSurface.commands
         }
 #endif
     }
-
-#if os(macOS)
-    @CommandsBuilder
-    private static var workspaceArchiveMenuCommands: some Commands {
-        WorkspaceArchiveCommands()
-        WorkspaceArchiveImportCommands()
-    }
-#endif
 
     static func makeModelContainer(
         mode: AppPersistenceMode,

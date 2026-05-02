@@ -159,7 +159,7 @@ struct PikaScaffoldTests {
     }
 
     @Test func macOSLaunchChecksCoverArchiveFileMenuCommandSurfaceOnly() {
-        #expect(WorkspaceArchiveFileMenuCommandTitles.all == [
+        #expect(WorkspaceArchiveFileMenuCommandSurface.commandTitles == [
             "Export Workspace Archive…",
             "Import Workspace Archive…",
             "Reveal Workspace Backups",
@@ -167,6 +167,7 @@ struct PikaScaffoldTests {
     }
 
     @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredAtAppLevel() {
+        #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames)
         #expect(PikaApp.workspaceArchiveCommandGroupTypeNames == [
             "WorkspaceArchiveCommands",
             "WorkspaceArchiveImportCommands",
