@@ -49,15 +49,19 @@ final class WorkspaceStore {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
         }
 
-        let resolvedPersistenceAdapter = persistenceAdapter ?? SwiftDataWorkspacePersistenceAdapter(
-            modelContext: self.modelContext
-        )
-        self.workspacePersistence = workspacePersistence ?? DefaultWorkspacePersistence(
-            modelContext: self.modelContext,
-            usesNormalizedPersistence: usesNormalizedPersistence,
-            projectionLoadingAdapter: projectionLoadingAdapter,
-            persistenceAdapter: resolvedPersistenceAdapter
-        )
+        if let workspacePersistence {
+            self.workspacePersistence = workspacePersistence
+        } else {
+            let resolvedPersistenceAdapter = persistenceAdapter ?? SwiftDataWorkspacePersistenceAdapter(
+                modelContext: self.modelContext
+            )
+            self.workspacePersistence = DefaultWorkspacePersistence(
+                modelContext: self.modelContext,
+                usesNormalizedPersistence: usesNormalizedPersistence,
+                projectionLoadingAdapter: projectionLoadingAdapter,
+                persistenceAdapter: resolvedPersistenceAdapter
+            )
+        }
         self.workspace = self.workspacePersistence.bootstrapWorkspace(
             seed: seed,
             resetForSeedImport: resetForSeedImport

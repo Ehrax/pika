@@ -43,7 +43,7 @@ protocol WorkspaceSeedImportingAdapter {
 
 struct SwiftDataWorkspaceSeedImportingAdapter: WorkspaceSeedImportingAdapter {
     func replacePersistentWorkspaceWithSeedImport(_ snapshot: WorkspaceSnapshot, in context: ModelContext) throws {
-        try WorkspaceSeedImportPersistence.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
+        try WorkspaceStore.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
     }
 }
 
@@ -126,15 +126,6 @@ struct DefaultWorkspacePersistence: WorkspacePersistence {
                 message: String(describing: error)
             )
         }
-    }
-}
-
-private enum WorkspaceSeedImportPersistence {
-    static func replacePersistentWorkspaceWithSeedImport(
-        _ snapshot: WorkspaceSnapshot,
-        in context: ModelContext
-    ) throws {
-        try WorkspaceStore.replacePersistentWorkspaceWithSeedImport(snapshot, in: context)
     }
 }
 
