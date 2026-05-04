@@ -254,10 +254,56 @@ struct PikaScaffoldTests {
         let schema = PikaPersistenceSchema.makeSchema()
         let configuration = AppPersistenceMode.cloudKitPrivate.makeModelConfiguration(
             schema: schema,
+            storeURL: PikaApp.defaultStoreURL(
+                mode: .cloudKitPrivate,
+                appEnvironment: .development,
+                bundleIdentifier: "ehrax.dev.pika.dev"
+            ),
             appEnvironment: .development
         )
 
         #expect(String(describing: configuration).contains("iCloud.ehrax.dev.pika.dev"))
+    }
+
+    @Test func persistentStoreURLsAreSeparatedByEnvironmentAndBundleIdentifier() throws {
+        let devStoreURL = try #require(PikaApp.defaultStoreURL(
+            mode: .cloudKitPrivate,
+            appEnvironment: .development,
+            bundleIdentifier: "ehrax.dev.pika.dev"
+        ))
+        let prodStoreURL = try #require(PikaApp.defaultStoreURL(
+            mode: .cloudKitPrivate,
+            appEnvironment: .production,
+            bundleIdentifier: "ehrax.dev.pika"
+        ))
+
+        #expect(devStoreURL != prodStoreURL)
+        #expect(devStoreURL.path().contains("/Pika/dev/ehrax.dev.pika.dev/"))
+        #expect(prodStoreURL.path().contains("/Pika/prod/ehrax.dev.pika/"))
+    }
+
+    @Test func inMemoryPersistenceDoesNotResolvePersistentStoreURL() {
+        let storeURL = PikaApp.defaultStoreURL(
+            mode: .inMemory,
+            appEnvironment: .development,
+            bundleIdentifier: "ehrax.dev.pika.dev"
+        )
+
+        #expect(storeURL == nil)
+    }
+
+    @Test func workspaceBackupsDirectoryIsSeparatedByEnvironmentAndBundleIdentifier() throws {
+        let temporaryApplicationSupportURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: temporaryApplicationSupportURL)
+        }
+
+        let backupsURL = try WorkspaceArchiveActions.workspaceBackupsDirectoryURL(
+            appSupportDirectoryURL: temporaryApplicationSupportURL
+        )
+
+        #expect(backupsURL.path().contains("/Pika/dev/ehrax.dev.pika.dev/Backups"))
     }
 
     @Test func appLaunchConfigurationIgnoresUnknownArguments() {
@@ -286,6 +332,28 @@ struct PikaScaffoldTests {
         #expect(configuration.persistenceMode == .local)
     }
 
+    @Test func appLaunchConfigurationUsesExplicitLocalPersistenceOverride() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika", "--pika-persistence", "local"],
+            environment: [:],
+            isRunningTests: false
+        )
+
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.persistenceMode == .local)
+    }
+
+    @Test func appLaunchConfigurationUsesExplicitInMemoryPersistenceOverride() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["pika"],
+            environment: ["PIKA_PERSISTENCE": "in-memory"],
+            isRunningTests: false
+        )
+
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.persistenceMode == .inMemory)
+    }
+
     @Test func appLaunchConfigurationUsesInMemoryModeDuringTests() {
         let configuration = AppLaunchConfiguration(
             arguments: ["pika", "--pika-workspace-seed", "sample"],
@@ -305,6 +373,35 @@ struct PikaScaffoldTests {
 
         #expect(script.contains("--pika-workspace-store-path") == false)
         #expect(script.contains("PIKA_WORKSPACE_STORE_PATH") == false)
+        #expect(script.contains("--prod") == true)
+        #expect(script.contains("--pika-persistence") == true)
+    }
+
+    @Test func prodArtifactScriptBuildsFinderOnlyLocalAndCloudArtifacts() throws {
+        let repositoryRoot = URL(filePath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let scriptURL = repositoryRoot.appendingPathComponent("script/build_prod_artifact.sh")
+        let script = try String(contentsOf: scriptURL, encoding: .utf8)
+
+        #expect(script.contains("Release Prod") == true)
+        #expect(script.contains("PikaProdLocal") == true)
+        #expect(script.contains("PikaProdCloud") == true)
+        #expect(script.contains("LSEnvironment:PIKA_PERSISTENCE") == true)
+        #expect(script.contains("open \"$ARTIFACT_DIR\"") == true)
+    }
+
+    @Test func codexDevActionsUseExplicitLocalPersistence() throws {
+        let repositoryRoot = URL(filePath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let environmentURL = repositoryRoot.appendingPathComponent(".codex/environments/environment.toml")
+        let environment = try String(contentsOf: environmentURL, encoding: .utf8)
+
+        #expect(environment.contains("name = \"Dev Empty\"") == true)
+        #expect(environment.contains("command = \"./script/build_and_run.sh --verify --empty --local\"") == true)
+        #expect(environment.contains("command = \"./script/build_and_run.sh --verify --seeded --local\"") == true)
+        #expect(environment.contains("command = \"./script/build_and_run.sh --verify --bikepark --local\"") == true)
     }
 
     @Test func appLaunchConfigurationUsesInMemoryModeForExplicitUITestEnvironment() {

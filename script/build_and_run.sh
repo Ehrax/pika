@@ -3,6 +3,7 @@ set -euo pipefail
 
 MODE="run"
 WORKSPACE_SEED="empty"
+PERSISTENCE_MODE=""
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
 PROJECT_FILE="$ROOT_DIR/pika.xcodeproj"
@@ -10,6 +11,7 @@ SCHEME="Pika Dev"
 CONFIGURATION="Debug Dev"
 DESTINATION="platform=macOS"
 APP_EXECUTABLE="pika-dev"
+APP_BUNDLE_NAME="pika-dev.app"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -25,12 +27,36 @@ while [[ $# -gt 0 ]]; do
     --empty|empty)
       WORKSPACE_SEED="empty"
       ;;
+    --dev|dev)
+      SCHEME="Pika Dev"
+      CONFIGURATION="Debug Dev"
+      APP_EXECUTABLE="pika-dev"
+      APP_BUNDLE_NAME="pika-dev.app"
+      ;;
+    --prod|prod)
+      SCHEME="Pika Prod"
+      CONFIGURATION="Debug Prod"
+      APP_EXECUTABLE="pika"
+      APP_BUNDLE_NAME="pika.app"
+      ;;
+    --release-prod|release-prod)
+      SCHEME="Pika Prod"
+      CONFIGURATION="Release Prod"
+      APP_EXECUTABLE="pika"
+      APP_BUNDLE_NAME="pika.app"
+      ;;
+    --local|local)
+      PERSISTENCE_MODE="local"
+      ;;
+    --in-memory|in-memory|--memory|memory)
+      PERSISTENCE_MODE="in-memory"
+      ;;
     -h|--help)
-      echo "usage: $0 [run|--verify] [--empty|--sample|--demo|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--dev|--prod|--release-prod] [--empty|--sample|--demo|--seeded|--bikepark] [--local|--in-memory]" >&2
       exit 0
       ;;
     *)
-      echo "usage: $0 [run|--verify] [--empty|--sample|--demo|--seeded|--bikepark]" >&2
+      echo "usage: $0 [run|--verify] [--dev|--prod|--release-prod] [--empty|--sample|--demo|--seeded|--bikepark] [--local|--in-memory]" >&2
       exit 2
       ;;
   esac
@@ -75,24 +101,23 @@ build_app() {
 find_app_bundle() {
   local products_dir="$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION"
 
-  if [[ -d "$products_dir/pika-dev.app" ]]; then
-    printf '%s\n' "$products_dir/pika-dev.app"
+  if [[ -d "$products_dir/$APP_BUNDLE_NAME" ]]; then
+    printf '%s\n' "$products_dir/$APP_BUNDLE_NAME"
     return 0
   fi
 
-  if [[ -d "$products_dir/pika.app" ]]; then
-    printf '%s\n' "$products_dir/pika.app"
-    return 0
-  fi
-
-  find "$DERIVED_DATA_DIR/Build/Products" -maxdepth 3 -type d \( -name "pika-dev.app" -o -name "pika.app" \) -print -quit
+  find "$DERIVED_DATA_DIR/Build/Products" -maxdepth 3 -type d -name "$APP_BUNDLE_NAME" -print -quit
 }
 
 launch_app() {
   local app_bundle="$1"
 
-  /usr/bin/open -n "$app_bundle" --args \
-    --pika-workspace-seed "$WORKSPACE_SEED"
+  local launch_args=(--pika-workspace-seed "$WORKSPACE_SEED")
+  if [[ -n "$PERSISTENCE_MODE" ]]; then
+    launch_args+=(--pika-persistence "$PERSISTENCE_MODE")
+  fi
+
+  /usr/bin/open -n "$app_bundle" --args "${launch_args[@]}"
 }
 
 verify_launch() {
