@@ -12,10 +12,12 @@ Run the macOS app with:
 
 The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `Pika Dev` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika-dev.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
 
-The Codex Run action calls:
+The default Codex dev actions call the same script with explicit local persistence:
 
 ```bash
-./script/build_and_run.sh --verify
+./script/build_and_run.sh --verify --empty --local
+./script/build_and_run.sh --verify --seeded --local
+./script/build_and_run.sh --verify --bikepark --local
 ```
 
 `--verify` waits briefly after launch and fails if the expected executable from the built app bundle is not running.
@@ -97,9 +99,12 @@ CRAP-style metrics are intentionally not part of this scaffold branch. They need
 
 Pika persists workspace state through normalized SwiftData records. The app does not keep a legacy blob/plist workspace fallback.
 
-- Default app launches use private CloudKit-backed persistence (`AppPersistenceMode.cloudKitPrivate`).
-- Explicit seed imports (`--pika-workspace-seed`) run in local-only mode (`AppPersistenceMode.local`) and replace existing local data with a deterministic normalized import.
+- Raw empty app launches use private CloudKit-backed persistence (`AppPersistenceMode.cloudKitPrivate`) unless `--pika-persistence` or `PIKA_PERSISTENCE` overrides it.
+- Seeded app launches use local-only persistence (`AppPersistenceMode.local`) by default and replace existing local data with a deterministic normalized import.
+- The Codex dev actions pass `--local` explicitly so empty, seeded, and bikepark development runs do not hit CloudKit.
+- Prod local artifacts set `PIKA_PERSISTENCE=local` in the app bundle environment. Prod cloud artifacts leave persistence at the app default.
 - Test and UI test runs use in-memory mode (`AppPersistenceMode.inMemory`) for isolation and repeatability.
+- Persistent stores are separated by app environment and bundle identifier under `~/Library/Application Support/Pika/{environment}/{bundle-id}/Pika.store`.
 
 ## Development Data Policy
 

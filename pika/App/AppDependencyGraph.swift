@@ -4,6 +4,8 @@ import SwiftUI
 struct AppLaunchConfiguration: Equatable {
     private static let xctestConfigurationEnvironmentKey = "XCTestConfigurationFilePath"
     private static let uiTestingEnvironmentKey = "PIKA_UI_TESTING"
+    private static let persistenceArgument = "--pika-persistence"
+    private static let persistenceEnvironmentKey = "PIKA_PERSISTENCE"
 
     let workspaceSeed: WorkspaceSeed
     let initialWorkspace: WorkspaceSnapshot
@@ -18,6 +20,8 @@ struct AppLaunchConfiguration: Equatable {
         workspaceSeed = WorkspaceSeed.resolve(arguments: arguments, environment: environment)
         initialWorkspace = workspaceSeed.initialWorkspace
         persistenceMode = Self.resolvePersistenceMode(
+            arguments: arguments,
+            environment: environment,
             workspaceSeed: workspaceSeed,
             isRunningTests: resolvedIsRunningTests
         )
@@ -41,11 +45,20 @@ struct AppLaunchConfiguration: Equatable {
     }
 
     private static func resolvePersistenceMode(
+        arguments: [String],
+        environment: [String: String],
         workspaceSeed: WorkspaceSeed,
         isRunningTests: Bool
     ) -> AppPersistenceMode {
         if isRunningTests {
             return .inMemory
+        }
+
+        if let explicitPersistenceMode = resolveExplicitPersistenceMode(
+            arguments: arguments,
+            environment: environment
+        ) {
+            return explicitPersistenceMode
         }
 
         switch workspaceSeed {
@@ -54,6 +67,19 @@ struct AppLaunchConfiguration: Equatable {
         case .sample, .bikeparkThunersee:
             return .local
         }
+    }
+
+    private static func resolveExplicitPersistenceMode(
+        arguments: [String],
+        environment: [String: String]
+    ) -> AppPersistenceMode? {
+        if let argumentIndex = arguments.firstIndex(of: persistenceArgument),
+           arguments.indices.contains(argumentIndex + 1),
+           let mode = AppPersistenceMode(launchValue: arguments[argumentIndex + 1]) {
+            return mode
+        }
+
+        return environment[persistenceEnvironmentKey].flatMap(AppPersistenceMode.init(launchValue:))
     }
 }
 

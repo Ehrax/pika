@@ -6,16 +6,31 @@ name = "pika"
 script = ""
 
 [[actions]]
-name = "Play Empty"
+name = "Dev Empty"
 icon = "play"
-command = "./script/build_and_run.sh --verify --empty"
+command = "./script/build_and_run.sh --verify --empty --local"
 
 [[actions]]
-name = "Play Seeded"
+name = "Dev Seeded"
 icon = "play"
-command = "./script/build_and_run.sh --verify --seeded"
+command = "./script/build_and_run.sh --verify --seeded --local"
 
 [[actions]]
-name = "Play Bikepark"
+name = "Dev Bikepark"
 icon = "play"
-command = "./script/build_and_run.sh --verify --bikepark"
+command = "./script/build_and_run.sh --verify --bikepark --local"
+
+[[actions]]
+name = "Build Prod Local"
+icon = "package"
+command = "./script/build_prod_artifact.sh --local"
+
+[[actions]]
+name = "Build Prod Cloud"
+icon = "cloud"
+command = "./script/build_prod_artifact.sh --cloud"
+
+[[actions]]
+name = "Run Prod Local"
+icon = "play"
+command = "./script/build_and_run.sh --verify --prod --empty --local"

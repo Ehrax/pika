@@ -62,23 +62,49 @@ struct PikaApp: App {
         appEnvironment: AppEnvironment = .production
     ) throws -> ModelContainer {
         let schema = PikaPersistenceSchema.makeSchema()
-        try prepareStoreDirectoryIfNeeded(mode: mode, overrideStoreURL: overrideStoreURL)
+        let storeURL = overrideStoreURL ?? defaultStoreURL(
+            mode: mode,
+            appEnvironment: appEnvironment
+        )
+        try prepareStoreDirectoryIfNeeded(storeURL: storeURL)
         let configuration = mode.makeModelConfiguration(
             schema: schema,
-            overrideStoreURL: overrideStoreURL,
+            storeURL: storeURL,
             appEnvironment: appEnvironment
         )
 
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 
-    private static func prepareStoreDirectoryIfNeeded(
+    static func defaultStoreURL(
         mode: AppPersistenceMode,
-        overrideStoreURL: URL?
-    ) throws {
-        guard mode == .local, let overrideStoreURL else { return }
+        appEnvironment: AppEnvironment,
+        bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "ehrax.dev.pika"
+    ) -> URL? {
+        guard mode.usesPersistentStore else { return nil }
 
-        let directory = overrideStoreURL.deletingLastPathComponent()
+        let sanitizedBundleIdentifier = bundleIdentifier
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.isEmpty == false }
+            .joined(separator: ".")
+        let applicationSupportDirectory = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        )[0]
+
+        return applicationSupportDirectory
+            .appendingPathComponent("Pika", isDirectory: true)
+            .appendingPathComponent(appEnvironment.name, isDirectory: true)
+            .appendingPathComponent(sanitizedBundleIdentifier, isDirectory: true)
+            .appendingPathComponent("Pika.store")
+    }
+
+    private static func prepareStoreDirectoryIfNeeded(
+        storeURL: URL?
+    ) throws {
+        guard let storeURL else { return }
+
+        let directory = storeURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true
@@ -90,6 +116,19 @@ enum AppPersistenceMode: Equatable {
     case cloudKitPrivate
     case local
     case inMemory
+
+    nonisolated init?(launchValue: String) {
+        switch launchValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "cloudkit", "cloudkit-private", "cloudkit_private":
+            self = .cloudKitPrivate
+        case "local", "disk":
+            self = .local
+        case "memory", "in-memory", "in_memory":
+            self = .inMemory
+        default:
+            return nil
+        }
+    }
 
     var telemetryName: String {
         switch self {
@@ -113,20 +152,28 @@ enum AppPersistenceMode: Equatable {
 
     func makeModelConfiguration(
         schema: Schema,
-        overrideStoreURL: URL? = nil,
+        storeURL: URL? = nil,
         appEnvironment: AppEnvironment = .production
     ) -> ModelConfiguration {
         switch self {
         case .cloudKitPrivate:
-            return ModelConfiguration(
-                schema: schema,
-                cloudKitDatabase: .private(appEnvironment.cloudKitContainerIdentifier)
-            )
-        case .local:
-            if let overrideStoreURL {
+            if let storeURL {
                 return ModelConfiguration(
                     schema: schema,
-                    url: overrideStoreURL,
+                    url: storeURL,
+                    cloudKitDatabase: .private(appEnvironment.cloudKitContainerIdentifier)
+                )
+            } else {
+                return ModelConfiguration(
+                    schema: schema,
+                    cloudKitDatabase: .private(appEnvironment.cloudKitContainerIdentifier)
+                )
+            }
+        case .local:
+            if let storeURL {
+                return ModelConfiguration(
+                    schema: schema,
+                    url: storeURL,
                     cloudKitDatabase: .none
                 )
             } else {
@@ -141,6 +188,15 @@ enum AppPersistenceMode: Equatable {
                 isStoredInMemoryOnly: true,
                 cloudKitDatabase: .none
             )
+        }
+    }
+
+    var usesPersistentStore: Bool {
+        switch self {
+        case .cloudKitPrivate, .local:
+            true
+        case .inMemory:
+            false
         }
     }
 }

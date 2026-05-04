@@ -61,12 +61,29 @@ enum WorkspaceArchiveActions {
 
         let backupsDirectoryURL = applicationSupportURL
             .appending(component: appSupportSubdirectoryName, directoryHint: .isDirectory)
+            .appending(component: backupEnvironmentName(), directoryHint: .isDirectory)
+            .appending(component: backupBundleIdentifier(), directoryHint: .isDirectory)
             .appending(component: backupsDirectoryName, directoryHint: .isDirectory)
         try fileManager.createDirectory(
             at: backupsDirectoryURL,
             withIntermediateDirectories: true
         )
         return backupsDirectoryURL
+    }
+
+    private static func backupEnvironmentName(
+        environment: AppEnvironment? = try? AppEnvironment.resolve()
+    ) -> String {
+        environment?.name ?? "unknown"
+    }
+
+    private static func backupBundleIdentifier(
+        bundleIdentifier: String = Bundle.main.bundleIdentifier ?? "ehrax.dev.pika"
+    ) -> String {
+        bundleIdentifier
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.isEmpty == false }
+            .joined(separator: ".")
     }
 
     #if os(macOS)
