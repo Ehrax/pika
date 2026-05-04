@@ -6,8 +6,10 @@ WORKSPACE_SEED="empty"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
 PROJECT_FILE="$ROOT_DIR/pika.xcodeproj"
-SCHEME="pika"
+SCHEME="Pika Dev"
+CONFIGURATION="Debug Dev"
 DESTINATION="platform=macOS"
+APP_EXECUTABLE="pika-dev"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -38,8 +40,8 @@ done
 kill_running_app() {
   local pids
   pids="$(
-    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/Debug/pika.app/Contents/MacOS/pika"
-    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/Debug/Pika.app/Contents/MacOS/pika"
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/pika-dev.app/Contents/MacOS/pika-dev"
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/pika.app/Contents/MacOS/pika"
   )"
   if [[ -n "$pids" ]]; then
     kill $pids >/dev/null 2>&1 || true
@@ -64,25 +66,26 @@ build_app() {
   xcodebuild build \
     -project "$PROJECT_FILE" \
     -scheme "$SCHEME" \
+    -configuration "$CONFIGURATION" \
     -destination "$DESTINATION" \
     -derivedDataPath "$DERIVED_DATA_DIR" \
     CODE_SIGNING_ALLOWED=NO
 }
 
 find_app_bundle() {
-  local products_dir="$DERIVED_DATA_DIR/Build/Products/Debug"
+  local products_dir="$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION"
+
+  if [[ -d "$products_dir/pika-dev.app" ]]; then
+    printf '%s\n' "$products_dir/pika-dev.app"
+    return 0
+  fi
 
   if [[ -d "$products_dir/pika.app" ]]; then
     printf '%s\n' "$products_dir/pika.app"
     return 0
   fi
 
-  if [[ -d "$products_dir/Pika.app" ]]; then
-    printf '%s\n' "$products_dir/Pika.app"
-    return 0
-  fi
-
-  find "$DERIVED_DATA_DIR/Build/Products" -maxdepth 3 -type d \( -name "pika.app" -o -name "Pika.app" \) -print -quit
+  find "$DERIVED_DATA_DIR/Build/Products" -maxdepth 3 -type d \( -name "pika-dev.app" -o -name "pika.app" \) -print -quit
 }
 
 launch_app() {
@@ -94,7 +97,7 @@ launch_app() {
 
 verify_launch() {
   local app_bundle="$1"
-  local executable_path="$app_bundle/Contents/MacOS/pika"
+  local executable_path="$app_bundle/Contents/MacOS/$APP_EXECUTABLE"
   sleep 2
   if [[ -n "$(process_ids_for_executable "$executable_path")" ]]; then
     return 0

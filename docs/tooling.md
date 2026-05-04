@@ -10,7 +10,7 @@ Run the macOS app with:
 ./script/build_and_run.sh
 ```
 
-The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `pika` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika.app` or `Pika.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
+The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `Pika Dev` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika-dev.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
 
 The Codex Run action calls:
 
@@ -31,12 +31,12 @@ Run the reliable scaffold test gate with:
 This runs unit tests only, with code coverage enabled:
 
 ```bash
-xcodebuild test -project pika.xcodeproj -scheme pika -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project pika.xcodeproj -scheme 'Pika Dev' -configuration 'Debug Dev' -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
 ```
 
 The baseline generated UI test target is not part of the scaffold coverage gate because SwiftUI lifecycle tests are noisy at this stage. UI confidence should come from later end-to-end tests around real product flows.
 
-The shared `pika` Xcode scheme also excludes `pikaUITests` from its Test action, so Xcode's Test command and unfiltered `xcodebuild test -scheme pika` runs stay on the reliable unit-test loop while the app is still settling.
+The shared `Pika Dev` and `Pika Prod` Xcode schemes also exclude `pikaUITests` from their Test actions, so Xcode's Test command and unfiltered scheme test runs stay on the reliable unit-test loop while the app is still settling.
 
 ## Coverage
 
@@ -86,7 +86,7 @@ IOS_DESTINATION='platform=iOS Simulator,id=03DD3B20-7426-40A9-AB86-6697C1C26639'
 The script runs:
 
 ```bash
-xcodebuild test -project pika.xcodeproj -scheme pika -destination "$IOS_DESTINATION" -only-testing:pikaTests CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project pika.xcodeproj -scheme 'Pika Dev' -configuration 'Debug Dev' -destination "$IOS_DESTINATION" -only-testing:pikaTests CODE_SIGNING_ALLOWED=NO
 ```
 
 ## Metrics

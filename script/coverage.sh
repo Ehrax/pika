@@ -12,11 +12,13 @@ mkdir -p "$(dirname "$RESULT_BUNDLE")"
 
 xcodebuild test \
   -project "$ROOT_DIR/pika.xcodeproj" \
-  -scheme "pika" \
+  -scheme "Pika Dev" \
+  -configuration "Debug Dev" \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   -resultBundlePath "$RESULT_BUNDLE" \
   -only-testing:pikaTests \
+  -parallel-testing-enabled NO \
   -enableCodeCoverage YES \
   CODE_SIGNING_ALLOWED=NO
 
@@ -47,7 +49,7 @@ excluded_files = {
 covered_lines = 0
 executable_lines = 0
 for target in report.get("targets", []):
-    if target.get("name") != "pika.app":
+    if target.get("name") not in ("pika-dev.app", "pika.app"):
         continue
 
     for file_report in target.get("files", []):

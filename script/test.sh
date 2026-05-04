@@ -10,10 +10,12 @@ mkdir -p "$(dirname "$RESULT_BUNDLE")"
 
 xcodebuild test \
   -project "$ROOT_DIR/pika.xcodeproj" \
-  -scheme "pika" \
+  -scheme "Pika Dev" \
+  -configuration "Debug Dev" \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   -resultBundlePath "$RESULT_BUNDLE" \
   -only-testing:pikaTests \
+  -parallel-testing-enabled NO \
   -enableCodeCoverage YES \
   CODE_SIGNING_ALLOWED=NO

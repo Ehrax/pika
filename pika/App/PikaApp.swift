@@ -9,12 +9,17 @@ struct PikaApp: App {
 #endif
 
     let launchConfiguration: AppLaunchConfiguration
+    let appEnvironment: AppEnvironment
     let sharedModelContainer: ModelContainer
 
     init() {
         launchConfiguration = AppLaunchConfiguration()
         do {
-            sharedModelContainer = try Self.makeModelContainer(mode: launchConfiguration.persistenceMode)
+            appEnvironment = try AppEnvironment.resolve()
+            sharedModelContainer = try Self.makeModelContainer(
+                mode: launchConfiguration.persistenceMode,
+                appEnvironment: appEnvironment
+            )
             AppTelemetry.persistenceContainerConfigured(
                 mode: launchConfiguration.persistenceMode.telemetryName,
                 cloudKitEnabled: launchConfiguration.persistenceMode.cloudKitEnabled
@@ -53,13 +58,15 @@ struct PikaApp: App {
 
     static func makeModelContainer(
         mode: AppPersistenceMode,
-        overrideStoreURL: URL? = nil
+        overrideStoreURL: URL? = nil,
+        appEnvironment: AppEnvironment = .production
     ) throws -> ModelContainer {
         let schema = PikaPersistenceSchema.makeSchema()
         try prepareStoreDirectoryIfNeeded(mode: mode, overrideStoreURL: overrideStoreURL)
         let configuration = mode.makeModelConfiguration(
             schema: schema,
-            overrideStoreURL: overrideStoreURL
+            overrideStoreURL: overrideStoreURL,
+            appEnvironment: appEnvironment
         )
 
         return try ModelContainer(for: schema, configurations: [configuration])
@@ -80,8 +87,6 @@ struct PikaApp: App {
 }
 
 enum AppPersistenceMode: Equatable {
-    static let cloudKitContainerIdentifier = "iCloud.ehrax.dev.pika"
-
     case cloudKitPrivate
     case local
     case inMemory
@@ -108,13 +113,14 @@ enum AppPersistenceMode: Equatable {
 
     func makeModelConfiguration(
         schema: Schema,
-        overrideStoreURL: URL? = nil
+        overrideStoreURL: URL? = nil,
+        appEnvironment: AppEnvironment = .production
     ) -> ModelConfiguration {
         switch self {
         case .cloudKitPrivate:
             return ModelConfiguration(
                 schema: schema,
-                cloudKitDatabase: .private(Self.cloudKitContainerIdentifier)
+                cloudKitDatabase: .private(appEnvironment.cloudKitContainerIdentifier)
             )
         case .local:
             if let overrideStoreURL {

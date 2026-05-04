@@ -216,6 +216,50 @@ struct PikaScaffoldTests {
         #expect(configuration.persistenceMode == .cloudKitPrivate)
     }
 
+    @Test func appEnvironmentResolvesDevelopmentMetadata() throws {
+        let environment = try AppEnvironment.resolve(
+            infoDictionary: [
+                AppEnvironment.environmentNameInfoDictionaryKey: "dev",
+                AppEnvironment.cloudKitContainerIdentifierInfoDictionaryKey: "iCloud.ehrax.dev.pika.dev",
+            ]
+        )
+
+        #expect(environment == .development)
+    }
+
+    @Test func appEnvironmentResolvesProductionMetadata() throws {
+        let environment = try AppEnvironment.resolve(
+            infoDictionary: [
+                AppEnvironment.environmentNameInfoDictionaryKey: "prod",
+                AppEnvironment.cloudKitContainerIdentifierInfoDictionaryKey: "iCloud.ehrax.dev.pika",
+            ]
+        )
+
+        #expect(environment == .production)
+    }
+
+    @Test func appEnvironmentRejectsMissingCloudKitContainerMetadata() {
+        #expect(throws: AppEnvironment.ResolveError.missingInfoDictionaryValue(
+            key: AppEnvironment.cloudKitContainerIdentifierInfoDictionaryKey
+        )) {
+            try AppEnvironment.resolve(
+                infoDictionary: [
+                    AppEnvironment.environmentNameInfoDictionaryKey: "dev",
+                ]
+            )
+        }
+    }
+
+    @Test func cloudKitPrivatePersistenceUsesResolvedEnvironmentContainer() {
+        let schema = PikaPersistenceSchema.makeSchema()
+        let configuration = AppPersistenceMode.cloudKitPrivate.makeModelConfiguration(
+            schema: schema,
+            appEnvironment: .development
+        )
+
+        #expect(String(describing: configuration).contains("iCloud.ehrax.dev.pika.dev"))
+    }
+
     @Test func appLaunchConfigurationIgnoresUnknownArguments() {
         let configuration = AppLaunchConfiguration(
             arguments: [
@@ -427,24 +471,44 @@ struct PikaScaffoldTests {
             .deletingLastPathComponent()
         let entitlementsURL = repositoryRoot.appendingPathComponent("pika/pika.entitlements")
         let projectURL = repositoryRoot.appendingPathComponent("pika.xcodeproj/project.pbxproj")
+        let devSchemeURL = repositoryRoot.appendingPathComponent("pika.xcodeproj/xcshareddata/xcschemes/Pika Dev.xcscheme")
+        let prodSchemeURL = repositoryRoot.appendingPathComponent("pika.xcodeproj/xcshareddata/xcschemes/Pika Prod.xcscheme")
         let telemetryURL = repositoryRoot.appendingPathComponent("pika/Services/AppTelemetry.swift")
         let workspacePersistenceURL = repositoryRoot.appendingPathComponent("pika/Stores/WorkspaceStore+Persistence.swift")
 
         let entitlements = try String(contentsOf: entitlementsURL, encoding: .utf8)
         let project = try String(contentsOf: projectURL, encoding: .utf8)
+        let devScheme = try String(contentsOf: devSchemeURL, encoding: .utf8)
+        let prodScheme = try String(contentsOf: prodSchemeURL, encoding: .utf8)
         let telemetry = try String(contentsOf: telemetryURL, encoding: .utf8)
         let workspacePersistence = try String(contentsOf: workspacePersistenceURL, encoding: .utf8)
         let remoteNotificationBackgroundModeSettings = [
             #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphoneos*]" = "remote-notification";"#,
             #""INFOPLIST_KEY_UIBackgroundModes[sdk=iphonesimulator*]" = "remote-notification";"#,
         ]
+        let requiredConfigurationNames = [
+            "Debug Dev",
+            "Release Dev",
+            "Debug Prod",
+            "Release Prod",
+        ]
 
         #expect(entitlements.contains("<key>com.apple.developer.icloud-container-identifiers</key>"))
-        #expect(entitlements.contains("<string>iCloud.ehrax.dev.pika</string>"))
+        #expect(entitlements.contains("<string>$(PIKA_CLOUDKIT_CONTAINER_IDENTIFIER)</string>"))
+        #expect(entitlements.contains("<string>$(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)</string>"))
         #expect(entitlements.contains("<string>CloudKit</string>"))
         for setting in remoteNotificationBackgroundModeSettings {
             #expect(project.contains(setting))
         }
+        for configurationName in requiredConfigurationNames {
+            #expect(project.contains("/* \(configurationName) */"))
+        }
+        #expect(devScheme.contains(#"buildConfiguration = "Debug Dev""#))
+        #expect(devScheme.contains(#"buildConfiguration = "Release Dev""#))
+        #expect(devScheme.contains(#"BuildableName = "pika-dev.app""#))
+        #expect(prodScheme.contains(#"buildConfiguration = "Debug Prod""#))
+        #expect(prodScheme.contains(#"buildConfiguration = "Release Prod""#))
+        #expect(prodScheme.contains(#"BuildableName = "pika.app""#))
         #expect(telemetry.contains("persistence.container_configured"))
         #expect(telemetry.contains("persistence.save_failed"))
         #expect(telemetry.contains("persistence.projection_reload_failed"))
