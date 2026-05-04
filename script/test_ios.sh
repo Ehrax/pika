@@ -31,9 +31,11 @@ mkdir -p "$(dirname "$RESULT_BUNDLE")"
 
 xcodebuild test \
   -project "$ROOT_DIR/pika.xcodeproj" \
-  -scheme "pika" \
+  -scheme "Pika Dev" \
+  -configuration "Debug Dev" \
   -destination "$IOS_DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   -resultBundlePath "$RESULT_BUNDLE" \
   -only-testing:pikaTests \
+  -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO

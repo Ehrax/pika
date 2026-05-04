@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.ehrax.dev.pika</string>
+		<string>$(PIKA_CLOUDKIT_CONTAINER_IDENTIFIER)</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>
@@ -12,9 +12,9 @@
 	</array>
 	<key>com.apple.developer.ubiquity-container-identifiers</key>
 	<array>
-		<string>iCloud.ehrax.dev.pika</string>
+		<string>$(PIKA_CLOUDKIT_CONTAINER_IDENTIFIER)</string>
 	</array>
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
-	<string>$(TeamIdentifierPrefix)ehrax.dev.pika</string>
+	<string>$(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 </dict>
 </plist>
