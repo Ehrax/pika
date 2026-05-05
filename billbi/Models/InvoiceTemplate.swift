@@ -14,6 +14,10 @@ enum InvoiceTemplate: String, CaseIterable, Codable, Equatable, Identifiable {
         }
     }
 
+    var resourceFolderName: String {
+        rawValue
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let rawValue = try container.decode(String.self)

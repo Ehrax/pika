@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D81D42444260040E2D5FB22F /* Mustache in Frameworks */ = {isa = PBXBuildFile; productRef = 2F6DEE854E98A69A7288FF7A /* Mustache */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D1AEC4552F9EA3690056E053 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -61,6 +65,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D81D42444260040E2D5FB22F /* Mustache in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +138,9 @@
 				D1AEC4472F9EA3680056E053 /* billbi */,
 			);
 			name = billbi;
+			packageProductDependencies = (
+				2F6DEE854E98A69A7288FF7A /* Mustache */,
+			);
 			productName = billbi;
 			productReference = D1AEC4452F9EA3680056E053 /* billbi.app */;
 			productType = "com.apple.product-type.application";
@@ -211,6 +219,9 @@
 			);
 			mainGroup = D1AEC43C2F9EA3670056E053;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BD8E0F0438A9DF7A7D9720FF /* XCRemoteSwiftPackageReference "swift-mustache" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D1AEC4462F9EA3680056E053 /* Products */;
 			projectDirPath = "";
@@ -974,6 +985,25 @@
 			defaultConfigurationName = "Release Prod";
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BD8E0F0438A9DF7A7D9720FF /* XCRemoteSwiftPackageReference "swift-mustache" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hummingbird-project/swift-mustache.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2F6DEE854E98A69A7288FF7A /* Mustache */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BD8E0F0438A9DF7A7D9720FF /* XCRemoteSwiftPackageReference "swift-mustache" */;
+			productName = Mustache;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D1AEC43D2F9EA3670056E053 /* Project object */;
 }

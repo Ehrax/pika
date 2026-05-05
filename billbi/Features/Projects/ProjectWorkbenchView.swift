@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct ProjectWorkbenchView: View {
-    @Environment(\.invoicePDFService) private var invoicePDFService
-
     let project: WorkspaceProject?
     let workspaceStore: WorkspaceStore
     let currentDate: Date
@@ -127,9 +125,7 @@ struct ProjectWorkbenchView: View {
                                     totalLabel: projection.totalLabel,
                                     lineItems: projection.lineItems
                                 )
-                            },
-                            onOpenInvoicePDF: openInvoicePDF,
-                            onExportInvoicePDF: exportInvoicePDF
+                            }
                         )
                     } else {
                         BillbiColor.background
@@ -572,36 +568,6 @@ struct ProjectWorkbenchView: View {
             try workspaceStore.cancelInvoice(invoiceID: row.id)
         } catch {
             reportWorkflowActionFailure("cancel_invoice", error)
-        }
-    }
-
-    private func openInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
-        performInvoicePDFAction("open") {
-            _ = try InvoicePDFActions.open(
-                invoicePDFService: invoicePDFService,
-                profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
-                row: row
-            )
-        }
-    }
-
-    private func exportInvoicePDF(_ row: WorkspaceInvoiceRowProjection) {
-        performInvoicePDFAction("export") {
-            _ = try InvoicePDFActions.export(
-                invoicePDFService: invoicePDFService,
-                profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
-                row: row
-            )
-        }
-    }
-
-    private func performInvoicePDFAction(_ action: String, operation: () throws -> Void) {
-        do {
-            try operation()
-        } catch {
-            let message = error.localizedDescription
-            actionFailure = WorkflowActionFailure(message: message)
-            AppTelemetry.invoicePDFActionFailed(action: action, message: message)
         }
     }
 

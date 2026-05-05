@@ -11,8 +11,6 @@ struct BucketDetailWorkbench: View {
     let onUpdateEntryDate: (WorkspaceBucketEntryRowProjection, Date) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: () -> Void
-    let onOpenInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
-    let onExportInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
 
     var body: some View {
         ScrollView {
@@ -46,13 +44,6 @@ struct BucketDetailWorkbench: View {
                     onDeleteEntry: onDeleteEntry,
                     onUpdateEntryDate: onUpdateEntryDate
                 )
-
-                if let invoiceRow {
-                    InvoiceBucketActions(
-                        onOpenPDF: { onOpenInvoicePDF(invoiceRow) },
-                        onExportPDF: { onExportInvoicePDF(invoiceRow) }
-                    )
-                }
             }
             .padding(.horizontal, BillbiSpacing.xl + BillbiSpacing.md)
             .padding(.vertical, BillbiSpacing.lg)

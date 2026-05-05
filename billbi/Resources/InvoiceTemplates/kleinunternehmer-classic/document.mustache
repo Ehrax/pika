@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>{{invoiceNumber}}</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="invoice-page">
+    <header class="invoice-header">
+      <section class="business-address">
+        <h2>{{businessName}}</h2>
+        <p>
+          {{businessPersonName}}<br>
+          {{{businessAddress}}}
+        </p>
+        <p>
+          {{businessEmail}}<br>
+          {{businessPhone}}
+        </p>
+        <p class="business-tax">
+          {{#taxIdentifier}}<strong>Steuernummer:</strong> {{taxIdentifier}}<br>{{/taxIdentifier}}
+          {{#economicIdentifier}}<strong>Wirtschafts-IdNr:</strong> {{economicIdentifier}}{{/economicIdentifier}}
+        </p>
+      </section>
+      <section class="invoice-title">
+        <h1>Rechnung</h1>
+        <p>{{invoiceNumber}}</p>
+        <dl class="invoice-date">
+          <dt>Rechnungsdatum</dt><dd>{{issueDate}}</dd>
+        </dl>
+      </section>
+    </header>
+
+    <div class="header-rule"></div>
+
+    <section class="recipient-section">
+      <div class="recipient-address">
+        <div class="section-label">Rechnungsempfänger</div>
+        <h3>{{clientName}}</h3>
+        <p>{{{billingAddress}}}</p>
+      </div>
+    </section>
+
+    <section class="intro-copy">
+      Hiermit erlaube ich mir, für den folgenden Leistungszeitraum <strong>{{servicePeriod}}</strong> folgende Leistungen in Rechnung zu stellen:
+    </section>
+
+    {{> line-items}}
+
+    {{> payment-details}}
+  </main>
+</body>
+</html>
