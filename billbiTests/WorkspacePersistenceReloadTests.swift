@@ -429,8 +429,9 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedProject.invoices.isEmpty)
     }
 
-    @Test func persistentWorkspaceStoreRejectsReadyBucketFinalizationWhenDurableInputsChanged() throws {
-        let (modelContext, storeURL) = try makePersistentModelContext()
+    @Test func persistentWorkspaceStoreFinalizesLatestDurableBucketInputs() throws {
+        let (container, storeURL) = try makePersistentModelContainer()
+        let modelContext = ModelContext(container)
         defer {
             try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
         }
@@ -505,41 +506,47 @@ struct WorkspacePersistenceReloadTests {
         modelContext.insert(timeEntry)
         try modelContext.save()
 
-        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let store = WorkspaceStore(seed: .empty, modelContext: ModelContext(container))
         let initialProject = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
         #expect(initialProject.buckets.first(where: { $0.id == bucketID })?.status == .ready)
 
-        timeEntry.descriptionText = "Synced billable work"
-        timeEntry.durationMinutes = 120
-        timeEntry.updatedAt = issueDate.addingTimeInterval(60)
-        try modelContext.save()
+        let externalContainer = try WorkspaceStore.makeModelContainer(mode: .local, storeURL: storeURL)
+        let externalContext = ModelContext(externalContainer)
+        let externalTimeEntry = try #require(
+            try externalContext.fetch(FetchDescriptor<TimeEntryRecord>(
+                predicate: #Predicate { $0.bucketID == bucketID }
+            )).first
+        )
+        externalTimeEntry.descriptionText = "Synced billable work"
+        externalTimeEntry.durationMinutes = 120
+        externalTimeEntry.updatedAt = issueDate.addingTimeInterval(60)
+        try externalContext.save()
 
-        #expect(throws: WorkspaceStoreError.persistenceConflict) {
-            try store.finalizeInvoice(
-                projectID: projectID,
-                bucketID: bucketID,
-                draft: InvoiceFinalizationDraft(
-                    recipientName: "Snapshot Client",
-                    recipientEmail: "billing@snapshot.example",
-                    recipientBillingAddress: "1 Snapshot Way",
-                    invoiceNumber: "NCS-2026-046",
-                    template: .kleinunternehmerClassic,
-                    issueDate: issueDate,
-                    dueDate: dueDate,
-                    servicePeriod: "May 2026",
-                    currencyCode: "EUR",
-                    taxNote: ""
-                ),
-                occurredAt: issueDate
-            )
-        }
+        let invoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Snapshot Client",
+                recipientEmail: "billing@snapshot.example",
+                recipientBillingAddress: "1 Snapshot Way",
+                invoiceNumber: "NCS-2026-046",
+                template: .kleinunternehmerClassic,
+                issueDate: issueDate,
+                dueDate: dueDate,
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            ),
+            occurredAt: issueDate
+        )
 
         let reloadedProject = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
         let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucketID }))
-        #expect(reloadedBucket.status == .ready)
+        #expect(invoice.totalMinorUnits == 20_000)
+        #expect(reloadedBucket.status == .finalized)
         #expect(reloadedBucket.timeEntries.first?.description == "Synced billable work")
         #expect(reloadedBucket.timeEntries.first?.durationMinutes == 120)
-        #expect(reloadedProject.invoices.isEmpty)
+        #expect(reloadedProject.invoices.map(\.number) == ["NCS-2026-046"])
     }
 
     @Test func persistentWorkspaceStoreReloadsAndThrowsConflictForStaleInvoiceNumberDuplicate() throws {

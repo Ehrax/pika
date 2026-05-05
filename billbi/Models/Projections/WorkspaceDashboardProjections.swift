@@ -95,13 +95,21 @@ enum WorkspaceDashboardProjections {
         workspace.activeProjects.enumerated().flatMap { index, project in
             let colorIndex = ProjectColorPalette.colorIndex(forProjectAt: index)
             let events = project.buckets
-                .filter { $0.status == .open || $0.status == .ready }
-                .flatMap { bucket in
-                    unbilledRevenueEvents(for: bucket, fallbackDate: date, colorIndex: colorIndex)
+                .enumerated()
+                .filter { _, bucket in
+                    bucket.status == .open || bucket.status == .ready
+                }
+                .flatMap { bucketIndex, bucket in
+                    unbilledRevenueEvents(
+                        for: bucket,
+                        fallbackDate: date,
+                        colorIndex: colorIndex,
+                        bucketIndex: bucketIndex
+                    )
                 }
                 .sorted { left, right in
                     if left.date == right.date {
-                        return left.amountMinorUnits < right.amountMinorUnits
+                        return left.sequence < right.sequence
                     }
 
                     return left.date < right.date
@@ -124,34 +132,41 @@ enum WorkspaceDashboardProjections {
     private static func unbilledRevenueEvents(
         for bucket: WorkspaceBucket,
         fallbackDate: Date,
-        colorIndex: Int
+        colorIndex: Int,
+        bucketIndex: Int
     ) -> [ProjectRevenueEvent] {
+        let bucketSequence = bucketIndex * 10_000
         guard bucket.hasRowLevelEntries else {
             guard bucket.effectiveTotalMinorUnits > 0 else { return [] }
             return [
                 ProjectRevenueEvent(
                     date: bucket.updatedAt ?? fallbackDate,
                     amountMinorUnits: bucket.effectiveTotalMinorUnits,
-                    colorIndex: colorIndex
+                    colorIndex: colorIndex,
+                    sequence: bucketSequence
                 ),
             ]
         }
 
         return bucket.timeEntries
-            .map { entry in
+            .enumerated()
+            .map { entryIndex, entry in
                 ProjectRevenueEvent(
                     date: entry.date,
                     amountMinorUnits: entry.billableAmountMinorUnits,
-                    colorIndex: colorIndex
+                    colorIndex: colorIndex,
+                    sequence: bucketSequence + entryIndex
                 )
             }
             .filter { $0.amountMinorUnits > 0 }
             + bucket.fixedCostEntries
-            .map { fixedCost in
+            .enumerated()
+            .map { fixedCostIndex, fixedCost in
                 ProjectRevenueEvent(
                     date: fixedCost.date,
                     amountMinorUnits: fixedCost.amountMinorUnits,
-                    colorIndex: colorIndex
+                    colorIndex: colorIndex,
+                    sequence: bucketSequence + bucket.timeEntries.count + fixedCostIndex
                 )
             }
             .filter { $0.amountMinorUnits > 0 }
@@ -234,4 +249,5 @@ private struct ProjectRevenueEvent: Equatable {
     var date: Date
     var amountMinorUnits: Int
     var colorIndex: Int
+    var sequence: Int
 }

@@ -131,7 +131,10 @@ struct DashboardFeatureView: View {
 
     private func needsAttention(summary: DashboardSummary) -> some View {
         VStack(alignment: .leading, spacing: BillbiSpacing.md) {
-            SectionHeader(title: "Needs Attention", detail: "\(summary.needsAttention.count) items")
+            SectionHeader(
+                title: "Needs Attention",
+                detail: String(localized: "\(summary.needsAttention.count) items")
+            )
 
             VStack(spacing: 0) {
                 ForEach(summary.needsAttention) { item in
@@ -279,7 +282,7 @@ struct DashboardFeatureView: View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: BillbiSpacing.md) {
                 HStack(alignment: .firstTextBaseline, spacing: BillbiSpacing.sm) {
-                    Text("Revenue · \(selectedRevenueRange.rawValue)")
+                    Text(String(localized: "Revenue · \(selectedRevenueRange.displayTitle)"))
                         .font(BillbiTypography.subheading)
                         .foregroundStyle(BillbiColor.textPrimary)
 
@@ -296,7 +299,10 @@ struct DashboardFeatureView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
-                SectionHeader(title: "Revenue · \(selectedRevenueRange.rawValue)", detail: revenueRangeDetail(visiblePoints))
+                SectionHeader(
+                    title: String(localized: "Revenue · \(selectedRevenueRange.displayTitle)"),
+                    detail: revenueRangeDetail(visiblePoints)
+                )
 
                 revenueRangePicker()
                     .fixedSize(horizontal: true, vertical: false)
@@ -308,7 +314,7 @@ struct DashboardFeatureView: View {
     private func revenueRangePicker() -> some View {
         Picker("Revenue range", selection: $selectedRevenueRange) {
             ForEach(DashboardRevenueRange.allCases) { range in
-                Text(range.rawValue).tag(range)
+                Text(range.displayTitle).tag(range)
             }
         }
         .pickerStyle(.segmented)
@@ -328,9 +334,9 @@ struct DashboardFeatureView: View {
     private func attentionAccessibilityHint(for item: DashboardAttentionItem) -> String {
         switch item.target {
         case .invoice:
-            "Open this invoice"
+            String(localized: "Open this invoice")
         case .bucket:
-            "Open this bucket"
+            String(localized: "Open this bucket")
         }
     }
 }

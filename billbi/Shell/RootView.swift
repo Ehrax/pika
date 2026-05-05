@@ -112,17 +112,17 @@ enum BillbiShellDestination: Hashable {
     var title: String {
         switch self {
         case .dashboard:
-            "Dashboard"
+            String(localized: "Dashboard")
         case .projects:
-            "Projects"
+            String(localized: "Projects")
         case .invoices:
-            "Invoices"
+            String(localized: "Invoices")
         case .clients:
-            "Clients"
+            String(localized: "Clients")
         case .settings:
-            "Settings"
+            String(localized: "Settings")
         case .project:
-            "Project"
+            String(localized: "Project")
         }
     }
 

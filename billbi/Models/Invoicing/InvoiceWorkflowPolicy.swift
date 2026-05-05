@@ -23,7 +23,20 @@ enum InvoiceWorkflowPolicy {
     }
 
     static func statusTitle(status: InvoiceStatus, isOverdue: Bool) -> String {
-        isOverdue ? "Overdue" : status.rawValue.capitalized
+        if isOverdue {
+            return String(localized: "Overdue")
+        }
+
+        switch status {
+        case .finalized:
+            return String(localized: "Finalized")
+        case .sent:
+            return String(localized: "Sent")
+        case .paid:
+            return String(localized: "Paid")
+        case .cancelled:
+            return String(localized: "Cancelled")
+        }
     }
 
     static func statusTone(status: InvoiceStatus, isOverdue: Bool) -> BillbiStatusTone {
