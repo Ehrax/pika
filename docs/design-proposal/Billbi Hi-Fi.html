@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Billbi · hi-fi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #1a1a1f; color: #f7f7fa; font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif; }
+  * { box-sizing: border-box; }
+  body { overflow: hidden; }
+  @keyframes hf-blink { 0%, 50% { opacity: 1 } 50.01%, 100% { opacity: 0 } }
+  button { font-family: inherit; }
+  input { font-family: inherit; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="hifi-tokens.jsx"></script>
+  <script type="text/babel" src="hifi-atoms.jsx"></script>
+  <script type="text/babel" src="hifi-mac.jsx"></script>
+  <script type="text/babel" src="hifi-iphone.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "showDark": true,
+      "showLight": false
+    }/*EDITMODE-END*/;
+
+    // Each screen renders twice (dark + light) inside a single section so the
+    // user can compare palettes head-to-head. Toggling tweaks hides one column.
+
+    // Authored sizes for scaled artboards.
+    // Mac: 1200×760 fits a 3-pane layout. Phone artboard 460×940 leaves
+    // 30px of breathing room around the 402×874 IOSDevice bezel.
+    const macW = 1200, macH = 760;
+    const phoneArtboardW = 460, phoneArtboardH = 940;
+
+    // NOT a React component — called inline so the returned array of DCArtboard
+    // elements becomes direct children of DCSection (it filters by element type).
+    function screenPair(idBase, label, kind, render, tweaks) {
+      const w = kind === 'phone' ? phoneArtboardW : macW;
+      const h = kind === 'phone' ? phoneArtboardH : macH;
+      const variants = [
+        tweaks.showDark && { id: 'dark', theme: window.BillbiTokens.dark, label: 'dark' },
+        tweaks.showLight && { id: 'light', theme: window.BillbiTokens.light, label: 'light' },
+      ].filter(Boolean);
+      return variants.map((v) => (
+        <DCArtboard
+          key={`${idBase}-${v.id}`}
+          id={`${idBase}-${v.id}`}
+          label={`${label} · ${v.label}`}
+          width={w}
+          height={h}
+          style={{
+            background: v.theme.bg,
+            padding: 0,
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          {kind === 'phone' ? (
+            <IOSDevice dark={v.theme === window.BillbiTokens.dark}>
+              {render(v.theme)}
+            </IOSDevice>
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center' }}>
+              {render(v.theme)}
+            </div>
+          )}
+        </DCArtboard>
+      ));
+    }
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      return (
+        <>
+          <DesignCanvas background="#0F0F12">
+            <DCSection id="hifi-mac" title="Mac · hi-fi" subtitle="full capture-first flow: A1 projects → A2 bucket detail → A3 inline add → B dashboard-first → confirm → finalized PDF.">
+              {screenPair('a1', 'A1 · projects · choose one', 'mac', (t) => <HiFi_MacA1 theme={t} />, tweaks)}
+              {screenPair('a2', 'A2 · bucket detail', 'mac', (t) => <HiFi_MacA2 theme={t} />, tweaks)}
+              {screenPair('a3', 'A3 · inline add', 'mac', (t) => <HiFi_MacA3 theme={t} />, tweaks)}
+              {screenPair('b1', 'B1 · dashboard', 'mac', (t) => <HiFi_MacB1 theme={t} />, tweaks)}
+              {screenPair('b3', 'B3 · confirm sheet', 'mac', (t) => <HiFi_MacB3 theme={t} />, tweaks)}
+              {screenPair('b4', 'B4 · finalized · PDF', 'mac', (t) => <HiFi_MacB4 theme={t} />, tweaks)}
+            </DCSection>
+
+            <DCSection id="hifi-phone-d" title="iPhone · D · stacked capture" subtitle="projects → buckets → bucket detail → add sheet → ready to invoice.">
+              {screenPair('d1', 'D1 · projects', 'phone', (t) => <HiFi_PhoneD1 theme={t} />, tweaks)}
+              {screenPair('d2', 'D2 · buckets', 'phone', (t) => <HiFi_PhoneD2 theme={t} />, tweaks)}
+              {screenPair('d3', 'D3 · bucket detail', 'phone', (t) => <HiFi_PhoneD3 theme={t} />, tweaks)}
+              {screenPair('d4', 'D4 · add sheet', 'phone', (t) => <HiFi_PhoneD4 theme={t} />, tweaks)}
+              {screenPair('d5', 'D5 · ready to invoice', 'phone', (t) => <HiFi_PhoneD5 theme={t} />, tweaks)}
+            </DCSection>
+
+            <DCSection id="hifi-phone-e" title="iPhone · E · dashboard-first" subtitle="today screen with KPIs + quick log; tap any item to drill in.">
+              {screenPair('e1', 'E1 · today', 'phone', (t) => <HiFi_PhoneE1 theme={t} />, tweaks)}
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection title="palettes">
+              <TweakToggle label="show dark" value={tweaks.showDark} onChange={(v) => setTweak('showDark', v)} />
+              <TweakToggle label="show light" value={tweaks.showLight} onChange={(v) => setTweak('showLight', v)} />
+              <div style={{ fontSize: 11, color: '#7a7468', lineHeight: 1.4 }}>
+                hide one to focus on the other; both off restores both.
+              </div>
+            </TweakSection>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,10 +1,10 @@
-// Pika hi-fi atoms — Pill, Button, Card, Row, Field, NumDisplay, Window.
+// Billbi hi-fi atoms — Pill, Button, Card, Row, Field, NumDisplay, Window.
 // All consume ThemeCtx; the same component renders correctly in dark or light.
 
 const HF_FONT_UI = "'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 const HF_FONT_NUM = "'Fira Code', 'JetBrains Mono', ui-monospace, monospace";
 
-// Detect dark vs light theme from any token set (Pika OR Happines OR future ones)
+// Detect dark vs light theme from any token set (Billbi OR Happines OR future ones)
 // by reading the surface luminance. Cheap and theme-agnostic.
 function isDarkTheme(theme) {
   const hex = (theme.surface || '#000').replace('#', '');

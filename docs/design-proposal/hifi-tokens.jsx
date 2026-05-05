@@ -1,7 +1,7 @@
-// Pika hi-fi tokens — dark + light variants.
+// Billbi hi-fi tokens — dark + light variants.
 // Colors lifted exactly from the ehrax.dev design system screenshot.
 
-window.PikaTokens = {
+window.BillbiTokens = {
   dark: {
     bg: '#0B0B0F',           // canvas around windows (slightly deeper than surface)
     surface: '#111113',      // primary surface
@@ -57,5 +57,5 @@ window.PikaTokens = {
 };
 
 // Theme context — child components consume this to swap palettes.
-window.ThemeCtx = React.createContext(window.PikaTokens.dark);
+window.ThemeCtx = React.createContext(window.BillbiTokens.dark);
 window.useTheme = () => React.useContext(window.ThemeCtx);

@@ -7,26 +7,26 @@ The core issue is **too many responsibilities concentrated in single files**: se
 
 ## Biggest Debt
 
-1. `pika/Stores/ProjectStore.swift` (around 1,199 lines)
+1. `billbi/Stores/ProjectStore.swift` (around 1,199 lines)
 - Main architectural pressure point.
 - Currently owns drafts, validation, mutations, persistence, activity logging, invoice transitions, archive/delete rules, and telemetry calls.
 - Drift: this violates the intended "small store boundary" and behaves like a god object.
 
-2. `pika/Models/WorkspaceSnapshot.swift` (around 1,076 lines)
+2. `billbi/Models/WorkspaceSnapshot.swift` (around 1,076 lines)
 - Too broad in responsibility.
 - Mixes core data models with normalization, dashboard summaries, project detail projections, invoice list projections, and compatibility/coding logic.
 - Drift: data shape and projection/reporting logic are co-located.
 
-3. `pika/Shell/ProjectPlaceholderView.swift` (around 967 lines)
+3. `billbi/Shell/ProjectPlaceholderView.swift` (around 967 lines)
 - Biggest SwiftUI composition debt.
 - Owns split layout, bucket selection, toolbar actions, sheets, dialogs, invoice finalization, PDF open/export, and multiple private sheet/detail views.
 - Drift: no longer a placeholder; effectively the project workbench feature.
 
-4. `pika/Shell/ClientsView.swift` (around 11+ top-level sections, large file)
+4. `billbi/Shell/ClientsView.swift` (around 11+ top-level sections, large file)
 - Contains list, creation sheet, row, detail surface, editable fields, archive/delete workflows, address parsing, and save state.
 - Drift: should be a small root view plus dedicated feature files.
 
-5. `pika/Services/InvoicePDFService.swift` (around 727 lines)
+5. `billbi/Services/InvoicePDFService.swift` (around 727 lines)
 - Length is less alarming because PDF drawing is verbose by nature.
 - Still likely benefits from separation of orchestration, rendering, payload, and layout/text helpers.
 
@@ -49,7 +49,7 @@ Observed drift:
 Do not create random new folders. Promote implicit modules into explicit feature boundaries.
 
 ```text
-pika/
+billbi/
   App/
   DesignSystem/
   Models/
@@ -81,7 +81,7 @@ pika/
 
 ## Best First Refactor
 
-Start with `pika/Shell/ProjectPlaceholderView.swift`.
+Start with `billbi/Shell/ProjectPlaceholderView.swift`.
 - Rename/split toward `Features/Projects/ProjectWorkbenchView.swift`.
 - Extract:
   - `ProjectBucketSidebarView`
@@ -91,7 +91,7 @@ Start with `pika/Shell/ProjectPlaceholderView.swift`.
   - `CreateInvoiceConfirmationSheet`
   - `ProjectInvoiceActions` or `InvoicePDFActionService`
 
-Then tackle `pika/Stores/ProjectStore.swift`.
+Then tackle `billbi/Stores/ProjectStore.swift`.
 - First split with extensions by responsibility, no behavior change.
 - This yields immediate clarity with lower refactor risk.
 

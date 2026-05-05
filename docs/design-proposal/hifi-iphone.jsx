@@ -1,4 +1,4 @@
-// Pika hi-fi iPhone screens — D1, D2, D3, D4, D5, E1.
+// Billbi hi-fi iPhone screens — D1, D2, D3, D4, D5, E1.
 // Wraps everything in IOSDevice (from ios-frame.jsx) for proper bezel + status bar
 // + dynamic island + home indicator. The IOSDevice itself is 402×874.
 

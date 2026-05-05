@@ -1,4 +1,4 @@
-# Pika Context
+# Billbi Context
 
 ## Domain Language
 
@@ -7,7 +7,49 @@
 - **Project**: a body of work for a client. A project contains buckets and finalized invoices.
 - **Bucket**: a project work package that collects time entries and fixed costs before it is ready to invoice.
 - **Invoice**: a finalized billing document created from an invoiceable bucket. Its business, client, project, bucket, line-item, and status details are snapshotted at finalization time.
+- **Expense**: an amount-bearing business cost the freelancer records for profit tracking, payment follow-up, and tax-deductible evidence.
+- **Expense Title**: the short human label used to identify an expense in lists and summaries.
+- **Expense Notes**: optional user-written context for an expense.
+- **Expense Evidence**: an original invoice, receipt, or similar proof document attached to an expense, regardless of whether it is a PDF or image.
+- **Evidence Kind**: an optional label for expense evidence such as invoice, receipt, payment proof, or other.
+- **Evidence Availability**: whether an attached evidence file is locally available, still syncing, unavailable, or genuinely missing.
+- **Expense Category**: a user-approved label that groups expenses for understanding costs and preparing exports.
+- **Draft Expense**: an expense whose extracted or entered details still need review before it counts toward profit or tax reporting.
+- **Due Expense**: a reviewed expense whose payment is still open.
+- **Paid Expense**: a reviewed expense whose payment is complete.
+- **Archived Expense**: an expense kept for records but hidden from normal active expense views.
+- **Document Date**: the date printed on an expense's evidence or entered as the business date of the expense.
+- **Due Date**: the date by which a due expense should be paid.
+- **Payment Date**: the date money actually left the freelancer's account or card for a paid expense.
+- **Reporting Amount**: the reviewed amount of an expense in the workspace currency used for profit charts and exports.
+- **Expense VAT**: reviewed tax details extracted from expense evidence, such as net amount, VAT amount, and VAT rate.
+- **Expense Review**: the user confirmation step where extracted expense suggestions become finance records.
+- **Actual Profit**: paid invoice revenue minus paid expenses for a selected period.
+- **Workspace Archive**: a full backup or transfer package for restoring a Billbi workspace.
+- **Tax Export**: a focused yearly handoff package of tax-relevant paid expenses, summaries, and evidence.
 - **Activity**: a local audit-style event shown in the app for notable workspace changes.
+
+## Flagged Ambiguities
+
+- "cost" exists in invoiceable bucket language as a fixed cost that can be billed to a client; use **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
+- "tax document" was considered for generic tax paperwork, but Billbi's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
+- "receipt" and "invoice PDF" both refer to **Expense Evidence** when they prove an outgoing business cost; do not model them as separate top-level records.
+- "batch import" was considered for mixed uploads, but Billbi's expense intake flow is centered on one intended **Expense** at a time; multiple uploaded files should be treated as evidence for that intended expense and flagged for review if they appear unrelated.
+- "bill" refers to a **Due Expense** when it is an unpaid outgoing business cost; do not model it as a separate top-level record.
+- The product surface should call the area **Expenses**, not Bills or Costs.
+- **Expenses** should have their own sidebar destination near **Invoices**.
+- "fixed cost" currently means an invoiceable project line item; future work may allow selected **Expenses** to be re-invoiced to clients, but v1 should keep outgoing **Expenses** distinct from invoice line items.
+- "vendor" is useful as a plain vendor-name field on an **Expense**, but should not be a separate managed domain object in v1.
+- "category" should be controlled by user-approved **Expense Categories**; AI may suggest a new category during review, but it should not silently expand the category list.
+- "subscription" is not a separate recurring domain object in v1; repeated subscription bills are recorded as ordinary **Expenses**.
+- Duplicate detection for **Expenses** is advisory in review; Billbi may flag likely duplicates or related evidence, but the user decides whether to attach, create separately, or ignore.
+- Billbi v1 should not have a separate document or evidence library; evidence is accessed through its **Expense**.
+- Normal expense search excludes **Archived Expenses** unless the user is searching the archived view.
+- Billbi v1 should not model structured expense line items; the reviewed expense is the finance record and the original evidence remains available for detail.
+- AI extraction produces draft suggestions for **Expense Review**, not authoritative finance data.
+- Extracted evidence text may be stored for expense search and duplicate detection, without creating a standalone document-search surface in v1.
+- Importing files into an expense intake flow is the user's confirmation that those files may be analyzed for expense extraction.
+- Billbi should not scan or analyze files that the user has not intentionally imported into an expense intake flow.
 
 ## Architecture Language
 
@@ -20,12 +62,12 @@
 
 ## Current Architecture Direction
 
-- Keep `WorkspaceStore` as Pika's app-facing Workspace Module for now.
+- Keep `WorkspaceStore` as Billbi's app-facing Workspace Module for now.
 - Deepen its implementation rather than replacing it with a Redux-style reducer or a Flutter BLoC-style event hub.
 - Treat SwiftData plus private CloudKit as load-bearing persistence.
 - Inject `ModelContext` at app composition time, then keep it inside `WorkspacePersistence`.
 - Keep SwiftUI views focused on local presentation state, projections, and calls to `WorkspaceStore` commands.
-- Keep Pika MV-first for SwiftUI. Use lightweight DDD-informed layering only to name where domain decisions live:
+- Keep Billbi MV-first for SwiftUI. Use lightweight DDD-informed layering only to name where domain decisions live:
   - SwiftUI views are presentation.
   - `WorkspaceStore` is the application coordinator.
   - `WorkspaceInvoicingWorkflow`, `WorkspaceMutationPolicy`, and `InvoiceWorkflowPolicy` own domain decisions.
@@ -46,3 +88,59 @@
   - persistence checks durable SwiftData records before write to guard against stale snapshots or CloudKit sync changes.
 - On stale persistence or CloudKit-sensitive conflicts, throw and reload. Do not auto-retry finalization for now.
 - Keep existing `WorkspaceStoreError` behavior where practical, but introduce a distinct persistence conflict error/case for stale or CloudKit-sensitive writes.
+
+## Relationships
+
+- An **Expense** may have zero, one, or many **Expense Evidence** attachments.
+- **Evidence Kind** helps review and export attached files, but does not block expense review.
+- **Expense Evidence** files are copied into Billbi-managed storage when imported.
+- **Expense Evidence** should sync through the user's Apple cloud storage path; expense metadata may become visible before evidence files finish syncing.
+- If expense metadata references evidence that is not locally available yet, Billbi should show a syncing or unavailable evidence state rather than treating the expense as missing evidence.
+- An **Expense** may be reviewed without **Expense Evidence**, but should remain visibly flagged as missing evidence.
+- Archiving is the normal delete-like action for **Expenses**; hard deletion is only available for archived expenses when a record was created incorrectly.
+- **Archived Expenses** are excluded from normal actual-profit charts and tax exports by default.
+- Archiving an **Expense** keeps its copied **Expense Evidence** in Billbi storage; hard deletion removes Billbi's copy when the evidence is no longer attached elsewhere.
+- **Activity** includes notable **Expense** lifecycle events, but not every draft extraction, review-field edit, or AI suggestion change.
+- One expense intake flow is intended to create or update exactly one **Expense**.
+- Uploading evidence while an active **Expense** is selected should attach it to that expense; uploading with no selected expense should start a new **Draft Expense**.
+- An **Expense** belongs to the **Workspace** and may optionally link to one **Project**.
+- **Expense Categories** belong to the **Workspace** and are reused by expenses.
+- **Expense Title** is the primary list label; vendor name, category, and finance dates are supporting details.
+- Renaming an **Expense Category** updates that label everywhere it is used.
+- Deleting a used **Expense Category** requires moving its expenses to a replacement category.
+- Billbi should ship with default **Expense Categories**, and users can add, rename, or remove them in Settings.
+- AI-suggested new **Expense Categories** can be approved inline during **Expense Review**.
+- When an **Expense** links to a **Project**, its **Client** is implied by that project.
+- Billbi v1 does not split one **Expense** across multiple projects or clients.
+- A **Draft Expense** does not count toward profit or tax/export totals.
+- A **Due Expense** represents an outstanding obligation but does not reduce actual paid profit.
+- A **Paid Expense** reduces actual paid profit and is eligible for tax/export totals.
+- A **Paid Expense** is placed in actual-profit charts by **Payment Date**.
+- **Actual Profit** includes paid invoices and paid expenses only; due expenses are shown as outstanding obligations instead of reducing actual profit.
+- The Dashboard should stay visually calm: the existing revenue chart title can become a metric/dashboard dropdown for **Actual Profit** and revenue rather than adding a separate dense expense dashboard.
+- Dashboard **Needs Attention** can include actionable expense items such as due expenses that need payment soon.
+- The **Expenses** area should follow the calm list/detail pattern of **Invoices**, with expense filtering and evidence/detail review in the detail pane.
+- Initial **Expense Review** design should validate a side-by-side layout with evidence preview and editable extracted fields.
+- After **Expense Review** is complete, the detail view should become evidence-first like the finalized invoice preview; the review data panel should not stay permanently visible.
+- Reviewed expense details should be changed through an explicit edit-details mode rather than always showing editable fields.
+- The **Expenses** toolbar should include an add/import action that starts expense intake.
+- Expense intake should start in a sheet that supports uploading evidence or creating a manual expense.
+- Starting expense intake creates a persistent **Draft Expense** so the review process can be resumed if the sheet closes.
+- AI extraction for a **Draft Expense** may continue in the background; the expense list should show chip-style states such as analyzing, draft, due, paid, or archived.
+- Analyzing is an extraction state within **Draft Expense**, not a separate expense lifecycle status; UI may show a spinner while AI work is active.
+- Failed AI extraction keeps the **Draft Expense** and its evidence intact; the user can retry extraction or complete the expense manually.
+- The expense intake sheet may be AI chat-led, where the user reviews and corrects extracted details conversationally before confirming the **Draft Expense**.
+- Detailed expense intake and review interaction design is intentionally deferred until visual designs or a PRD exist; current language captures domain boundaries, not final screen structure.
+- A **Draft Expense** becomes reviewed only after the user confirms its title, amount, currency, category, status, and relevant finance date.
+- A **Paid Expense** requires a **Payment Date** before it can count toward actual profit.
+- Payment proof is optional; a user may mark a reviewed **Expense** as paid by confirming its **Payment Date**.
+- Cross-currency **Expenses** keep their original amount and currency, but require a reviewed **Reporting Amount** in the workspace currency before they count toward profit or exports.
+- Billbi v1 should not fetch exchange rates automatically for **Expenses**.
+- **Expense VAT** should be extracted and stored from day one when available, but missing VAT details do not block expense review in v1.
+- Billbi v1 uses the gross **Reporting Amount** for actual-profit calculations.
+- A **Workspace Archive** includes expenses and their copied **Expense Evidence** so the workspace can be restored completely.
+- The existing **Workspace Archive** format should be extended for expenses instead of creating a separate expense archive.
+- A **Tax Export** includes tax-relevant paid expenses and evidence for a selected year, not the full workspace.
+- **Tax Export** eligibility is based on **Paid Expenses** in the selected year by **Payment Date**.
+- A **Tax Export** should include paid expenses with missing evidence, flagged so the freelancer can fill the gaps before handoff.
+- A **Tax Export** should include a summary file and organize evidence category-first for accountant or tax-office handoff.

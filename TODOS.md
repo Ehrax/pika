@@ -1,6 +1,6 @@
-# Pika TODOs
+# Billbi TODOs
 
-This list tracks the remaining work from `docs/design-proposal/pika-mac-first-app-handover-spec.md` after the current Mac-first implementation pass. Keep gates lightweight for SwiftUI-only visual changes; use focused tests for business/domain behavior.
+This list tracks the remaining work from `docs/design-proposal/billbi-mac-first-app-handover-spec.md` after the current Mac-first implementation pass. Keep gates lightweight for SwiftUI-only visual changes; use focused tests for business/domain behavior.
 
 ## Mac App: Functional Completion
 

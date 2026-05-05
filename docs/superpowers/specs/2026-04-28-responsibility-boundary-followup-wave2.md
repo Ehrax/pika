@@ -1,7 +1,7 @@
 # Responsibility Boundary Follow-up Spec (Wave 2)
 
 Date: 2026-04-28
-Repo: `/Users/ehrax/Projects/ehrax.dev/pika`
+Repo: `/Users/ehrax/Projects/ehrax.dev/billbi`
 
 ## Goal
 
@@ -21,7 +21,7 @@ Apply a second behavior-preserving cleanup wave after the first boundary refacto
 ## Findings Summary
 
 1. Shared sidebar row modifier is hidden in `Shell/ProjectBucketColumn.swift` but used cross-feature.
-2. Calendar helpers are duplicated (`pikaGregorian` and `pikaStoreGregorian`) with same behavior.
+2. Calendar helpers are duplicated (`billbiGregorian` and `billbiStoreGregorian`) with same behavior.
 3. Invoice status/tone/action policy is duplicated across `InvoicesFeatureView`, `BucketDetailWorkbench`, `ProjectWorkbenchView`, and store rules.
 4. Address/payment parsing lives in feature views instead of shared support/model boundaries.
 5. Duration parser is located in projection file while store depends on it.
@@ -35,13 +35,13 @@ Objective:
 - Move cross-feature UI/support helpers into discoverable shared files.
 
 Owned files:
-- `pika/Shell/ProjectBucketColumn.swift`
-- `pika/DesignSystem/PikaSidebarRowStyle.swift` (new)
-- `pika/Features/Settings/SettingsFeatureView.swift`
-- `pika/Features/Clients/ClientsFeatureView.swift`
-- `pika/Support/BillingTextComponents.swift` (new)
-- `pika/Features/Invoices/InvoicesFeatureView.swift`
-- `pika/Services/InvoicePDF/MacPDFDocumentView.swift` (new)
+- `billbi/Shell/ProjectBucketColumn.swift`
+- `billbi/DesignSystem/BillbiSidebarRowStyle.swift` (new)
+- `billbi/Features/Settings/SettingsFeatureView.swift`
+- `billbi/Features/Clients/ClientsFeatureView.swift`
+- `billbi/Support/BillingTextComponents.swift` (new)
+- `billbi/Features/Invoices/InvoicesFeatureView.swift`
+- `billbi/Services/InvoicePDF/MacPDFDocumentView.swift` (new)
 
 Dependencies:
 - none
@@ -57,15 +57,15 @@ Objective:
 - Centralize invoice action/presentation rules and shared domain helpers.
 
 Owned files:
-- `pika/Stores/WorkspaceStore+BucketAndInvoiceRules.swift`
-- `pika/Models/Workspace/WorkspaceSnapshot.swift`
-- `pika/Models/Projections/WorkspaceBucketProjections.swift`
-- `pika/Features/Projects/ProjectWorkbenchView.swift`
-- `pika/Features/Invoices/InvoicesFeatureView.swift`
-- `pika/Shell/BucketDetailWorkbench.swift`
-- `pika/Support/PikaCalendar.swift` (new)
-- `pika/Support/WorkspaceEntryDurationParser.swift` (new)
-- `pika/Models/Invoicing/InvoiceWorkflowPolicy.swift` (new)
+- `billbi/Stores/WorkspaceStore+BucketAndInvoiceRules.swift`
+- `billbi/Models/Workspace/WorkspaceSnapshot.swift`
+- `billbi/Models/Projections/WorkspaceBucketProjections.swift`
+- `billbi/Features/Projects/ProjectWorkbenchView.swift`
+- `billbi/Features/Invoices/InvoicesFeatureView.swift`
+- `billbi/Shell/BucketDetailWorkbench.swift`
+- `billbi/Support/BillbiCalendar.swift` (new)
+- `billbi/Support/WorkspaceEntryDurationParser.swift` (new)
+- `billbi/Models/Invoicing/InvoiceWorkflowPolicy.swift` (new)
 
 Dependencies:
 - may depend on W2-1 if touching same invoice view sections; merge carefully
@@ -81,8 +81,8 @@ Objective:
 - Prepare clean seams for moving dashboard/reporting logic out of views.
 
 Owned files:
-- `pika/Features/Dashboard/DashboardFeatureView.swift`
-- `pika/Models/Projections/DashboardRevenueProjection.swift` (new)
+- `billbi/Features/Dashboard/DashboardFeatureView.swift`
+- `billbi/Models/Projections/DashboardRevenueProjection.swift` (new)
 
 Dependencies:
 - none

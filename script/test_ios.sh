@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Test-iOS"
-RESULT_BUNDLE="$ROOT_DIR/.build/test/PikaTests-iOS.xcresult"
+RESULT_BUNDLE="$ROOT_DIR/.build/test/BillbiTests-iOS.xcresult"
 
 if [[ -z "${IOS_DESTINATION:-}" ]]; then
   IOS_DEVICE_ID="$(
@@ -30,12 +30,12 @@ rm -rf "$RESULT_BUNDLE"
 mkdir -p "$(dirname "$RESULT_BUNDLE")"
 
 xcodebuild test \
-  -project "$ROOT_DIR/pika.xcodeproj" \
-  -scheme "Pika Dev" \
+  -project "$ROOT_DIR/billbi.xcodeproj" \
+  -scheme "Billbi Dev" \
   -configuration "Debug Dev" \
   -destination "$IOS_DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   -resultBundlePath "$RESULT_BUNDLE" \
-  -only-testing:pikaTests \
+  -only-testing:billbiTests \
   -parallel-testing-enabled NO \
   CODE_SIGNING_ALLOWED=NO

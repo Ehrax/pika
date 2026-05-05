@@ -1,6 +1,6 @@
 # Tooling
 
-Pika uses project-local scripts for repeatable build, test, and coverage commands. The scripts keep Xcode output under `.build/` where practical so repeated runs do not depend on global DerivedData state.
+Billbi uses project-local scripts for repeatable build, test, and coverage commands. The scripts keep Xcode output under `.build/` where practical so repeated runs do not depend on global DerivedData state.
 
 ## macOS Build And Run
 
@@ -10,7 +10,7 @@ Run the macOS app with:
 ./script/build_and_run.sh
 ```
 
-The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `Pika Dev` scheme from `pika.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `pika-dev.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
+The script stops any running copy of the app launched from `.build/DerivedData/Run`, builds the `Billbi Dev` scheme from `billbi.xcodeproj` for `platform=macOS` with code signing disabled, locates the built `billbi-dev.app` under `.build/DerivedData/Run`, and launches it with `/usr/bin/open -n`.
 
 The default Codex dev actions call the same script with explicit local persistence:
 
@@ -33,12 +33,12 @@ Run the reliable scaffold test gate with:
 This runs unit tests only, with code coverage enabled:
 
 ```bash
-xcodebuild test -project pika.xcodeproj -scheme 'Pika Dev' -configuration 'Debug Dev' -destination 'platform=macOS' -only-testing:pikaTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project billbi.xcodeproj -scheme 'Billbi Dev' -configuration 'Debug Dev' -destination 'platform=macOS' -only-testing:billbiTests -enableCodeCoverage YES CODE_SIGNING_ALLOWED=NO
 ```
 
 The baseline generated UI test target is not part of the scaffold coverage gate because SwiftUI lifecycle tests are noisy at this stage. UI confidence should come from later end-to-end tests around real product flows.
 
-The shared `Pika Dev` and `Pika Prod` Xcode schemes also exclude `pikaUITests` from their Test actions, so Xcode's Test command and unfiltered scheme test runs stay on the reliable unit-test loop while the app is still settling.
+The shared `Billbi Dev` and `Billbi Prod` Xcode schemes also exclude `billbiUITests` from their Test actions, so Xcode's Test command and unfiltered scheme test runs stay on the reliable unit-test loop while the app is still settling.
 
 ## Coverage
 
@@ -48,10 +48,10 @@ Run coverage enforcement with:
 ./script/coverage.sh
 ```
 
-The coverage script runs `pikaTests` into `.build/coverage/PikaCoverage.xcresult`, extracts Xcode line coverage with:
+The coverage script runs `billbiTests` into `.build/coverage/BillbiCoverage.xcresult`, extracts Xcode line coverage with:
 
 ```bash
-xcrun xccov view --report --json .build/coverage/PikaCoverage.xcresult
+xcrun xccov view --report --json .build/coverage/BillbiCoverage.xcresult
 ```
 
 It prints two numbers:
@@ -61,11 +61,11 @@ It prints two numbers:
 
 The enforced gate intentionally excludes SwiftUI/design scaffold files and generated test targets that do not provide useful unit-test confidence in this pass:
 
-- `pika/DesignSystem/`
-- `pika/Shell/`
-- `pika/Support/PreviewSupport.swift`
-- `pikaTests/`
-- `pikaUITests/`
+- `billbi/DesignSystem/`
+- `billbi/Shell/`
+- `billbi/Support/PreviewSupport.swift`
+- `billbiTests/`
+- `billbiUITests/`
 
 The script enforces a 90% minimum line coverage threshold on testable production logic. It exits nonzero when that filtered coverage is below 90%.
 
@@ -88,7 +88,7 @@ IOS_DESTINATION='platform=iOS Simulator,id=03DD3B20-7426-40A9-AB86-6697C1C26639'
 The script runs:
 
 ```bash
-xcodebuild test -project pika.xcodeproj -scheme 'Pika Dev' -configuration 'Debug Dev' -destination "$IOS_DESTINATION" -only-testing:pikaTests CODE_SIGNING_ALLOWED=NO
+xcodebuild test -project billbi.xcodeproj -scheme 'Billbi Dev' -configuration 'Debug Dev' -destination "$IOS_DESTINATION" -only-testing:billbiTests CODE_SIGNING_ALLOWED=NO
 ```
 
 ## Metrics
@@ -97,14 +97,14 @@ CRAP-style metrics are intentionally not part of this scaffold branch. They need
 
 ## Persistence Modes
 
-Pika persists workspace state through normalized SwiftData records. The app does not keep a legacy blob/plist workspace fallback.
+Billbi persists workspace state through normalized SwiftData records. The app does not keep a legacy blob/plist workspace fallback.
 
-- Raw empty app launches use private CloudKit-backed persistence (`AppPersistenceMode.cloudKitPrivate`) unless `--pika-persistence` or `PIKA_PERSISTENCE` overrides it.
+- Raw empty app launches use private CloudKit-backed persistence (`AppPersistenceMode.cloudKitPrivate`) unless `--billbi-persistence` or `BILLBI_PERSISTENCE` overrides it.
 - Seeded app launches use local-only persistence (`AppPersistenceMode.local`) by default and replace existing local data with a deterministic normalized import.
 - The Codex dev actions pass `--local` explicitly so empty, seeded, and bikepark development runs do not hit CloudKit.
-- Prod local artifacts set `PIKA_PERSISTENCE=local` in the app bundle environment. Prod cloud artifacts leave persistence at the app default.
+- Prod local artifacts set `BILLBI_PERSISTENCE=local` in the app bundle environment. Prod cloud artifacts leave persistence at the app default.
 - Test and UI test runs use in-memory mode (`AppPersistenceMode.inMemory`) for isolation and repeatability.
-- Persistent stores are separated by app environment and bundle identifier under `~/Library/Application Support/Pika/{environment}/{bundle-id}/Pika.store`.
+- Persistent stores are separated by app environment and bundle identifier under `~/Library/Application Support/Billbi/{environment}/{bundle-id}/Billbi.store`.
 
 ## Development Data Policy
 

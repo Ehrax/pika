@@ -1,8 +1,8 @@
-# Pika
+# Billbi
 
 ## Mission
 
-- Build Pika as a polished SwiftUI macOS app for freelance invoicing.
+- Build Billbi as a polished SwiftUI macOS app for freelance invoicing.
 - Keep the app small, native, testable, and ready to grow without locking in premature architecture.
 
 ## Tooling
@@ -35,10 +35,10 @@
 
 ## Source Of Truth
 
-- App behavior: `pika/`
-- Unit tests: `pikaTests/`
-- macOS UI tests and launch checks: `pikaUITests/`
-- Xcode project configuration: `pika.xcodeproj/`
+- App behavior: `billbi/`
+- Unit tests: `billbiTests/`
+- macOS UI tests and launch checks: `billbiUITests/`
+- Xcode project configuration: `billbi.xcodeproj/`
 - Product and architecture notes: `docs/`
 
 ## Workflow

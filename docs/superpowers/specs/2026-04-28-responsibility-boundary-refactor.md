@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Prepare Pika for a batch refactor that reduces responsibility density in the largest app files without changing user-visible behavior.
+Prepare Billbi for a batch refactor that reduces responsibility density in the largest app files without changing user-visible behavior.
 
 This is not a redesign and not a feature project. The goal is to make the current architecture more honest: feature-level code should live in feature-level boundaries, stores should remain narrow state boundaries, models should remain data-shaped, and services should own reusable behavior that should not be duplicated inside views.
 
@@ -12,7 +12,7 @@ This spec operationalizes the diagnosis in:
 
 - `docs/architecture-feedback/2026-04-28-responsibilities-per-file-debt.md`
 
-The core finding is that Pika does not primarily suffer from folder chaos. It suffers from too many responsibilities per file.
+The core finding is that Billbi does not primarily suffer from folder chaos. It suffers from too many responsibilities per file.
 
 ## Target Outcome
 
@@ -53,7 +53,7 @@ After this refactor:
 The exact folder shape may adapt to current code, but the batch refactor should move toward:
 
 ```text
-pika/
+billbi/
   Features/
     Projects/
     Clients/
@@ -96,12 +96,12 @@ Suggested verification:
 
 Primary files:
 
-- `pika/Shell/ProjectPlaceholderView.swift`
+- `billbi/Shell/ProjectPlaceholderView.swift`
 - Existing project-related shell views such as project list, bucket columns, entry tables, and editor sheets.
 
 User story:
 
-As a freelancer using Pika, I want the project workbench to behave exactly as before while its sidebar, toolbar, sheets, dialogs, and invoice actions are owned by named project feature components.
+As a freelancer using Billbi, I want the project workbench to behave exactly as before while its sidebar, toolbar, sheets, dialogs, and invoice actions are owned by named project feature components.
 
 Responsibilities to separate:
 
@@ -133,7 +133,7 @@ Acceptance criteria:
 
 Primary file:
 
-- `pika/Shell/ClientsView.swift`
+- `billbi/Shell/ClientsView.swift`
 
 User story:
 
@@ -167,7 +167,7 @@ Acceptance criteria:
 
 Primary file:
 
-- `pika/Stores/ProjectStore.swift`
+- `billbi/Stores/ProjectStore.swift`
 
 User story:
 
@@ -209,7 +209,7 @@ Acceptance criteria:
 
 Primary files:
 
-- `pika/Models/WorkspaceSnapshot.swift`
+- `billbi/Models/WorkspaceSnapshot.swift`
 - Existing projection-related files such as `WorkspaceBucketProjections`.
 
 User story:
@@ -245,10 +245,10 @@ Acceptance criteria:
 
 Primary files:
 
-- `pika/Services/InvoicePDFService.swift`
-- `pika/Shell/ProjectPlaceholderView.swift`
-- `pika/Shell/InvoicesView.swift`
-- `pikaTests/InvoicePDFServiceTests.swift`
+- `billbi/Services/InvoicePDFService.swift`
+- `billbi/Shell/ProjectPlaceholderView.swift`
+- `billbi/Shell/InvoicesView.swift`
+- `billbiTests/InvoicePDFServiceTests.swift`
 
 User story:
 
@@ -279,7 +279,7 @@ Acceptance criteria:
 
 Primary files:
 
-- Remaining `pika/Shell/*.swift` files.
+- Remaining `billbi/Shell/*.swift` files.
 - Any app/root navigation files that reference moved views.
 
 User story:

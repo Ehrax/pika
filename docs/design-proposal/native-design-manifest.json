@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "name": "Pika Native Design Manifest",
+    "name": "Billbi Native Design Manifest",
     "generatedDate": "2026-04-27",
     "generatedBy": "Codex design-translation subagent",
     "designIntent": "Translate the React and web hi-fi proposal into native SwiftUI decisions for a calm, dense, professional freelance invoicing app. Preserve the proposal's information hierarchy and dark, focused working surface, but use native Apple structure, controls, materials, accessibility, and platform conventions instead of recreating web chrome.",
@@ -11,7 +11,7 @@
     ],
     "readOnlySourceFiles": [
       "AGENTS.md",
-      "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+      "docs/design-proposal/billbi-mac-first-app-handover-spec.md",
       "docs/design-proposal/hifi-mac.jsx",
       "docs/design-proposal/hifi-iphone.jsx",
       "docs/design-proposal/hifi-atoms.jsx",
@@ -19,9 +19,9 @@
       "docs/design-proposal/storyboard-mac-a.jsx",
       "docs/design-proposal/storyboard-mac-b.jsx",
       "docs/design-proposal/storyboard-phone.jsx",
-      "docs/design-proposal/Pika Hi-Fi.html",
-      "docs/design-proposal/Pika Wireframes.html",
-      "docs/design-proposal/Pika Wireframes-print.html",
+      "docs/design-proposal/Billbi Hi-Fi.html",
+      "docs/design-proposal/Billbi Wireframes.html",
+      "docs/design-proposal/Billbi Wireframes-print.html",
       "docs/design-proposal/screenshots/"
     ],
     "sourceScreenshotInventory": {
@@ -423,7 +423,7 @@
       "proposalId": "native-mac-clients",
       "proposalName": "Clients",
       "sourceFiles": [
-        "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+        "docs/design-proposal/billbi-mac-first-app-handover-spec.md",
         "docs/design-proposal/hifi-atoms.jsx"
       ],
       "platform": "macOS",
@@ -452,7 +452,7 @@
       "proposalId": "native-mac-settings",
       "proposalName": "Settings",
       "sourceFiles": [
-        "docs/design-proposal/pika-mac-first-app-handover-spec.md",
+        "docs/design-proposal/billbi-mac-first-app-handover-spec.md",
         "docs/design-proposal/hifi-atoms.jsx"
       ],
       "platform": "macOS",
