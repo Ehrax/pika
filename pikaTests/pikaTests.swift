@@ -62,6 +62,7 @@ struct PikaScaffoldTests {
         #expect(DashboardPanelLayoutPolicy.layoutMode == .stackedAtAllWidths)
         #expect(DashboardPanelLayoutPolicy.revenuePanels == [.unbilledProjectRevenue, .revenueHistory])
         #expect(DashboardPanelLayoutPolicy.stackedOrder == [.needsAttention])
+        #expect(DashboardPanelLayoutPolicy.revenuePanelMinimumWidth == 360)
         #expect(DashboardPanelLayoutPolicy.revenueChartHeight == 220)
     }
 

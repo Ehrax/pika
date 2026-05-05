@@ -14,6 +14,7 @@ struct DashboardPanelLayoutPolicy: Equatable {
     static let layoutMode: DashboardPanelLayoutMode = .stackedAtAllWidths
     static let revenuePanels: [DashboardPanel] = [.unbilledProjectRevenue, .revenueHistory]
     static let stackedOrder: [DashboardPanel] = [.needsAttention]
+    static let revenuePanelMinimumWidth: CGFloat = 360
     static let revenueChartHeight: CGFloat = 220
     static let revenuePanelContentHeight: CGFloat = 290
 }
@@ -76,20 +77,32 @@ struct DashboardFeatureView: View {
 
     private func dashboardPanels(summary: DashboardSummary) -> some View {
         VStack(alignment: .leading, spacing: PikaSpacing.lg) {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 360), spacing: PikaSpacing.lg, alignment: .top)],
-                alignment: .leading,
-                spacing: PikaSpacing.lg
-            ) {
-                ForEach(DashboardPanelLayoutPolicy.revenuePanels, id: \.self) { panel in
-                    dashboardPanel(panel, summary: summary)
-                }
-            }
+            revenuePanelGrid(summary: summary)
 
             ForEach(DashboardPanelLayoutPolicy.stackedOrder, id: \.self) { panel in
                 dashboardPanel(panel, summary: summary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func revenuePanelGrid(summary: DashboardSummary) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: PikaSpacing.lg) {
+                ForEach(DashboardPanelLayoutPolicy.revenuePanels, id: \.self) { panel in
+                    dashboardPanel(panel, summary: summary)
+                        .frame(minWidth: DashboardPanelLayoutPolicy.revenuePanelMinimumWidth, maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                ForEach(DashboardPanelLayoutPolicy.revenuePanels, id: \.self) { panel in
+                    dashboardPanel(panel, summary: summary)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
