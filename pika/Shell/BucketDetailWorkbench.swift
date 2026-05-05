@@ -8,6 +8,7 @@ struct BucketDetailWorkbench: View {
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
     let onAddFixedCost: () -> Void
     let onDeleteEntry: (WorkspaceBucketEntryRowProjection) -> Void
+    let onUpdateEntryDate: (WorkspaceBucketEntryRowProjection, Date) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: () -> Void
     let onOpenInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
@@ -42,7 +43,8 @@ struct BucketDetailWorkbench: View {
                     showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked,
                     onAddFixedCost: onAddFixedCost,
                     onAddEntry: onAddEntry,
-                    onDeleteEntry: onDeleteEntry
+                    onDeleteEntry: onDeleteEntry,
+                    onUpdateEntryDate: onUpdateEntryDate
                 )
 
                 if let invoiceRow {

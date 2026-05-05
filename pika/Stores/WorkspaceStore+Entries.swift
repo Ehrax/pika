@@ -153,4 +153,42 @@ extension WorkspaceStore {
         AppTelemetry.bucketEntryDeleted(bucketName: bucket.name, projectName: workspace.projects[projectIndex].name)
         try persistWorkspace()
     }
+
+    func updateEntryDate(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        rowID: UUID,
+        kind: WorkspaceBucketEntryKind,
+        date: Date
+    ) throws {
+        if isUsingNormalizedWorkspacePersistence() {
+            try updateEntryDateInNormalizedRecords(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: rowID,
+                kind: kind,
+                date: date
+            )
+            return
+        }
+
+        let projectIndex = try projectIndex(projectID)
+        let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard !bucket.status.isInvoiceLocked else {
+            throw WorkspaceStoreError.bucketLocked(bucket.status)
+        }
+
+        guard bucket.updateEntryDate(rowID: rowID, kind: kind, date: date) else {
+            throw WorkspaceStoreError.entryNotFound
+        }
+
+        if bucket.status == .ready {
+            bucket.status = .open
+        }
+
+        workspace.projects[projectIndex].buckets[bucketIndex] = bucket
+        try persistWorkspace()
+    }
 }

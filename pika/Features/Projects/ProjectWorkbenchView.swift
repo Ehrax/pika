@@ -111,6 +111,14 @@ struct ProjectWorkbenchView: View {
                                     row: row
                                 )
                             },
+                            onUpdateEntryDate: { row, date in
+                                updateEntryDate(
+                                    projectID: project.id,
+                                    bucketID: projection.selectedBucket.id,
+                                    row: row,
+                                    date: date
+                                )
+                            },
                             onMarkReady: markSelectedBucketReady,
                             onCreateInvoice: {
                                 prepareInvoiceDraft(
@@ -479,6 +487,25 @@ struct ProjectWorkbenchView: View {
             )
         } catch {
             reportWorkflowActionFailure("delete_entry", error)
+        }
+    }
+
+    private func updateEntryDate(
+        projectID: WorkspaceProject.ID,
+        bucketID: WorkspaceBucket.ID,
+        row: WorkspaceBucketEntryRowProjection,
+        date: Date
+    ) {
+        do {
+            try workspaceStore.updateEntryDate(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: row.id,
+                kind: row.kind,
+                date: date
+            )
+        } catch {
+            reportWorkflowActionFailure("update_entry_date", error)
         }
     }
 

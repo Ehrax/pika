@@ -1,6 +1,26 @@
 import Foundation
 
 extension WorkspaceBucket {
+    mutating func updateEntryDate(rowID: UUID, kind: WorkspaceBucketEntryKind, date: Date) -> Bool {
+        switch kind {
+        case .time:
+            guard let index = timeEntries.firstIndex(where: { $0.id == rowID }) else {
+                return false
+            }
+
+            timeEntries[index].date = date
+            return true
+
+        case .fixedCost:
+            guard let index = fixedCostEntries.firstIndex(where: { $0.id == rowID }) else {
+                return false
+            }
+
+            fixedCostEntries[index].date = date
+            return true
+        }
+    }
+
     mutating func deleteEntry(rowID: UUID, kind: WorkspaceBucketEntryKind, isBillable: Bool) -> Bool {
         let hadRowLevelEntries = hasRowLevelEntries
 

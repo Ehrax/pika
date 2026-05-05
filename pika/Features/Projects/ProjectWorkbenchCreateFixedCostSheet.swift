@@ -1,22 +1,34 @@
 import SwiftUI
 
 struct CreateFixedCostSheet: View {
-    let date: Date
     let currencyCode: String
     let onCancel: () -> Void
     let onSave: (WorkspaceFixedCostDraft) -> Void
 
+    @State private var draftDate: Date
     @State private var description = ""
     @State private var amount = 50.0
+
+    init(
+        date: Date,
+        currencyCode: String,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (WorkspaceFixedCostDraft) -> Void
+    ) {
+        self.currencyCode = currencyCode
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _draftDate = State(initialValue: date)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: PikaSpacing.lg) {
                 PikaInputSheetSection(title: "Fixed cost") {
                     PikaInputSheetFieldRow(label: "Date") {
-                        DatePicker("", selection: .constant(date), displayedComponents: .date)
+                        DatePicker("", selection: $draftDate, displayedComponents: .date)
                             .labelsHidden()
-                            .disabled(true)
+                            .datePickerStyle(.field)
                     }
                     PikaInputSheetDivider()
                     PikaInputSheetFieldRow(label: "Description") {
@@ -46,7 +58,7 @@ struct CreateFixedCostSheet: View {
 
                 Button {
                     onSave(WorkspaceFixedCostDraft(
-                        date: date,
+                        date: draftDate,
                         description: description,
                         amountMinorUnits: max(Int((amount * 100).rounded()), 0)
                     ))

@@ -971,6 +971,108 @@ struct WorkspaceStoreMutationTests {
         #expect(fixedCost.isBillable)
     }
 
+    @Test func persistentWorkspaceStoreUpdatesNormalizedEntryDatesAndReopensReadyBucket() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000876")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000876")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000876")!
+        let timeEntryID = UUID(uuidString: "70000000-0000-0000-0000-000000000876")!
+        let fixedCostID = UUID(uuidString: "80000000-0000-0000-0000-000000000876")!
+        let createdAt = Date.pikaDate(year: 2026, month: 4, day: 28)
+        let timeDate = Date.pikaDate(year: 2026, month: 5, day: 1)
+        let costDate = Date.pikaDate(year: 2026, month: 5, day: 2)
+
+        let client = ClientRecord(
+            id: clientID,
+            name: "Northstar Labs",
+            email: "billing@northstar.example",
+            billingAddress: "1 Main Street",
+            defaultTermsDays: 14,
+            createdAt: createdAt,
+            updatedAt: createdAt
+        )
+        let project = ProjectRecord(
+            id: projectID,
+            clientID: clientID,
+            name: "Entry date rewrite",
+            currencyCode: "EUR",
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            client: client
+        )
+        let bucket = BucketRecord(
+            id: bucketID,
+            projectID: projectID,
+            name: "Sprint dates",
+            statusRaw: BucketStatus.ready.rawValue,
+            defaultHourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            project: project
+        )
+        modelContext.insert(client)
+        modelContext.insert(project)
+        modelContext.insert(bucket)
+        modelContext.insert(TimeEntryRecord(
+            id: timeEntryID,
+            bucketID: bucketID,
+            workDate: createdAt,
+            durationMinutes: 60,
+            descriptionText: "Existing time",
+            isBillable: true,
+            hourlyRateMinorUnits: 8_000,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        ))
+        modelContext.insert(FixedCostRecord(
+            id: fixedCostID,
+            bucketID: bucketID,
+            date: createdAt,
+            descriptionText: "Existing cost",
+            quantity: 1,
+            unitPriceMinorUnits: 1_000,
+            isBillable: true,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            bucket: bucket
+        ))
+        try modelContext.save()
+
+        let store = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        try store.updateEntryDate(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: timeEntryID,
+            kind: .time,
+            date: timeDate
+        )
+        try store.updateEntryDate(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: fixedCostID,
+            kind: .fixedCost,
+            date: costDate
+        )
+
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedBucket = try #require(reloadedStore.workspace.projects.first?.buckets.first)
+        #expect(reloadedBucket.status == .open)
+        #expect(reloadedBucket.timeEntries.first?.date == timeDate)
+        #expect(reloadedBucket.fixedCostEntries.first?.date == costDate)
+
+        let persistedTime = try #require(try reloadedStore.timeEntryRecords(for: bucketID).first)
+        let persistedCost = try #require(try reloadedStore.fixedCostRecords(for: bucketID).first)
+        #expect(persistedTime.workDate == timeDate)
+        #expect(persistedCost.date == costDate)
+        #expect(persistedTime.descriptionText == "Existing time")
+        #expect(persistedCost.unitPriceMinorUnits == 1_000)
+    }
+
     @Test func persistentWorkspaceStoreRejectsNormalizedEntryMutationsWhenBucketRecordBecomesLocked() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
@@ -1091,6 +1193,24 @@ struct WorkspaceStoreMutationTests {
                 rowID: fixedCostID,
                 kind: .fixedCost,
                 isBillable: true
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.updateEntryDate(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: timeEntryID,
+                kind: .time,
+                date: lockedAt
+            )
+        }
+        #expect(throws: WorkspaceStoreError.bucketLocked(.archived)) {
+            try store.updateEntryDate(
+                projectID: projectID,
+                bucketID: bucketID,
+                rowID: fixedCostID,
+                kind: .fixedCost,
+                date: lockedAt
             )
         }
 
@@ -1879,6 +1999,156 @@ struct WorkspaceStoreMutationTests {
         #expect(bucket.effectiveFixedCostMinorUnits == 0)
         #expect(bucket.effectiveTotalMinorUnits == 0)
         #expect(store.workspace.activity.map(\.message) == ["Ready workbench entry deleted"])
+    }
+
+    @Test func inMemoryWorkspaceStoreUpdatesEntryDatesAndReopensReadyBucket() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000806")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000806")!
+        let timeEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000806")!
+        let fixedCostID = UUID(uuidString: "60000000-0000-0000-0000-000000000806")!
+        let originalDate = Date.pikaDate(year: 2026, month: 4, day: 27)
+        let timeDate = Date.pikaDate(year: 2026, month: 5, day: 3)
+        let fixedCostDate = Date.pikaDate(year: 2026, month: 5, day: 4)
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Move rows",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready workbench",
+                            status: .ready,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: timeEntryID,
+                                    date: originalDate,
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Existing time",
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ],
+                            fixedCostEntries: [
+                                WorkspaceFixedCostEntry(
+                                    id: fixedCostID,
+                                    date: originalDate,
+                                    description: "Existing cost",
+                                    amountMinorUnits: 2_500
+                                ),
+                            ]
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        try store.updateEntryDate(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: timeEntryID,
+            kind: .time,
+            date: timeDate
+        )
+        try store.updateEntryDate(
+            projectID: projectID,
+            bucketID: bucketID,
+            rowID: fixedCostID,
+            kind: .fixedCost,
+            date: fixedCostDate
+        )
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.status == .open)
+        #expect(bucket.timeEntries.first?.date == timeDate)
+        #expect(bucket.fixedCostEntries.first?.date == fixedCostDate)
+        #expect(bucket.timeEntries.first?.description == "Existing time")
+        #expect(bucket.fixedCostEntries.first?.amountMinorUnits == 2_500)
+    }
+
+    @Test func inMemoryWorkspaceStoreRejectsLockedAndUnknownEntryDateUpdates() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000807")!
+        let lockedBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000807")!
+        let openBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000808")!
+        let timeEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000000807")!
+        let targetDate = Date.pikaDate(year: 2026, month: 5, day: 5)
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Locked rows",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: lockedBucketID,
+                            name: "Finalized workbench",
+                            status: .finalized,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0,
+                            timeEntries: [
+                                WorkspaceTimeEntry(
+                                    id: timeEntryID,
+                                    date: Date.pikaDate(year: 2026, month: 4, day: 27),
+                                    startTime: "09:00",
+                                    endTime: "10:00",
+                                    durationMinutes: 60,
+                                    description: "Locked time",
+                                    hourlyRateMinorUnits: 10_000
+                                ),
+                            ]
+                        ),
+                        WorkspaceBucket(
+                            id: openBucketID,
+                            name: "Open workbench",
+                            status: .open,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        #expect(throws: WorkspaceStoreError.bucketLocked(.finalized)) {
+            try store.updateEntryDate(
+                projectID: projectID,
+                bucketID: lockedBucketID,
+                rowID: timeEntryID,
+                kind: .time,
+                date: targetDate
+            )
+        }
+        #expect(throws: WorkspaceStoreError.entryNotFound) {
+            try store.updateEntryDate(
+                projectID: projectID,
+                bucketID: openBucketID,
+                rowID: UUID(uuidString: "50000000-0000-0000-0000-000000000808")!,
+                kind: .time,
+                date: targetDate
+            )
+        }
+
+        let lockedBucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(lockedBucket.timeEntries.first?.date == Date.pikaDate(year: 2026, month: 4, day: 27))
     }
 
 }

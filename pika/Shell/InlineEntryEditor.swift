@@ -5,12 +5,25 @@ struct InlineEntryEditor: View {
     let hourlyRateMinorUnits: Int
     let onSave: (WorkspaceTimeEntryDraft) -> Void
 
+    @State private var entryDate: Date
     @State private var timeInput = "10:00-12:00"
     @State private var description = ""
     @State private var isBillable = true
+    @State private var showsDatePicker = false
     @FocusState private var focusedField: Field?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+    init(
+        date: Date,
+        hourlyRateMinorUnits: Int,
+        onSave: @escaping (WorkspaceTimeEntryDraft) -> Void
+    ) {
+        self.date = date
+        self.hourlyRateMinorUnits = hourlyRateMinorUnits
+        self.onSave = onSave
+        _entryDate = State(initialValue: date)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,6 +31,11 @@ struct InlineEntryEditor: View {
                 Text(dateLabel)
                     .font(PikaTypography.entry.monospacedDigit())
                     .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: 2) {
+                        showsDatePicker = true
+                    }
+                    .help("Double-click to change the entry date")
 
                 TextField("10:00-12:00", text: $timeInput)
                     .textFieldStyle(.plain)
@@ -78,6 +96,18 @@ struct InlineEntryEditor: View {
         .onAppear {
             focusedField = .time
         }
+        .sheet(isPresented: $showsDatePicker) {
+            EntryDatePickerSheet(
+                date: entryDate,
+                onCancel: {
+                    showsDatePicker = false
+                },
+                onSave: { selectedDate in
+                    entryDate = selectedDate
+                    showsDatePicker = false
+                }
+            )
+        }
         .pikaExitCommand {
             resetDraft()
         }
@@ -94,7 +124,7 @@ struct InlineEntryEditor: View {
     }
 
     private var dateLabel: String {
-        date.formatted(.dateTime.month(.abbreviated).day())
+        entryDate.formatted(.dateTime.month(.abbreviated).day())
     }
 
     private var helperLine: some View {
@@ -147,7 +177,7 @@ struct InlineEntryEditor: View {
         }
 
         onSave(WorkspaceTimeEntryDraft(
-            date: date,
+            date: entryDate,
             timeInput: timeInput,
             description: description,
             isBillable: isBillable
@@ -158,6 +188,63 @@ struct InlineEntryEditor: View {
     private enum Field {
         case time
         case description
+    }
+}
+
+struct EntryDatePickerSheet: View {
+    let onCancel: () -> Void
+    let onSave: (Date) -> Void
+
+    @State private var draftDate: Date
+
+    init(
+        date: Date,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (Date) -> Void
+    ) {
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _draftDate = State(initialValue: date)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+                Text("Entry date")
+                    .font(PikaTypography.subheading)
+                    .foregroundStyle(PikaColor.textPrimary)
+
+                DatePicker("", selection: $draftDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.graphical)
+            }
+            .padding(PikaSpacing.md)
+
+            Divider()
+
+            HStack {
+                Button {
+                    onCancel()
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
+                }
+                .keyboardShortcut(.cancelAction)
+                .buttonStyle(.pikaAction(.destructive))
+
+                Spacer()
+
+                Button {
+                    onSave(draftDate)
+                } label: {
+                    Label("Set Date", systemImage: "calendar")
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.pikaAction(.primary))
+            }
+            .padding(PikaSpacing.md)
+        }
+        .frame(minWidth: 320, idealWidth: 340, minHeight: 360)
+        .background(PikaColor.background)
     }
 }
 

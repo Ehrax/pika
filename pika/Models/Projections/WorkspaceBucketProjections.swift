@@ -8,6 +8,7 @@ enum WorkspaceBucketEntryKind: Equatable {
 struct WorkspaceBucketEntryRowProjection: Equatable, Identifiable {
     let id: UUID
     let kind: WorkspaceBucketEntryKind
+    let date: Date?
     let dateLabel: String
     let timeLabel: String
     let description: String
@@ -73,6 +74,7 @@ extension WorkspaceBucket {
                 row: WorkspaceBucketEntryRowProjection(
                     id: entry.id,
                     kind: .time,
+                    date: entry.date,
                     dateLabel: Self.dateFormatter.string(from: entry.date),
                     timeLabel: entry.timeRangeLabel,
                     description: entry.description,
@@ -90,6 +92,7 @@ extension WorkspaceBucket {
                 row: WorkspaceBucketEntryRowProjection(
                     id: entry.id,
                     kind: .fixedCost,
+                    date: entry.date,
                     dateLabel: Self.dateFormatter.string(from: entry.date),
                     timeLabel: "Fixed cost",
                     description: entry.description,
@@ -116,6 +119,7 @@ extension WorkspaceBucket {
             rows.append(WorkspaceBucketEntryRowProjection(
                 id: id,
                 kind: .time,
+                date: nil,
                 dateLabel: "-",
                 timeLabel: "Billable",
                 description: "Billable time",
@@ -130,6 +134,7 @@ extension WorkspaceBucket {
             rows.append(WorkspaceBucketEntryRowProjection(
                 id: UUID(uuidString: "00000000-0000-0000-0000-\(suffix)") ?? id,
                 kind: .fixedCost,
+                date: nil,
                 dateLabel: "-",
                 timeLabel: "Fixed cost",
                 description: "Fixed costs",
@@ -144,6 +149,7 @@ extension WorkspaceBucket {
             rows.append(WorkspaceBucketEntryRowProjection(
                 id: UUID(uuidString: "11111111-1111-1111-1111-\(suffix)") ?? id,
                 kind: .time,
+                date: nil,
                 dateLabel: "-",
                 timeLabel: "Non-billable",
                 description: "Non-billable time",

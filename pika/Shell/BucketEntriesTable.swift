@@ -15,6 +15,7 @@ struct BucketEntriesTable: View {
     let onAddFixedCost: () -> Void
     let onAddEntry: (WorkspaceTimeEntryDraft) -> Void
     let onDeleteEntry: (WorkspaceBucketEntryRowProjection) -> Void
+    let onUpdateEntryDate: (WorkspaceBucketEntryRowProjection, Date) -> Void
 
     @State private var selectedRowID: UUID?
 
@@ -56,11 +57,15 @@ struct BucketEntriesTable: View {
                         row: row,
                         isSelected: selectedRowID == row.id,
                         canDelete: canDeleteRows,
+                        canEditDate: canEditRows,
                         onSelect: {
                             selectedRowID = row.id
                         },
                         onDelete: {
                             delete(row)
+                        },
+                        onUpdateDate: { date in
+                            onUpdateEntryDate(row, date)
                         }
                     )
 
@@ -98,6 +103,10 @@ struct BucketEntriesTable: View {
     }
 
     private var canDeleteRows: Bool {
+        !projection.selectedBucket.status.isInvoiceLocked
+    }
+
+    private var canEditRows: Bool {
         !projection.selectedBucket.status.isInvoiceLocked
     }
 
@@ -149,8 +158,10 @@ private struct SwipeToDeleteEntryRow: View {
     let row: WorkspaceBucketEntryRowProjection
     let isSelected: Bool
     let canDelete: Bool
+    let canEditDate: Bool
     let onSelect: () -> Void
     let onDelete: () -> Void
+    let onUpdateDate: (Date) -> Void
 
     @GestureState private var dragOffset: CGFloat = 0
 
@@ -158,7 +169,12 @@ private struct SwipeToDeleteEntryRow: View {
     private let maximumVisibleOffset: CGFloat = 28
 
     var body: some View {
-        BucketEntryRow(row: row, isSelected: isSelected)
+        BucketEntryRow(
+            row: row,
+            isSelected: isSelected,
+            canEditDate: canEditDate,
+            onUpdateDate: onUpdateDate
+        )
             .offset(x: currentOffset)
             .contentShape(Rectangle())
             .onTapGesture {
@@ -199,13 +215,14 @@ private struct SwipeToDeleteEntryRow: View {
 private struct BucketEntryRow: View {
     let row: WorkspaceBucketEntryRowProjection
     let isSelected: Bool
+    let canEditDate: Bool
+    let onUpdateDate: (Date) -> Void
+
+    @State private var showsDatePicker = false
 
     var body: some View {
         HStack(spacing: PikaSpacing.md) {
-            Text(row.dateLabel)
-                .monospacedDigit()
-                .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
-                .foregroundStyle(PikaColor.textSecondary)
+            dateCell
             Text(row.timeLabel)
                 .monospacedDigit()
                 .frame(width: BucketEntriesLayout.timeWidth, alignment: .leading)
@@ -229,6 +246,38 @@ private struct BucketEntryRow: View {
                 RoundedRectangle(cornerRadius: PikaRadius.sm, style: .continuous)
                     .stroke(PikaColor.actionAccent.opacity(0.34), lineWidth: 1)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var dateCell: some View {
+        if let date = row.date, canEditDate {
+            Text(row.dateLabel)
+                .monospacedDigit()
+                .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
+                .foregroundStyle(PikaColor.textSecondary)
+                .contentShape(Rectangle())
+                .onTapGesture(count: 2) {
+                    showsDatePicker = true
+                }
+                .help("Double-click to change the entry date")
+                .sheet(isPresented: $showsDatePicker) {
+                    EntryDatePickerSheet(
+                        date: date,
+                        onCancel: {
+                            showsDatePicker = false
+                        },
+                        onSave: { selectedDate in
+                            onUpdateDate(selectedDate)
+                            showsDatePicker = false
+                        }
+                    )
+                }
+        } else {
+            Text(row.dateLabel)
+                .monospacedDigit()
+                .frame(width: BucketEntriesLayout.dateWidth, alignment: .leading)
+                .foregroundStyle(PikaColor.textSecondary)
         }
     }
 
