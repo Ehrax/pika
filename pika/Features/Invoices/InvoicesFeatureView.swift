@@ -10,6 +10,9 @@ struct InvoicesFeatureView: View {
     @State private var selectedInvoiceID: WorkspaceInvoice.ID?
     @State private var invoiceFilter = InvoiceListFilter.all
     @State private var pdfActionFailure: PDFActionFailure?
+    #if os(macOS)
+    @StateObject private var invoicePreviewState = InvoiceHTMLPreviewState()
+    #endif
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
     private var projection: WorkspaceInvoicePreviewProjection? {
@@ -95,7 +98,7 @@ struct InvoicesFeatureView: View {
             } label: {
                 Label("Open PDF", systemImage: "doc.text.magnifyingglass")
             }
-            .disabled(selectedRow == nil)
+            .disabled(!canExportSelectedInvoice)
             .help("Open the selected invoice PDF")
 
             Button {
@@ -103,7 +106,7 @@ struct InvoicesFeatureView: View {
             } label: {
                 Label("Export PDF", systemImage: "arrow.down.doc")
             }
-            .disabled(selectedRow == nil)
+            .disabled(!canExportSelectedInvoice)
             .help("Export the selected invoice PDF")
 
             Button {
@@ -154,6 +157,14 @@ struct InvoicesFeatureView: View {
         return InvoiceWorkflowPolicy.canMarkPaid(status: status)
     }
 
+    private var canExportSelectedInvoice: Bool {
+        #if os(macOS)
+        selectedRow != nil && invoicePreviewState.canExportSelectedDocument
+        #else
+        selectedRow != nil
+        #endif
+    }
+
     private func markSelectedInvoiceSent() {
         guard let invoiceID = selectedInvoice?.id else { return }
 
@@ -175,6 +186,11 @@ struct InvoicesFeatureView: View {
     }
 
     private func openSelectedPDF() {
+        #if os(macOS)
+        Task {
+            await performRenderedPDFAction("open", action: InvoicePDFActions.openRendered)
+        }
+        #else
         performPDFAction("open") {
             guard let row = selectedRow else { throw PDFActionError.noSelectedInvoice }
             _ = try InvoicePDFActions.open(
@@ -183,9 +199,15 @@ struct InvoicesFeatureView: View {
                 row: row
             )
         }
+        #endif
     }
 
     private func exportSelectedPDF() {
+        #if os(macOS)
+        Task {
+            await performRenderedPDFAction("export", action: InvoicePDFActions.exportRendered)
+        }
+        #else
         performPDFAction("export") {
             guard let row = selectedRow else { throw PDFActionError.noSelectedInvoice }
             _ = try InvoicePDFActions.export(
@@ -194,6 +216,7 @@ struct InvoicesFeatureView: View {
                 row: row
             )
         }
+        #endif
     }
 
     private func performPDFAction(_ action: String, operation: () throws -> Void) {
@@ -206,12 +229,38 @@ struct InvoicesFeatureView: View {
         }
     }
 
+    #if os(macOS)
+    @MainActor
+    private func performRenderedPDFAction(
+        _ action: String,
+        action perform: (InvoicePDFService.RenderedInvoice) throws -> Void
+    ) async {
+        do {
+            guard let row = selectedRow else { throw PDFActionError.noSelectedInvoice }
+            let html = try invoicePDFService.renderInvoiceHTML(
+                profile: row.businessProfile ?? workspace.businessProfile,
+                row: row
+            )
+            let data = try await invoicePreviewState.pdfDataForSelectedDocument()
+            try perform(InvoicePDFService.RenderedInvoice(data: data, metadata: html.metadata))
+        } catch {
+            let message = error.localizedDescription
+            pdfActionFailure = PDFActionFailure(message: message)
+            AppTelemetry.invoicePDFActionFailed(action: action, message: message)
+        }
+    }
+    #endif
+
     @ViewBuilder
     private func renderedPreview(for row: WorkspaceInvoiceRowProjection) -> some View {
         let profile = row.businessProfile ?? workspace.businessProfile
-        if let rendered = try? invoicePDFService.renderInvoice(profile: profile, row: row) {
+        if let rendered = try? invoicePDFService.renderInvoiceHTML(profile: profile, row: row) {
             #if os(macOS)
-            MacPDFDocumentView(data: rendered.data)
+            MacInvoiceHTMLDocumentView(
+                rendered: rendered,
+                invoiceID: row.id,
+                state: invoicePreviewState
+            )
             #else
             ContentUnavailableView(
                 "Preview unavailable",

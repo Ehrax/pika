@@ -10,7 +10,10 @@ enum InvoicePDFActions {
         profile: BusinessProfileProjection,
         row: WorkspaceInvoiceRowProjection
     ) throws -> InvoicePDFService.RenderedInvoice {
-        let rendered = try invoicePDFService.renderInvoice(profile: profile, row: row)
+        throw InvoicePDFActionsError.previewDocumentRequired
+    }
+
+    static func openRendered(_ rendered: InvoicePDFService.RenderedInvoice) throws {
         let url = try writeTemporaryPDF(rendered)
 
         #if os(macOS)
@@ -21,7 +24,6 @@ enum InvoicePDFActions {
         #else
         throw InvoicePDFActionsError.unsupportedPlatform
         #endif
-        return rendered
     }
 
     static func export(
@@ -29,8 +31,10 @@ enum InvoicePDFActions {
         profile: BusinessProfileProjection,
         row: WorkspaceInvoiceRowProjection
     ) throws -> InvoicePDFService.RenderedInvoice {
-        let rendered = try invoicePDFService.renderInvoice(profile: profile, row: row)
+        throw InvoicePDFActionsError.previewDocumentRequired
+    }
 
+    static func exportRendered(_ rendered: InvoicePDFService.RenderedInvoice) throws {
         #if os(macOS)
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
@@ -39,7 +43,7 @@ enum InvoicePDFActions {
         panel.nameFieldStringValue = rendered.metadata.suggestedFilename
 
         guard panel.runModal() == .OK, let url = panel.url else {
-            return rendered
+            return
         }
 
         try rendered.data.write(to: url, options: .atomic)
@@ -47,7 +51,6 @@ enum InvoicePDFActions {
         #else
         throw InvoicePDFActionsError.unsupportedPlatform
         #endif
-        return rendered
     }
 
     private static func writeTemporaryPDF(_ rendered: InvoicePDFService.RenderedInvoice) throws -> URL {
@@ -63,6 +66,7 @@ enum InvoicePDFActions {
 enum InvoicePDFActionsError: LocalizedError {
     case openFailed
     case unsupportedPlatform
+    case previewDocumentRequired
 
     var errorDescription: String? {
         switch self {
@@ -70,6 +74,8 @@ enum InvoicePDFActionsError: LocalizedError {
             return "The selected PDF could not be opened."
         case .unsupportedPlatform:
             return "This PDF action is only available on Mac."
+        case .previewDocumentRequired:
+            return "Open the invoice preview before generating a PDF."
         }
     }
 }

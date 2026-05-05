@@ -1,9 +1,10 @@
 import Foundation
-import CoreGraphics
 import CoreImage
 import CoreImage.CIFilterBuiltins
-import CoreText
+import ImageIO
+import Mustache
 import OSLog
+import UniformTypeIdentifiers
 
 struct InvoicePDFService {
     enum Error: Swift.Error, Equatable {
@@ -14,6 +15,13 @@ struct InvoicePDFService {
     struct RenderedInvoice: Equatable {
         var data: Data
         var metadata: Metadata
+    }
+
+    struct RenderedInvoiceHTML: Equatable {
+        var html: String
+        var metadata: Metadata
+        var templateFolderName: String
+        var resourceBaseURL: URL?
     }
 
     struct Metadata: Equatable {
@@ -37,11 +45,68 @@ struct InvoicePDFService {
         throw Error.notImplemented
     }
 
-    func renderInvoice(
+    func renderInvoiceHTML(
         profile: BusinessProfileProjection,
         row: WorkspaceInvoiceRowProjection
-    ) throws -> RenderedInvoice {
-        let metadata = Metadata(
+    ) throws -> RenderedInvoiceHTML {
+        let context = InvoiceRenderContext(profile: row.businessProfile ?? profile, row: row)
+        let resources = try InvoiceTemplateResources(template: row.template)
+        let html = try InvoiceHTMLTemplateRenderer().render(context, resources: resources)
+
+        Self.logger.info(
+            "Rendered invoice HTML \(context.metadata.invoiceNumber, privacy: .public) for \(context.metadata.clientName, privacy: .public)"
+        )
+
+        return RenderedInvoiceHTML(
+            html: html,
+            metadata: context.metadata,
+            templateFolderName: row.template.resourceFolderName,
+            resourceBaseURL: resources.baseURL
+        )
+    }
+
+    private static let logger = Logger(subsystem: "dev.ehrax.pika", category: "InvoicePDFService")
+}
+
+struct InvoiceRenderContext: Equatable {
+    struct LineItem: Equatable {
+        var position: String
+        var description: String
+        var quantity: String
+        var unit: String
+        var unitPrice: String
+        var amount: String
+    }
+
+    var metadata: InvoicePDFService.Metadata
+    var businessName: String
+    var businessPersonName: String
+    var businessAddress: String
+    var businessEmail: String
+    var businessPhone: String
+    var taxIdentifier: String
+    var economicIdentifier: String
+    var clientName: String
+    var billingAddress: String
+    var invoiceNumber: String
+    var issueDate: String
+    var dueDate: String
+    var servicePeriod: String
+    var projectName: String
+    var bucketName: String
+    var lineItems: [LineItem]
+    var totalLabel: String
+    var paymentDetails: String
+    var paymentIBAN: String
+    var paymentBIC: String
+    var paymentQRCodeDataURL: String
+    var paymentTransferNote: String
+    var taxNote: String
+    var note: String
+    var thankYouNote: String
+
+    init(profile: BusinessProfileProjection, row: WorkspaceInvoiceRowProjection) {
+        metadata = InvoicePDFService.Metadata(
             invoiceNumber: row.number,
             clientName: row.clientName,
             projectName: row.projectName,
@@ -50,19 +115,57 @@ struct InvoicePDFService {
             currencyCode: profile.currencyCode,
             totalLabel: row.totalLabel,
             lineItemCount: row.lineItems.count,
-            pageCount: InvoicePDFRenderer.pageCount(forLineItemCount: row.lineItems.count),
-            suggestedFilename: Self.filename(invoiceNumber: row.number, clientName: row.clientName)
+            pageCount: 1,
+            suggestedFilename: InvoiceRenderContext.filename(invoiceNumber: row.number, clientName: row.clientName)
         )
-        let data = try InvoicePDFRenderer(profile: profile, row: row, metadata: metadata).render()
-
-        Self.logger.info(
-            "Rendered invoice PDF \(metadata.invoiceNumber, privacy: .public) for \(metadata.clientName, privacy: .public)"
+        businessName = profile.businessName
+        businessPersonName = profile.personName
+        businessAddress = profile.address
+        businessEmail = profile.email
+        businessPhone = profile.phone
+        taxIdentifier = profile.taxIdentifier
+        economicIdentifier = profile.economicIdentifier
+        clientName = row.clientName
+        billingAddress = row.billingAddress
+        invoiceNumber = row.number
+        issueDate = Self.dateLabel(row.issueDate)
+        dueDate = Self.dateLabel(row.dueDate)
+        servicePeriod = row.servicePeriod
+        projectName = row.projectName
+        bucketName = row.bucketName
+        lineItems = row.lineItems.enumerated().map { index, item in
+            LineItem(
+                position: "\(index + 1)",
+                description: item.description,
+                quantity: item.quantityValueLabel,
+                unit: item.unitLabel,
+                unitPrice: item.unitPriceLabel,
+                amount: item.amountLabel
+            )
+        }
+        totalLabel = row.totalLabel
+        paymentDetails = profile.paymentDetails
+        let parsedPaymentDetails = ParsedPaymentDetails(rawValue: profile.paymentDetails)
+        paymentIBAN = parsedPaymentDetails.formattedIBAN
+        paymentBIC = parsedPaymentDetails.bic
+        paymentTransferNote = "Der Rechnungsbetrag ist bitte innerhalb von \(profile.defaultTermsDays) Tagen nach Rechnungseingang auf folgendes Konto zu überweisen:"
+        paymentQRCodeDataURL = Self.paymentQRCodeDataURL(
+            profile: profile,
+            row: row,
+            paymentDetails: parsedPaymentDetails
         )
-
-        return RenderedInvoice(data: data, metadata: metadata)
+        taxNote = profile.taxNote
+        note = Self.invoiceNote(row.invoice.note, taxNote: profile.taxNote)
+        thankYouNote = "Vielen Dank für die Zusammenarbeit!"
     }
 
-    private static let logger = Logger(subsystem: "dev.ehrax.pika", category: "InvoicePDFService")
+    private static func dateLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = .pikaGregorian
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "dd.MM.yyyy"
+        return formatter.string(from: date)
+    }
 
     private static func filename(invoiceNumber: String, clientName: String) -> String {
         let rawName = "\(invoiceNumber)-\(clientName)"
@@ -74,6 +177,279 @@ struct InvoicePDFService {
             .reduce(into: "") { $0.append($1) }
 
         return "\(cleaned).pdf"
+    }
+
+    private static func invoiceNote(_ value: String?, taxNote: String) -> String {
+        let note = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let taxNote = taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        return note == taxNote ? "" : note
+    }
+
+    private static func paymentQRCodeDataURL(
+        profile: BusinessProfileProjection,
+        row: WorkspaceInvoiceRowProjection,
+        paymentDetails: ParsedPaymentDetails
+    ) -> String {
+        do {
+            let payload = try PaymentQRCodePayload(
+                recipientName: profile.businessName,
+                iban: paymentDetails.iban,
+                bic: paymentDetails.bic,
+                amountMinorUnits: row.invoice.totalMinorUnits,
+                currencyCode: profile.currencyCode,
+                remittanceText: row.number
+            )
+            return PaymentQRCodeRenderer().dataURL(for: payload.text) ?? ""
+        } catch {
+            return ""
+        }
+    }
+}
+
+struct InvoiceTemplateResources: Equatable {
+    let folderName: String
+    let document: String
+    let stylesheet: String
+    let partials: [String: String]
+    let baseURL: URL?
+
+    init(template: InvoiceTemplate, bundle: Bundle = .main) throws {
+        folderName = template.resourceFolderName
+        if let folderURL = Self.bundledFolderURL(folderName: folderName, bundle: bundle) {
+            baseURL = folderURL
+            document = try String(contentsOf: folderURL.appendingPathComponent("document.mustache"), encoding: .utf8)
+            stylesheet = try String(contentsOf: folderURL.appendingPathComponent("style.css"), encoding: .utf8)
+            partials = try Self.loadPartials(from: folderURL.appendingPathComponent("partials", isDirectory: true))
+        } else if let flatDocumentURL = bundle.url(forResource: "document", withExtension: "mustache"),
+                  let flatStylesheetURL = bundle.url(forResource: "style", withExtension: "css") {
+            baseURL = bundle.resourceURL
+            document = try String(contentsOf: flatDocumentURL, encoding: .utf8)
+            stylesheet = try String(contentsOf: flatStylesheetURL, encoding: .utf8)
+            partials = try Self.loadFlatPartials(from: bundle)
+        } else {
+            let folderURL = try Self.sourceFolderURL(folderName: folderName)
+            baseURL = folderURL
+            document = try String(contentsOf: folderURL.appendingPathComponent("document.mustache"), encoding: .utf8)
+            stylesheet = try String(contentsOf: folderURL.appendingPathComponent("style.css"), encoding: .utf8)
+            partials = try Self.loadPartials(from: folderURL.appendingPathComponent("partials", isDirectory: true))
+        }
+    }
+
+    private static func bundledFolderURL(folderName: String, bundle: Bundle) -> URL? {
+        bundle.url(
+            forResource: folderName,
+            withExtension: nil,
+            subdirectory: "InvoiceTemplates"
+        )
+    }
+
+    private static func sourceFolderURL(folderName: String) throws -> URL {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources/InvoiceTemplates/\(folderName)", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw InvoicePDFService.Error.renderingFailed
+        }
+        return sourceURL
+    }
+
+    private static func loadPartials(from folderURL: URL) throws -> [String: String] {
+        let urls = try FileManager.default.contentsOfDirectory(
+            at: folderURL,
+            includingPropertiesForKeys: nil
+        )
+        return try urls
+            .filter { $0.pathExtension == "mustache" }
+            .reduce(into: [:]) { partials, url in
+                partials[url.deletingPathExtension().lastPathComponent] = try String(contentsOf: url, encoding: .utf8)
+            }
+    }
+
+    private static func loadFlatPartials(from bundle: Bundle) throws -> [String: String] {
+        try ["line-items", "payment-details", "legal-notes"].reduce(into: [:]) { partials, name in
+            guard let url = bundle.url(forResource: name, withExtension: "mustache") else {
+                throw InvoicePDFService.Error.renderingFailed
+            }
+            partials[name] = try String(contentsOf: url, encoding: .utf8)
+        }
+    }
+}
+
+private struct InvoiceHTMLTemplateRenderer {
+    func render(_ context: InvoiceRenderContext, resources: InvoiceTemplateResources) throws -> String {
+        var library = MustacheLibrary()
+        try library.register(resources.document, named: "document")
+        for (name, partial) in resources.partials {
+            try library.register(partial, named: name)
+        }
+        guard let html = library.render(context.mustacheValues, withTemplate: "document") else {
+            throw InvoicePDFService.Error.renderingFailed
+        }
+        return html
+    }
+}
+
+private extension InvoiceRenderContext {
+    var mustacheValues: [String: Any] {
+        [
+            "templateName": metadata.templateName,
+            "businessName": businessName,
+            "businessPersonName": businessPersonName,
+            "businessAddress": lineBreaks(businessAddress),
+            "businessEmail": businessEmail,
+            "businessPhone": businessPhone,
+            "taxIdentifier": taxIdentifier,
+            "economicIdentifier": economicIdentifier,
+            "clientName": clientName,
+            "billingAddress": lineBreaks(billingAddress),
+            "invoiceNumber": invoiceNumber,
+            "issueDate": issueDate,
+            "dueDate": dueDate,
+            "servicePeriod": servicePeriod,
+            "projectName": projectName,
+            "bucketName": bucketName,
+            "lineItems": lineItems.map(\.mustacheValues),
+            "totalLabel": totalLabel,
+            "paymentDetails": lineBreaks(paymentDetails),
+            "paymentIBAN": paymentIBAN,
+            "paymentBIC": paymentBIC,
+            "hasPaymentIBAN": !paymentIBAN.isEmpty,
+            "hasPaymentBIC": !paymentBIC.isEmpty,
+            "paymentQRCodeDataURL": paymentQRCodeDataURL,
+            "paymentTransferNote": paymentTransferNote.htmlEscaped,
+            "taxNote": lineBreaks(taxNote),
+            "note": lineBreaks(note),
+            "thankYouNote": thankYouNote.htmlEscaped,
+        ]
+    }
+
+    private func lineBreaks(_ value: String) -> String {
+        value
+            .htmlEscaped
+            .replacingOccurrences(of: "\n", with: "<br>")
+    }
+}
+
+private extension String {
+    var htmlEscaped: String {
+        var escaped = ""
+        for character in self {
+            switch character {
+            case "&": escaped += "&amp;"
+            case "<": escaped += "&lt;"
+            case ">": escaped += "&gt;"
+            case "\"": escaped += "&quot;"
+            case "'": escaped += "&#39;"
+            default: escaped.append(character)
+            }
+        }
+        return escaped
+    }
+}
+
+private extension InvoiceRenderContext.LineItem {
+    var mustacheValues: [String: Any] {
+        [
+            "position": position,
+            "description": description,
+            "quantity": quantity,
+            "unit": unit,
+            "unitPrice": unitPrice,
+            "amount": amount,
+        ]
+    }
+}
+
+private struct ParsedPaymentDetails: Equatable {
+    var iban: String
+    var formattedIBAN: String
+    var bic: String
+
+    init(rawValue: String) {
+        let lines = rawValue
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        var parsedIBAN = ""
+        var parsedBIC = ""
+
+        for line in lines {
+            let lowercased = line.lowercased()
+            if lowercased.hasPrefix("iban") {
+                parsedIBAN = Self.value(afterLabelIn: line)
+            } else if lowercased.hasPrefix("bic") {
+                parsedBIC = Self.value(afterLabelIn: line)
+            } else if parsedIBAN.isEmpty, line.filter({ !$0.isWhitespace }).count >= 15 {
+                parsedIBAN = line
+            }
+        }
+
+        iban = parsedIBAN.filter { !$0.isWhitespace }.uppercased()
+        formattedIBAN = Self.groupedIBAN(iban)
+        bic = parsedBIC.uppercased()
+    }
+
+    private static func value(afterLabelIn line: String) -> String {
+        let separators = CharacterSet(charactersIn: ": ")
+        return line
+            .drop { !$0.unicodeScalars.contains { separators.contains($0) } }
+            .trimmingCharacters(in: separators)
+    }
+
+    private static func groupedIBAN(_ value: String) -> String {
+        value.enumerated().reduce(into: "") { result, element in
+            if element.offset > 0, element.offset.isMultiple(of: 4) {
+                result.append(" ")
+            }
+            result.append(element.element)
+        }
+    }
+}
+
+private struct PaymentQRCodeRenderer {
+    private let context = CIContext(options: nil)
+
+    func dataURL(for text: String) -> String? {
+        guard let payloadData = text.data(using: .utf8) else {
+            return nil
+        }
+
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = payloadData
+        filter.correctionLevel = "M"
+
+        guard let outputImage = filter.outputImage else {
+            return nil
+        }
+
+        let scale: CGFloat = 8
+        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent),
+              let pngData = Self.pngData(from: cgImage) else {
+            return nil
+        }
+
+        return "data:image/png;base64,\(pngData.base64EncodedString())"
+    }
+
+    private static func pngData(from image: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            return nil
+        }
+        return data as Data
     }
 }
 
@@ -133,615 +509,5 @@ struct PaymentQRCodePayload: Equatable {
         let majorUnits = amountMinorUnits / 100
         let cents = amountMinorUnits % 100
         return "\(currencyCode)\(majorUnits).\(String(format: "%02d", cents))"
-    }
-}
-
-private struct InvoicePDFRenderer {
-    let profile: BusinessProfileProjection
-    let row: WorkspaceInvoiceRowProjection
-    let metadata: InvoicePDFService.Metadata
-
-    private let page = CGRect(x: 0, y: 0, width: 595, height: 842)
-    private let margin: CGFloat = 56
-    private let ciContext = CIContext()
-    private static let firstPageLineItemCapacity = 5
-    private static let continuationPageLineItemCapacity = 10
-
-    static func pageCount(forLineItemCount count: Int) -> Int {
-        guard count > firstPageLineItemCapacity else {
-            return 1
-        }
-
-        let remaining = count - firstPageLineItemCapacity
-        return 1 + Int(ceil(Double(remaining) / Double(continuationPageLineItemCapacity)))
-    }
-
-    func render() throws -> Data {
-        let pdfData = NSMutableData()
-        guard let consumer = CGDataConsumer(data: pdfData as CFMutableData) else {
-            throw InvoicePDFService.Error.renderingFailed
-        }
-
-        var mediaBox = page
-        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
-            throw InvoicePDFService.Error.renderingFailed
-        }
-
-        let pages = paginatedLineItems()
-        for (index, lineItems) in pages.enumerated() {
-            context.beginPDFPage(nil)
-            drawPage(
-                in: context,
-                lineItems: lineItems,
-                pageNumber: index + 1,
-                pageCount: pages.count
-            )
-            context.endPDFPage()
-        }
-        context.closePDF()
-
-        return pdfData as Data
-    }
-
-    private func drawPage(
-        in context: CGContext,
-        lineItems: ArraySlice<WorkspaceInvoiceLineItemProjection>,
-        pageNumber: Int,
-        pageCount: Int
-    ) {
-        context.setFillColor(CGColor(gray: 1, alpha: 1))
-        context.fill(page)
-
-        if pageNumber > 1 {
-            drawContinuationPage(
-                in: context,
-                lineItems: lineItems,
-                pageNumber: pageNumber,
-                pageCount: pageCount
-            )
-            return
-        }
-
-        let rightX = page.width - margin - 190
-        drawText(profile.businessName, in: CGRect(x: margin, y: 72, width: 260, height: 26), size: 18, weight: .bold, context: context)
-        let personName = profile.personName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let rawAddressBlock = profile.address.trimmingCharacters(in: .whitespacesAndNewlines)
-        let addressBlock = [personName, rawAddressBlock]
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n")
-        let email = profile.email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let phone = profile.phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        let taxIdentifier = profile.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        let economicIdentifier = profile.economicIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        let contactBlock = [
-            email,
-            phone,
-        ]
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n")
-        let headerTopY: CGFloat = 104
-        let sectionPadding: CGFloat = 18
-        let headerLineHeight: CGFloat = 14
-        let blockGap: CGFloat = 5
-        var currentY = headerTopY
-
-        if !addressBlock.isEmpty {
-            let addressLineCount = max(1, addressBlock.split(separator: "\n", omittingEmptySubsequences: false).count)
-            let addressHeight = CGFloat(addressLineCount) * headerLineHeight
-            drawText(addressBlock, in: CGRect(x: margin, y: currentY, width: 260, height: addressHeight), size: 10, color: .secondary, context: context)
-            currentY += addressHeight
-        }
-
-        if !contactBlock.isEmpty {
-            if currentY > headerTopY {
-                currentY += blockGap
-            }
-            let contactLineCount = max(1, contactBlock.split(separator: "\n", omittingEmptySubsequences: false).count)
-            let contactHeight = CGFloat(contactLineCount) * headerLineHeight
-            drawText(contactBlock, in: CGRect(x: margin, y: currentY, width: 260, height: contactHeight), size: 10, color: .secondary, context: context)
-            currentY += contactHeight
-        }
-
-        if !taxIdentifier.isEmpty {
-            if currentY > headerTopY {
-                currentY += blockGap
-            }
-            let taxLabel = "Steuernummer:"
-            drawText(taxLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
-            let taxValueX = margin + textWidth(taxLabel + " ", size: 10, weight: .regular)
-            drawText(taxIdentifier, in: CGRect(x: taxValueX, y: currentY, width: max(0, 260 - (taxValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
-            currentY += headerLineHeight
-        }
-
-        if !economicIdentifier.isEmpty {
-            let economicLabel = "Wirtschafts-IdNr:"
-            drawText(economicLabel, in: CGRect(x: margin, y: currentY, width: 260, height: headerLineHeight), size: 10, color: .secondary, context: context)
-            let economicValueX = margin + textWidth(economicLabel + " ", size: 10, weight: .regular)
-            drawText(economicIdentifier, in: CGRect(x: economicValueX, y: currentY, width: max(0, 260 - (economicValueX - margin)), height: headerLineHeight), size: 10, weight: .bold, color: .secondary, context: context)
-            currentY += headerLineHeight
-        }
-
-        drawText("Rechnung", in: CGRect(x: rightX, y: 72, width: 190, height: 30), size: 24, weight: .bold, alignment: .right, context: context)
-        drawText(row.number, in: CGRect(x: rightX, y: 106, width: 190, height: 18), size: 11, color: .primary, alignment: .right, context: context)
-        drawPageNumber(pageNumber: pageNumber, pageCount: pageCount, context: context)
-
-        let topDividerY = currentY + sectionPadding
-        drawDivider(y: topDividerY, context: context)
-        let contentTopY = topDividerY + sectionPadding
-
-        drawText("Rechnungsempfänger", in: CGRect(x: margin, y: contentTopY, width: 180, height: 14), size: 9, weight: .bold, color: .secondary, context: context)
-        drawText(row.clientName, in: CGRect(x: margin, y: contentTopY + 20, width: 230, height: 22), size: 14, weight: .bold, context: context)
-        drawText(row.billingAddress, in: CGRect(x: margin, y: contentTopY + 44, width: 240, height: 56), size: 10, color: .secondary, context: context)
-
-        let issueDate = dateLabel(row.issueDate)
-        let servicePeriod = row.servicePeriod.isEmpty ? issueDate : row.servicePeriod
-        let dateInfoX = page.width - margin - 250
-        let dateGap: CGFloat = 6
-        let dateValueWidth = textWidth(issueDate, size: 10, weight: .bold)
-        let dateLabelWidth = textWidth("Rechnungsdatum: ", size: 10, weight: .regular)
-        let dateValueX = dateInfoX + (250 - dateValueWidth)
-        let dateLabelX = dateValueX - dateGap - dateLabelWidth
-        let dateInfoY = contentTopY + 44
-        drawText("Rechnungsdatum:", in: CGRect(x: dateLabelX, y: dateInfoY, width: dateLabelWidth, height: 16), size: 10, color: .primary, alignment: .right, context: context)
-        drawText(issueDate, in: CGRect(x: dateValueX, y: dateInfoY, width: dateValueWidth, height: 16), size: 10, weight: .bold, color: .primary, alignment: .right, context: context)
-
-        let introY = (contentTopY + 48 + 56) + 35
-        let introPrefix = "Hiermit erlaube ich mir, für den folgenden Leistungszeitraum "
-        let introSuffix = "folgende Leistungen in Rechnung zu stellen:"
-
-        drawAttributedText(
-            [
-                TextRun(introPrefix),
-                TextRun("\(servicePeriod) ", weight: .bold),
-                TextRun(introSuffix),
-            ],
-            in: CGRect(x: margin, y: introY, width: page.width - (margin * 2), height: 32),
-            size: 10,
-            color: .primary,
-            context: context
-        )
-
-        let dividerY = drawLineItems(lineItems, tableY: introY + 45, context: context)
-        if pageNumber == pageCount {
-            drawClosingSection(startY: dividerY + 12, context: context)
-        }
-    }
-
-    private func drawContinuationPage(
-        in context: CGContext,
-        lineItems: ArraySlice<WorkspaceInvoiceLineItemProjection>,
-        pageNumber: Int,
-        pageCount: Int
-    ) {
-        drawText(profile.businessName, in: CGRect(x: margin, y: 72, width: 260, height: 22), size: 14, weight: .bold, context: context)
-        drawText(row.number, in: CGRect(x: page.width - margin - 190, y: 74, width: 190, height: 18), size: 11, color: .secondary, alignment: .right, context: context)
-        drawPageNumber(pageNumber: pageNumber, pageCount: pageCount, context: context)
-        drawDivider(y: 112, context: context)
-
-        let dividerY = drawLineItems(lineItems, tableY: 146, context: context)
-        if pageNumber == pageCount {
-            drawClosingSection(startY: dividerY + 12, context: context)
-        }
-    }
-
-    private func drawLineItems(
-        _ lineItems: ArraySlice<WorkspaceInvoiceLineItemProjection>,
-        tableY: CGFloat,
-        context: CGContext
-    ) -> CGFloat {
-        let columns = tableColumns(y: tableY)
-        let rowTopOffset: CGFloat = 38
-        let rowHeight: CGFloat = 38
-
-        drawText("Pos. / Bezeichnung", in: columns.description, size: 10, color: .secondary, context: context)
-        drawText("Menge", in: columns.quantity, size: 10, color: .secondary, alignment: .right, context: context)
-        drawText("Einheit", in: columns.unit, size: 10, color: .secondary, context: context)
-        drawText("Einzelpreis", in: columns.unitPrice, size: 10, color: .secondary, alignment: .right, context: context)
-        drawText("Gesamtpreis", in: columns.total, size: 10, color: .secondary, alignment: .right, context: context)
-        drawDivider(y: tableY + 26, context: context)
-
-        for (index, item) in lineItems.enumerated() {
-            let y = tableY + rowTopOffset + CGFloat(index) * rowHeight
-            drawText("\(index + 1)  \(item.description)", in: CGRect(x: columns.description.minX, y: y, width: columns.description.width, height: 30), size: 10, context: context)
-            drawText(item.quantityValueLabel, in: CGRect(x: columns.quantity.minX, y: y, width: columns.quantity.width, height: 18), size: 10, color: .primary, alignment: .right, context: context)
-            drawText(item.unitLabel, in: CGRect(x: columns.unit.minX, y: y, width: columns.unit.width, height: 30), size: 10, color: .primary, context: context)
-            drawText(item.unitPriceLabel, in: CGRect(x: columns.unitPrice.minX, y: y, width: columns.unitPrice.width, height: 18), size: 10, alignment: .right, context: context)
-            drawText(item.amountLabel, in: CGRect(x: columns.total.minX, y: y, width: columns.total.width, height: 18), size: 10, alignment: .right, context: context)
-        }
-
-        let rowCount = max(lineItems.count, 1)
-        let dividerY = tableY + rowTopOffset + CGFloat(rowCount) * rowHeight - 8
-        drawDivider(y: dividerY, context: context)
-
-        return dividerY
-    }
-
-    private func tableColumns(y: CGFloat) -> (
-        description: CGRect,
-        quantity: CGRect,
-        unit: CGRect,
-        unitPrice: CGRect,
-        total: CGRect
-    ) {
-        let columnGap: CGFloat = 10
-        let quantityWidth: CGFloat = 40
-        let unitWidth: CGFloat = 60
-        let unitPriceWidth: CGFloat = 85
-        let totalWidth: CGFloat = 95
-        let total = CGRect(x: page.width - margin - totalWidth, y: y, width: totalWidth, height: 18)
-        let unitPrice = CGRect(x: total.minX - columnGap - unitPriceWidth, y: y, width: unitPriceWidth, height: 18)
-        let unit = CGRect(x: unitPrice.minX - columnGap - unitWidth, y: y, width: unitWidth, height: 18)
-        let quantity = CGRect(x: unit.minX - columnGap - quantityWidth, y: y, width: quantityWidth, height: 18)
-        let description = CGRect(x: margin, y: y, width: quantity.minX - columnGap - margin, height: 18)
-
-        return (description, quantity, unit, unitPrice, total)
-    }
-
-    private func drawClosingSection(startY: CGFloat, context: CGContext) {
-        let columns = tableColumns(y: startY)
-        let totalLabelWidth: CGFloat = 120
-        let totalLabelX = columns.total.minX - 14 - totalLabelWidth
-        drawText("Gesamtsumme", in: CGRect(x: totalLabelX, y: startY, width: totalLabelWidth, height: 20), size: 11, weight: .bold, alignment: .right, context: context)
-        drawText(row.totalLabel, in: CGRect(x: columns.total.minX, y: startY, width: columns.total.width, height: 20), size: 11, weight: .bold, alignment: .right, context: context)
-
-        let taxAndPaymentNote = """
-        Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
-
-        Der Rechnungsbetrag ist bitte innerhalb von 14 Tagen nach Rechnungseingang auf folgendes Konto zu überweisen:
-        """
-        drawText(
-            taxAndPaymentNote,
-            in: CGRect(x: margin, y: startY + 38, width: page.width - (margin * 2), height: 92),
-            size: 10,
-            color: .primary,
-            context: context
-        )
-
-        let paymentDetails = ParsedPaymentDetails(rawValue: profile.paymentDetails)
-        let ibanLabel = "IBAN:"
-        let ibanValue = paymentDetails.iban ?? profile.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
-        let ibanY = startY + 104
-        drawText(ibanLabel, in: CGRect(x: margin, y: ibanY, width: 40, height: 16), size: 10, color: .primary, context: context)
-        let ibanValueX = margin + textWidth(ibanLabel + " ", size: 10, weight: .regular)
-        drawText(ibanValue, in: CGRect(x: ibanValueX, y: ibanY, width: 240, height: 16), size: 10, weight: .bold, color: .primary, context: context)
-
-        let thankYouY: CGFloat
-        if let bicValue = paymentDetails.bic {
-            let bicLabel = "BIC:"
-            let bicY = ibanY + 18
-            drawText(bicLabel, in: CGRect(x: margin, y: bicY, width: 40, height: 16), size: 10, color: .primary, context: context)
-            let bicValueX = margin + textWidth(bicLabel + " ", size: 10, weight: .regular)
-            drawText(bicValue, in: CGRect(x: bicValueX, y: bicY, width: 180, height: 16), size: 10, weight: .bold, color: .primary, context: context)
-            thankYouY = bicY + 34
-        } else {
-            thankYouY = ibanY + 34
-        }
-
-        drawText(
-            "Vielen Dank für die Zusammenarbeit!",
-            in: CGRect(x: margin, y: thankYouY, width: page.width - (margin * 2), height: 16),
-            size: 10,
-            color: .primary,
-            context: context
-        )
-
-        drawBottomRightPaymentQRCode(paymentDetails: paymentDetails, context: context)
-    }
-
-    private func drawBottomRightPaymentQRCode(
-        paymentDetails: ParsedPaymentDetails,
-        context: CGContext
-    ) {
-        let qrSize: CGFloat = 72
-        let captionWidth: CGFloat = 112
-        let captionHeight: CGFloat = 14
-        let captionGap: CGFloat = 6
-        let captionX = page.width - margin - captionWidth
-        let qrX = captionX + ((captionWidth - qrSize) / 2)
-        let qrY = page.height - margin - qrSize - captionGap - captionHeight
-
-        _ = drawPaymentQRCode(
-            paymentDetails: paymentDetails,
-            topY: qrY,
-            x: qrX,
-            size: qrSize,
-            captionX: captionX,
-            captionWidth: captionWidth,
-            context: context
-        )
-    }
-
-    private func drawPaymentQRCode(
-        paymentDetails: ParsedPaymentDetails,
-        topY: CGFloat,
-        x: CGFloat,
-        size: CGFloat,
-        captionX: CGFloat,
-        captionWidth: CGFloat,
-        context: CGContext
-    ) -> CGFloat? {
-        guard let iban = paymentDetails.iban else { return nil }
-
-        let qrRecipientName = profile.personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? profile.businessName
-            : profile.personName
-        let payload = try? PaymentQRCodePayload(
-            recipientName: qrRecipientName,
-            iban: iban,
-            bic: paymentDetails.bic,
-            amountMinorUnits: row.invoice.totalMinorUnits,
-            currencyCode: row.invoice.currencyCode.isEmpty ? metadata.currencyCode : row.invoice.currencyCode,
-            remittanceText: "Rechnung \(row.number)"
-        )
-        guard let payload, let qrImage = makeQRCodeImage(text: payload.text, size: size) else {
-            return nil
-        }
-
-        let qrY = topY
-        let imageRect = CGRect(x: x, y: page.height - qrY - size, width: size, height: size)
-
-        context.saveGState()
-        context.interpolationQuality = .none
-        context.draw(qrImage, in: imageRect)
-        context.restoreGState()
-
-        drawText(
-            "Für Banking-App scannen",
-            in: CGRect(x: captionX, y: qrY + size + 6, width: captionWidth, height: 14),
-            size: 8,
-            color: .secondary,
-            alignment: .center,
-            context: context
-        )
-
-        return qrY + size + 20
-    }
-
-    private func makeQRCodeImage(text: String, size: CGFloat) -> CGImage? {
-        guard let data = text.data(using: .utf8) else { return nil }
-
-        let filter = CIFilter.qrCodeGenerator()
-        filter.message = data
-        filter.correctionLevel = "M"
-
-        guard let outputImage = filter.outputImage else { return nil }
-
-        let scale = size / outputImage.extent.width
-        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        return ciContext.createCGImage(scaledImage, from: scaledImage.extent)
-    }
-
-    private func drawPageNumber(pageNumber: Int, pageCount: Int, context: CGContext) {
-        guard pageCount > 1 else { return }
-
-        drawText(
-            "Seite \(pageNumber) von \(pageCount)",
-            in: CGRect(x: page.width - margin - 190, y: 150, width: 190, height: 16),
-            size: 9,
-            color: .secondary,
-            alignment: .right,
-            context: context
-        )
-    }
-
-    private func paginatedLineItems() -> [ArraySlice<WorkspaceInvoiceLineItemProjection>] {
-        guard row.lineItems.count > Self.firstPageLineItemCapacity else {
-            return [row.lineItems[...]]
-        }
-
-        var pages: [ArraySlice<WorkspaceInvoiceLineItemProjection>] = [
-            row.lineItems.prefix(Self.firstPageLineItemCapacity),
-        ]
-
-        var startIndex = row.lineItems.index(row.lineItems.startIndex, offsetBy: Self.firstPageLineItemCapacity)
-        while startIndex < row.lineItems.endIndex {
-            let endIndex = row.lineItems.index(
-                startIndex,
-                offsetBy: Self.continuationPageLineItemCapacity,
-                limitedBy: row.lineItems.endIndex
-            ) ?? row.lineItems.endIndex
-            pages.append(row.lineItems[startIndex..<endIndex])
-            startIndex = endIndex
-        }
-
-        return pages
-    }
-
-    private func drawDivider(y: CGFloat, context: CGContext) {
-        context.setStrokeColor(CGColor(gray: 0.86, alpha: 1))
-        context.setLineWidth(1)
-        context.move(to: CGPoint(x: margin, y: page.height - y))
-        context.addLine(to: CGPoint(x: page.width - margin, y: page.height - y))
-        context.strokePath()
-    }
-
-    private func drawText(
-        _ text: String,
-        in rect: CGRect,
-        size: CGFloat,
-        weight: FontWeight = .regular,
-        color: TextColor = .primary,
-        alignment: CTTextAlignment = .left,
-        context: CGContext
-    ) {
-        var textAlignment = alignment
-        let paragraph = withUnsafeBytes(of: &textAlignment) { bytes in
-            var setting = CTParagraphStyleSetting(
-                spec: .alignment,
-                valueSize: MemoryLayout<CTTextAlignment>.size,
-                value: bytes.baseAddress!
-            )
-            return CTParagraphStyleCreate(&setting, 1)
-        }
-
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName(weight.fontName as CFString, size, nil),
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): color.cgColor,
-            NSAttributedString.Key(kCTParagraphStyleAttributeName as String): paragraph,
-        ]
-        let attributed = NSAttributedString(string: text, attributes: attributes)
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
-        let drawingRect = CGRect(
-            x: rect.minX,
-            y: page.height - rect.maxY,
-            width: rect.width,
-            height: rect.height
-        )
-        let path = CGPath(rect: drawingRect, transform: nil)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: attributed.length), path, nil)
-
-        context.saveGState()
-        context.textMatrix = .identity
-        CTFrameDraw(frame, context)
-        context.restoreGState()
-    }
-
-    private func drawAttributedText(
-        _ runs: [TextRun],
-        in rect: CGRect,
-        size: CGFloat,
-        color: TextColor = .primary,
-        alignment: CTTextAlignment = .left,
-        context: CGContext
-    ) {
-        var textAlignment = alignment
-        let paragraph = withUnsafeBytes(of: &textAlignment) { bytes in
-            var setting = CTParagraphStyleSetting(
-                spec: .alignment,
-                valueSize: MemoryLayout<CTTextAlignment>.size,
-                value: bytes.baseAddress!
-            )
-            return CTParagraphStyleCreate(&setting, 1)
-        }
-
-        let attributed = NSMutableAttributedString()
-        for run in runs {
-            attributed.append(
-                NSAttributedString(
-                    string: run.text,
-                    attributes: [
-                        NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName(run.weight.fontName as CFString, size, nil),
-                        NSAttributedString.Key(kCTForegroundColorAttributeName as String): color.cgColor,
-                        NSAttributedString.Key(kCTParagraphStyleAttributeName as String): paragraph,
-                    ]
-                )
-            )
-        }
-
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
-        let drawingRect = CGRect(
-            x: rect.minX,
-            y: page.height - rect.maxY,
-            width: rect.width,
-            height: rect.height
-        )
-        let path = CGPath(rect: drawingRect, transform: nil)
-        let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: 0, length: attributed.length), path, nil)
-
-        context.saveGState()
-        context.textMatrix = .identity
-        CTFrameDraw(frame, context)
-        context.restoreGState()
-    }
-
-    private func textWidth(_ text: String, size: CGFloat, weight: FontWeight) -> CGFloat {
-        let font = CTFontCreateWithName(weight.fontName as CFString, size, nil)
-        let attributes: [NSAttributedString.Key: Any] = [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-        ]
-        let attributed = NSAttributedString(string: text, attributes: attributes)
-        let line = CTLineCreateWithAttributedString(attributed)
-        return ceil(CTLineGetTypographicBounds(line, nil, nil, nil))
-    }
-
-    private func dateLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.timeZone = .current
-        formatter.dateFormat = "dd.MM.yyyy"
-        formatter.timeStyle = .none
-        let formatted = formatter.string(from: date).trimmingCharacters(in: .whitespacesAndNewlines)
-        if formatted.isEmpty {
-            return date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
-        }
-        return formatted
-    }
-}
-
-private struct ParsedPaymentDetails: Equatable {
-    let iban: String?
-    let bic: String?
-
-    init(rawValue: String) {
-        let words = rawValue
-            .replacingOccurrences(of: ":", with: " ")
-            .replacingOccurrences(of: "\n", with: " ")
-            .split(separator: " ")
-            .map(String.init)
-
-        iban = Self.value(after: "IBAN", in: words).map(Self.formattedIBAN)
-        bic = Self.value(after: "BIC", in: words)?.uppercased()
-    }
-
-    nonisolated private static func value(after label: String, in words: [String]) -> String? {
-        guard let labelIndex = words.firstIndex(where: { $0.caseInsensitiveCompare(label) == .orderedSame }) else {
-            return nil
-        }
-
-        let valueWords = words[(labelIndex + 1)...]
-            .prefix { word in
-                word.caseInsensitiveCompare("IBAN") != .orderedSame
-                    && word.caseInsensitiveCompare("BIC") != .orderedSame
-            }
-        let value = valueWords.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? nil : value
-    }
-
-    nonisolated private static func formattedIBAN(_ value: String) -> String {
-        let cleanValue = value.filter { !$0.isWhitespace }.uppercased()
-        return cleanValue.enumerated().reduce(into: "") { result, pair in
-            if pair.offset > 0, pair.offset.isMultiple(of: 4) {
-                result.append(" ")
-            }
-            result.append(pair.element)
-        }
-    }
-}
-
-private struct TextRun {
-    let text: String
-    let weight: FontWeight
-
-    init(_ text: String, weight: FontWeight = .regular) {
-        self.text = text
-        self.weight = weight
-    }
-}
-
-private enum FontWeight {
-    case regular
-    case bold
-
-    var fontName: String {
-        switch self {
-        case .regular:
-            return "Helvetica"
-        case .bold:
-            return "Helvetica-Bold"
-        }
-    }
-}
-
-private enum TextColor {
-    case primary
-    case secondary
-
-    var cgColor: CGColor {
-        switch self {
-        case .primary:
-            return CGColor(gray: 0.08, alpha: 1)
-        case .secondary:
-            return CGColor(gray: 0.36, alpha: 1)
-        }
     }
 }

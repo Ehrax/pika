@@ -1,0 +1,21 @@
+<section class="payment-details">
+  {{#taxNote}}<p>{{{taxNote}}}</p>{{/taxNote}}
+  {{#note}}<p class="invoice-note">{{{note}}}</p>{{/note}}
+  <p>{{paymentTransferNote}}</p>
+  {{#hasPaymentIBAN}}
+  <p class="bank-lines">
+    IBAN: <strong>{{paymentIBAN}}</strong><br>
+    {{#hasPaymentBIC}}BIC: <strong>{{paymentBIC}}</strong>{{/hasPaymentBIC}}
+  </p>
+  {{/hasPaymentIBAN}}
+  {{^hasPaymentIBAN}}
+  <p class="bank-lines">{{{paymentDetails}}}</p>
+  {{/hasPaymentIBAN}}
+  <p class="thank-you">{{thankYouNote}}</p>
+  {{#paymentQRCodeDataURL}}
+  <figure class="payment-qr">
+    <img src="{{paymentQRCodeDataURL}}" alt="SEPA Zahlungs-QR-Code">
+    <figcaption>Für Banking-App scannen</figcaption>
+  </figure>
+  {{/paymentQRCodeDataURL}}
+</section>

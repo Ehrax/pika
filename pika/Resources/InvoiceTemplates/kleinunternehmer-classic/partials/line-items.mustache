@@ -1,0 +1,28 @@
+<section class="line-items-section">
+  <table class="line-items">
+    <thead>
+      <tr>
+        <th class="description-column">Pos. / Bezeichnung</th>
+        <th class="quantity-column">Menge</th>
+        <th class="unit-column">Einheit</th>
+        <th class="price-column">Einzelpreis</th>
+        <th class="amount-column">Gesamtpreis</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#lineItems}}
+      <tr>
+        <td class="description-column"><span class="line-position">{{position}}</span>{{description}}</td>
+        <td class="quantity-column">{{quantity}}</td>
+        <td class="unit-column">{{unit}}</td>
+        <td class="price-column">{{unitPrice}}</td>
+        <td class="amount-column">{{amount}}</td>
+      </tr>
+      {{/lineItems}}
+    </tbody>
+  </table>
+  <div class="invoice-total">
+    <span>Gesamtsumme</span>
+    <strong>{{totalLabel}}</strong>
+  </div>
+</section>

@@ -240,7 +240,7 @@ enum WorkspaceSeedLibrary {
             nextInvoiceNumber: 1,
             currencyCode: "EUR",
             paymentDetails: "IBAN DE02 1001 1001 2125 8144 33\nBIC NTSBDEB1XXX",
-            taxNote: "Steuernummer: 151/260/41486",
+            taxNote: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
             defaultTermsDays: 14
         ),
         clients: [

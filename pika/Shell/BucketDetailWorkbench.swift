@@ -11,8 +11,6 @@ struct BucketDetailWorkbench: View {
     let onUpdateEntryDate: (WorkspaceBucketEntryRowProjection, Date) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: () -> Void
-    let onOpenInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
-    let onExportInvoicePDF: (WorkspaceInvoiceRowProjection) -> Void
 
     var body: some View {
         ScrollView {
@@ -46,13 +44,6 @@ struct BucketDetailWorkbench: View {
                     onDeleteEntry: onDeleteEntry,
                     onUpdateEntryDate: onUpdateEntryDate
                 )
-
-                if let invoiceRow {
-                    InvoiceBucketActions(
-                        onOpenPDF: { onOpenInvoicePDF(invoiceRow) },
-                        onExportPDF: { onExportInvoicePDF(invoiceRow) }
-                    )
-                }
             }
             .padding(.horizontal, PikaSpacing.xl + PikaSpacing.md)
             .padding(.vertical, PikaSpacing.lg)
@@ -171,30 +162,6 @@ private struct ActiveBucketSummary: View {
         .padding(PikaSpacing.md)
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: PikaRadius.md))
-    }
-}
-
-private struct InvoiceBucketActions: View {
-    let onOpenPDF: () -> Void
-    let onExportPDF: () -> Void
-
-    var body: some View {
-        HStack(spacing: PikaSpacing.xs) {
-            Button {
-                onOpenPDF()
-            } label: {
-                Label("Open PDF", systemImage: "doc.text.magnifyingglass")
-            }
-            .buttonStyle(.pikaAction(.neutral))
-
-            Button {
-                onExportPDF()
-            } label: {
-                Label("Export", systemImage: "arrow.down.doc")
-            }
-            .buttonStyle(.pikaAction(.neutral))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
