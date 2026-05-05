@@ -214,10 +214,10 @@ struct SettingsFeatureView: View {
             saveFailure = nil
         } catch WorkspaceStoreError.invalidBusinessProfile {
             saveFailure = SettingsSaveFailure(
-                message: "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required."
+                message: String(localized: "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required.")
             )
         } catch {
-            saveFailure = SettingsSaveFailure(message: "Settings could not be saved.")
+            saveFailure = SettingsSaveFailure(message: String(localized: "Settings could not be saved."))
         }
     }
 

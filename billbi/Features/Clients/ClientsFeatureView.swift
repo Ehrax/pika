@@ -148,7 +148,7 @@ struct ClientsFeatureView: View {
         do {
             try workspaceStore.restoreClient(clientID: clientID)
         } catch {
-            listActionFailure = ClientActionFailure(message: "Client could not be restored.")
+            listActionFailure = ClientActionFailure(message: String(localized: "Client could not be restored."))
         }
     }
 
@@ -161,7 +161,7 @@ struct ClientsFeatureView: View {
         do {
             try workspaceStore.archiveClient(clientID: clientID)
         } catch {
-            listActionFailure = ClientActionFailure(message: "Client could not be archived.")
+            listActionFailure = ClientActionFailure(message: String(localized: "Client could not be archived."))
         }
     }
 
@@ -172,11 +172,13 @@ struct ClientsFeatureView: View {
                 selectedClientID = workspaceStore.workspace.clients.first?.id
             }
         } catch WorkspaceStoreError.clientHasLinkedProjects {
-            listActionFailure = ClientActionFailure(message: "Clients with linked projects cannot be deleted. Archive can still be used.")
+            listActionFailure = ClientActionFailure(
+                message: String(localized: "Clients with linked projects cannot be deleted. Archive can still be used.")
+            )
         } catch WorkspaceStoreError.clientNotArchived {
-            listActionFailure = ClientActionFailure(message: "Archive this client before deleting.")
+            listActionFailure = ClientActionFailure(message: String(localized: "Archive this client before deleting."))
         } catch {
-            listActionFailure = ClientActionFailure(message: "Client could not be deleted.")
+            listActionFailure = ClientActionFailure(message: String(localized: "Client could not be deleted."))
         }
     }
 

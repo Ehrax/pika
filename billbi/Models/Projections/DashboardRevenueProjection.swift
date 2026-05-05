@@ -11,6 +11,25 @@ enum DashboardRevenueRange: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var displayTitle: String {
+        switch self {
+        case .sevenDays:
+            String(localized: "7D")
+        case .fourteenDays:
+            String(localized: "14D")
+        case .oneMonth:
+            String(localized: "1M")
+        case .threeMonths:
+            String(localized: "3M")
+        case .sixMonths:
+            String(localized: "6M")
+        case .twelveMonths:
+            String(localized: "12M")
+        case .all:
+            String(localized: "All")
+        }
+    }
+
     private var bucketCount: Int? {
         switch self {
         case .sevenDays:

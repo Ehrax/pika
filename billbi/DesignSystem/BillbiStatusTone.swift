@@ -9,13 +9,13 @@ enum BillbiStatusTone: Hashable {
     var accessibilityLabel: String {
         switch self {
         case .success:
-            "Success"
+            String(localized: "Success")
         case .warning:
-            "Warning"
+            String(localized: "Warning")
         case .danger:
-            "Danger"
+            String(localized: "Danger")
         case .neutral:
-            "Neutral"
+            String(localized: "Neutral")
         }
     }
 
