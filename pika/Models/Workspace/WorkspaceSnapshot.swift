@@ -256,6 +256,7 @@ struct WorkspaceBucket: Codable, Equatable, Identifiable {
     let id: UUID
     var name: String
     var status: BucketStatus
+    var updatedAt: Date?
     var totalMinorUnits: Int
     var billableMinutes: Int
     var fixedCostMinorUnits: Int
@@ -263,6 +264,61 @@ struct WorkspaceBucket: Codable, Equatable, Identifiable {
     var defaultHourlyRateMinorUnits: Int? = nil
     var timeEntries: [WorkspaceTimeEntry] = []
     var fixedCostEntries: [WorkspaceFixedCostEntry] = []
+
+    init(
+        id: UUID,
+        name: String,
+        status: BucketStatus,
+        updatedAt: Date? = nil,
+        totalMinorUnits: Int,
+        billableMinutes: Int,
+        fixedCostMinorUnits: Int,
+        nonBillableMinutes: Int = 0,
+        defaultHourlyRateMinorUnits: Int? = nil,
+        timeEntries: [WorkspaceTimeEntry] = [],
+        fixedCostEntries: [WorkspaceFixedCostEntry] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.status = status
+        self.updatedAt = updatedAt
+        self.totalMinorUnits = totalMinorUnits
+        self.billableMinutes = billableMinutes
+        self.fixedCostMinorUnits = fixedCostMinorUnits
+        self.nonBillableMinutes = nonBillableMinutes
+        self.defaultHourlyRateMinorUnits = defaultHourlyRateMinorUnits
+        self.timeEntries = timeEntries
+        self.fixedCostEntries = fixedCostEntries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case status
+        case updatedAt
+        case totalMinorUnits
+        case billableMinutes
+        case fixedCostMinorUnits
+        case nonBillableMinutes
+        case defaultHourlyRateMinorUnits
+        case timeEntries
+        case fixedCostEntries
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        status = try container.decode(BucketStatus.self, forKey: .status)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        totalMinorUnits = try container.decode(Int.self, forKey: .totalMinorUnits)
+        billableMinutes = try container.decode(Int.self, forKey: .billableMinutes)
+        fixedCostMinorUnits = try container.decode(Int.self, forKey: .fixedCostMinorUnits)
+        nonBillableMinutes = try container.decodeIfPresent(Int.self, forKey: .nonBillableMinutes) ?? 0
+        defaultHourlyRateMinorUnits = try container.decodeIfPresent(Int.self, forKey: .defaultHourlyRateMinorUnits)
+        timeEntries = try container.decodeIfPresent([WorkspaceTimeEntry].self, forKey: .timeEntries) ?? []
+        fixedCostEntries = try container.decodeIfPresent([WorkspaceFixedCostEntry].self, forKey: .fixedCostEntries) ?? []
+    }
 
     var billableHoursLabel: String {
         Self.hoursLabel(minutes: effectiveBillableMinutes)

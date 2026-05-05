@@ -193,17 +193,19 @@ enum WorkspaceProjectBucketProjections {
             return nil
         }
 
+        let bucketRows = project.buckets.map { bucket in
+            WorkspaceBucketRowProjection(
+                bucket: bucket,
+                linkedInvoice: latestInvoice(for: bucket, in: project),
+                formatter: formatter,
+                on: date
+            )
+        }
+
         return WorkspaceBucketDetailProjection(
             project: project,
             selectedBucket: selectedBucket,
-            bucketRows: project.buckets.map { bucket in
-                WorkspaceBucketRowProjection(
-                    bucket: bucket,
-                    linkedInvoice: latestInvoice(for: bucket, in: project),
-                    formatter: formatter,
-                    on: date
-                )
-            },
+            bucketRows: sortedBucketRows(bucketRows),
             formatter: formatter
         )
     }
@@ -235,6 +237,20 @@ enum WorkspaceProjectBucketProjections {
             }
             .first
     }
+
+    private static func sortedBucketRows(_ rows: [WorkspaceBucketRowProjection]) -> [WorkspaceBucketRowProjection] {
+        rows.sorted { left, right in
+            if left.sortGroup != right.sortGroup {
+                return left.sortGroup < right.sortGroup
+            }
+
+            if left.sortGroup == .open, left.updatedAt != right.updatedAt {
+                return (left.updatedAt ?? .distantPast) > (right.updatedAt ?? .distantPast)
+            }
+
+            return left.name.localizedStandardCompare(right.name) == .orderedAscending
+        }
+    }
 }
 
 extension WorkspaceProject {
@@ -261,6 +277,9 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
     let name: String
     let meta: String
     let status: BucketStatus
+    let invoiceStatus: InvoiceStatus?
+    let isOverdue: Bool
+    let updatedAt: Date?
     let statusTitle: String?
     let statusTone: PikaStatusTone
 
@@ -273,6 +292,9 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
         id = bucket.id
         name = bucket.name
         status = bucket.status
+        invoiceStatus = linkedInvoice?.status
+        isOverdue = linkedInvoice?.status.isOverdue(dueDate: linkedInvoice?.dueDate ?? date, on: date) ?? false
+        updatedAt = bucket.updatedAt
 
         let amount = formatter.string(fromMinorUnits: bucket.effectiveTotalMinorUnits)
         if bucket.effectiveFixedCostMinorUnits > 0 {
@@ -289,6 +311,47 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
             statusTitle = bucket.status == .open ? nil : bucket.status.rawValue.capitalized
             statusTone = bucket.status.displayTone
         }
+    }
+}
+
+private extension WorkspaceBucketRowProjection {
+    var sortGroup: WorkspaceBucketRowSortGroup {
+        if isOverdue {
+            return .overdue
+        }
+
+        switch invoiceStatus {
+        case .paid:
+            return .paid
+        case .finalized, .sent:
+            return .finalized
+        case .cancelled:
+            return .cancelled
+        case nil:
+            switch status {
+            case .open:
+                return .open
+            case .ready:
+                return .ready
+            case .finalized:
+                return .finalized
+            case .archived:
+                return .cancelled
+            }
+        }
+    }
+}
+
+private enum WorkspaceBucketRowSortGroup: Int, Comparable {
+    case open
+    case ready
+    case finalized
+    case overdue
+    case paid
+    case cancelled
+
+    static func < (left: WorkspaceBucketRowSortGroup, right: WorkspaceBucketRowSortGroup) -> Bool {
+        left.rawValue < right.rawValue
     }
 }
 

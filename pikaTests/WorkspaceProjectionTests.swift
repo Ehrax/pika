@@ -32,13 +32,15 @@ struct WorkspaceProjectionTests {
         #expect(projection.currencyCode == "EUR")
         #expect(projection.totalLabel == "EUR 2,500.00")
         #expect(projection.bucketRows.map(\.name) == [
-            "April sprint",
             "Discovery notes",
             "Internal planning",
+            "April sprint",
         ])
-        #expect(projection.bucketRows[0].meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
-        #expect(projection.bucketRows[0].statusTitle == "Ready")
-        #expect(projection.bucketRows[1].statusTitle == nil)
+        let aprilSprintRow = try #require(projection.bucketRows.first { $0.name == "April sprint" })
+        let discoveryNotesRow = try #require(projection.bucketRows.first { $0.name == "Discovery notes" })
+        #expect(aprilSprintRow.meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
+        #expect(aprilSprintRow.statusTitle == "Ready")
+        #expect(discoveryNotesRow.statusTitle == nil)
         #expect(projection.lineItems.map(\.description) == [
             "April sprint",
             "Prototype hosting",
@@ -49,6 +51,54 @@ struct WorkspaceProjectionTests {
                 selectedBucketID: mobileQA.buckets[0].id
             ) == launchSprint.normalizedBucketID(mobileQA.buckets[0].id)
         )
+    }
+
+    @Test func projectBucketRowsSortByWorkflowStateWithOpenBucketsMostRecentlyEdited() throws {
+        let projectID = try #require(UUID(uuidString: "20000000-0000-0000-0000-000000009001"))
+        let openOlderID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009001"))
+        let readyID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009002"))
+        let finalizedID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009003"))
+        let overdueID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009004"))
+        let paidID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009005"))
+        let openNewerID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000009006"))
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let project = WorkspaceProject(
+            id: projectID,
+            name: "Sorting",
+            clientName: "Client",
+            currencyCode: "EUR",
+            isArchived: false,
+            buckets: [
+                bucket(id: paidID, name: "Paid", status: .finalized),
+                bucket(id: overdueID, name: "Overdue", status: .finalized),
+                bucket(id: finalizedID, name: "Finalized", status: .finalized),
+                bucket(id: readyID, name: "Ready", status: .ready),
+                bucket(id: openOlderID, name: "Open older", status: .open, updatedAt: Date.pikaDate(year: 2026, month: 4, day: 20)),
+                bucket(id: openNewerID, name: "Open newer", status: .open, updatedAt: Date.pikaDate(year: 2026, month: 4, day: 24)),
+            ],
+            invoices: [
+                invoice(id: 1, projectID: projectID, bucketID: finalizedID, bucketName: "Finalized", status: .sent, dueDate: Date.pikaDate(year: 2026, month: 5, day: 10)),
+                invoice(id: 2, projectID: projectID, bucketID: overdueID, bucketName: "Overdue", status: .sent, dueDate: Date.pikaDate(year: 2026, month: 4, day: 1)),
+                invoice(id: 3, projectID: projectID, bucketID: paidID, bucketName: "Paid", status: .paid, dueDate: Date.pikaDate(year: 2026, month: 4, day: 1)),
+            ]
+        )
+
+        let projection = try #require(
+            WorkspaceProjectBucketProjections.detail(
+                for: project,
+                formatter: formatter,
+                on: WorkspaceFixtures.today
+            )
+        )
+
+        #expect(projection.bucketRows.map(\.name) == [
+            "Open newer",
+            "Open older",
+            "Ready",
+            "Finalized",
+            "Overdue",
+            "Paid",
+        ])
     }
 
     @Test func invoiceProjectionOwnerPreservesWorkspacePreviewBehavior() throws {
@@ -373,13 +423,15 @@ struct WorkspaceProjectionTests {
 
         #expect(projection.selectedBucket.id == project.buckets[0].id)
         #expect(projection.bucketRows.map(\.name) == [
-            "April sprint",
             "Discovery notes",
             "Internal planning",
+            "April sprint",
         ])
-        #expect(projection.bucketRows[0].meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
-        #expect(projection.bucketRows[0].statusTitle == "Ready")
-        #expect(projection.bucketRows[1].statusTitle == nil)
+        let aprilSprintRow = try #require(projection.bucketRows.first { $0.name == "April sprint" })
+        let discoveryNotesRow = try #require(projection.bucketRows.first { $0.name == "Discovery notes" })
+        #expect(aprilSprintRow.meta == "10h · EUR 2,500.00 · EUR 500.00 fixed")
+        #expect(aprilSprintRow.statusTitle == "Ready")
+        #expect(discoveryNotesRow.statusTitle == nil)
     }
 
     @Test func projectDetailProjectionMirrorsLinkedInvoiceStatusInBucketRows() throws {
@@ -691,7 +743,7 @@ struct WorkspaceProjectionTests {
         )
         let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
         let project = try #require(workspace.projects.first)
-        let detail = try #require(project.detailProjection(formatter: formatter))
+        let detail = try #require(project.detailProjection(formatter: formatter, on: WorkspaceFixtures.today))
         let preview = try #require(workspace.invoicePreviewProjection(
             on: WorkspaceFixtures.today,
             formatter: formatter
@@ -714,4 +766,44 @@ struct WorkspaceProjectionTests {
         #expect(summary.readyMinorUnits == 407_500)
         #expect(summary.overdueMinorUnits == 0)
     }
+}
+
+private func bucket(
+    id: UUID,
+    name: String,
+    status: BucketStatus,
+    updatedAt: Date? = nil
+) -> WorkspaceBucket {
+    WorkspaceBucket(
+        id: id,
+        name: name,
+        status: status,
+        updatedAt: updatedAt,
+        totalMinorUnits: 10_000,
+        billableMinutes: 60,
+        fixedCostMinorUnits: 0
+    )
+}
+
+private func invoice(
+    id: Int,
+    projectID: UUID,
+    bucketID: UUID,
+    bucketName: String,
+    status: InvoiceStatus,
+    dueDate: Date
+) -> WorkspaceInvoice {
+    WorkspaceInvoice(
+        id: UUID(uuidString: String(format: "40000000-0000-0000-0000-000000009%03d", id))!,
+        number: "INV-\(id)",
+        clientName: "Client",
+        projectID: projectID,
+        projectName: "Sorting",
+        bucketID: bucketID,
+        bucketName: bucketName,
+        issueDate: Date.pikaDate(year: 2026, month: 4, day: 1),
+        dueDate: dueDate,
+        status: status,
+        totalMinorUnits: 10_000
+    )
 }

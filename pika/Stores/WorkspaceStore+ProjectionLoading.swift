@@ -169,6 +169,7 @@ enum SwiftDataWorkspaceProjectionLoader {
             id: record.id,
             name: record.name,
             status: record.status,
+            updatedAt: record.updatedAt,
             totalMinorUnits: billableTimeMinorUnits + fixedCostMinorUnits,
             billableMinutes: billableMinutes,
             fixedCostMinorUnits: fixedCostMinorUnits,
