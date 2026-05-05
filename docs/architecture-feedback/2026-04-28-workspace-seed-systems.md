@@ -7,20 +7,20 @@ We currently have multiple seed-like pathways for `WorkspaceSnapshot`, and they 
 ## Current Seed Systems
 
 1. `WorkspaceSnapshot.empty`
-- File: `pika/Models/WorkspaceSnapshot.swift`
+- File: `billbi/Models/WorkspaceSnapshot.swift`
 - Role: true empty/default workspace model.
 
 2. `WorkspaceSnapshot.sample`
-- File: `pika/Models/WorkspaceSnapshot+SampleData.swift`
+- File: `billbi/Models/WorkspaceSnapshot+SampleData.swift`
 - Role: generic demo/fake data (`Happ.ines`, `Northstar`, `Acme`, sample invoices/activity/dashboard).
 
 3. `WorkspaceSnapshot.bikeparkThunersee`
-- File: `pika/Models/WorkspaceSnapshot+SampleData.swift`
+- File: `billbi/Models/WorkspaceSnapshot+SampleData.swift`
 - Role: client-specific/working-like data; not generic demo seed.
 
 4. App launch seed selection
-- File: `pika/App/AppDependencyGraph.swift`
-- Inputs: `--pika-seed-workspace`, `--pika-seed-bikepark-thunersee`, `PIKA_SEED_WORKSPACE`.
+- File: `billbi/App/AppDependencyGraph.swift`
+- Inputs: `--billbi-seed-workspace`, `--billbi-seed-bikepark-thunersee`, `BILLBI_SEED_WORKSPACE`.
 
 5. Script/Codex seed modes
 - Files: `script/build_and_run.sh`, `.codex/environments/environment.toml`
@@ -28,14 +28,14 @@ We currently have multiple seed-like pathways for `WorkspaceSnapshot`, and they 
 
 ## Concrete Smell
 
-`script/build_and_run.sh` supports `--empty`, but in `DEBUG` the app defaults to `.bikeparkThunersee` when no seed flag is passed (`pika/App/AppDependencyGraph.swift`).
+`script/build_and_run.sh` supports `--empty`, but in `DEBUG` the app defaults to `.bikeparkThunersee` when no seed flag is passed (`billbi/App/AppDependencyGraph.swift`).
 
 Risk:
 - `Play Empty` can launch Bikepark data, which violates developer expectation and can mask regressions.
 
 ## Test Fixture Coupling Smell
 
-`pikaTests/WorkspaceSnapshotTests.swift` and related tests rely heavily on `WorkspaceSnapshot.sample` and partial workspaces derived from it (`sample.businessProfile`, `sample.clients`).
+`billbiTests/WorkspaceSnapshotTests.swift` and related tests rely heavily on `WorkspaceSnapshot.sample` and partial workspaces derived from it (`sample.businessProfile`, `sample.clients`).
 
 Risk:
 - Demo data and tests are tightly coupled.
@@ -46,11 +46,11 @@ Risk:
 Proposed structure:
 
 ```text
-pika/Development/
+billbi/Development/
   WorkspaceSeed.swift
   WorkspaceSeedLibrary.swift
 
-pikaTests/Fixtures/
+billbiTests/Fixtures/
   WorkspaceFixtures.swift
 ```
 
@@ -75,7 +75,7 @@ Additional recommendations:
 - Rename `sample` to `demoWorkspace` for clarity.
 - Treat `bikeparkThunersee` as private/dev-only seed data.
 - Avoid using client-specific data as implicit/default launch state.
-- Move test-specific workspaces to `pikaTests/Fixtures`.
+- Move test-specific workspaces to `billbiTests/Fixtures`.
 
 ## Decision Notes
 
@@ -93,9 +93,9 @@ When implementing:
 ## Status
 
 Implemented on 2026-04-28 in the seed cleanup branch:
-- app seed selection now routes through `pika/Development/WorkspaceSeed.swift`,
-- demo and Bikepark seed data now live in `pika/Development/WorkspaceSeedLibrary.swift`,
-- test code now uses `pikaTests/Fixtures/WorkspaceFixtures.swift`,
+- app seed selection now routes through `billbi/Development/WorkspaceSeed.swift`,
+- demo and Bikepark seed data now live in `billbi/Development/WorkspaceSeedLibrary.swift`,
+- test code now uses `billbiTests/Fixtures/WorkspaceFixtures.swift`,
 - app debug launch defaults to `.empty`,
 - script/Codex seed modes route through the unified seed argument.
 

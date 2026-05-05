@@ -1,12 +1,12 @@
-# Workspace Archive v1 (`.pikaarchive`)
+# Workspace Archive v1 (`.billbiarchive`)
 
-This document defines Pika's strict v1 workspace archive contract for external tools and agents.
+This document defines Billbi's strict v1 workspace archive contract for external tools and agents.
 
 ## Envelope
 
-A v1 archive is UTF-8 JSON in a `.pikaarchive` file with this envelope:
+A v1 archive is UTF-8 JSON in a `.billbiarchive` file with this envelope:
 
-- `format` (string, required): must be `pika.workspace-archive`
+- `format` (string, required): must be `billbi.workspace-archive`
 - `version` (integer, required): must be `1`
 - `exportedAt` (string, required): ISO 8601 timestamp (`YYYY-MM-DDTHH:MM:SSZ`)
 - `generator` (object, optional): metadata about the tool that produced the archive
@@ -20,7 +20,7 @@ A v1 archive is UTF-8 JSON in a `.pikaarchive` file with this envelope:
 
 ## Workspace Payload (Normalized)
 
-The `workspace` object uses Pika domain terms and normalized record tables:
+The `workspace` object uses Billbi domain terms and normalized record tables:
 
 - `businessProfile` (object, required)
 - `clients` (array, required)
@@ -136,7 +136,7 @@ Each line item requires:
 
 v1 archives are strict. Decoding rejects archives when:
 
-- `format` is not `pika.workspace-archive`
+- `format` is not `billbi.workspace-archive`
 - `version` is not `1`
 - `exportedAt` is not a valid ISO 8601 timestamp
 - any top-level, workspace-level, or record-level field is not defined by this v1 schema
@@ -156,7 +156,7 @@ Validation rejects archives when:
   `invoices.totalMinorUnits`, or `invoiceLineItems.amountMinorUnits` is negative
 - `timeEntries.durationMinutes` is not positive
 - a billable time amount, bucket derived total, or invoice line item sum overflows integer minor units
-- `invoices.template` is not one of Pika's known invoice template raw values
+- `invoices.template` is not one of Billbi's known invoice template raw values
 - `invoices.number` is empty after trimming whitespace, or duplicates another invoice number after trimming and case folding
 - `invoices.totalMinorUnits` does not equal the sum of its invoice line item `amountMinorUnits`
 
@@ -167,9 +167,9 @@ Money values are integer minor units across the schema. Bucket totals are derive
 ```json
 {
   "exportedAt" : "2026-05-02T10:00:00Z",
-  "format" : "pika.workspace-archive",
+  "format" : "billbi.workspace-archive",
   "generator" : {
-    "app" : "Pika",
+    "app" : "Billbi",
     "build" : "27",
     "version" : "0.1.0"
   },

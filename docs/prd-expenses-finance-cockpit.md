@@ -2,15 +2,15 @@
 
 ## Problem Statement
 
-Pika currently helps freelancers understand incoming money through clients, projects, buckets, invoices, and dashboard revenue. It does not yet help them understand outgoing business costs, so a freelancer still has to dig through email, downloads, subscriptions, receipts, card statements, and ad hoc folders to answer the more important question: what did the business actually earn after costs?
+Billbi currently helps freelancers understand incoming money through clients, projects, buckets, invoices, and dashboard revenue. It does not yet help them understand outgoing business costs, so a freelancer still has to dig through email, downloads, subscriptions, receipts, card statements, and ad hoc folders to answer the more important question: what did the business actually earn after costs?
 
 Freelancers also need tax-relevant expense evidence to stay organized throughout the year. Without a calm place to record paid receipts, unpaid bills, subscriptions, equipment purchases, VAT details, and original evidence files, tax export becomes a manual scramble instead of a clean yearly handoff.
 
 ## Solution
 
-Add an **Expenses** area to Pika as a first-class workspace surface near **Invoices**. An **Expense** is an amount-bearing business cost with a lifecycle of **Draft Expense**, **Due Expense**, **Paid Expense**, and **Archived Expense**. Expenses may attach zero, one, or many **Expense Evidence** files, such as invoice PDFs, receipt photos, payment screenshots, or other proof documents.
+Add an **Expenses** area to Billbi as a first-class workspace surface near **Invoices**. An **Expense** is an amount-bearing business cost with a lifecycle of **Draft Expense**, **Due Expense**, **Paid Expense**, and **Archived Expense**. Expenses may attach zero, one, or many **Expense Evidence** files, such as invoice PDFs, receipt photos, payment screenshots, or other proof documents.
 
-Expense intake starts from an add/import action in the Expenses toolbar. Uploading evidence starts or updates one intended Draft Expense, copies the evidence into Pika-managed storage, and may trigger AI extraction in the background. AI extraction produces draft suggestions, not authoritative finance data. The user confirms title, amount, currency, category, status, and relevant finance dates during **Expense Review** before the expense can count toward profit or tax exports. The detailed review interaction is intentionally design-pending and may become an AI chat-led sheet or overlay, but the confirmed structured Expense fields remain the source of truth.
+Expense intake starts from an add/import action in the Expenses toolbar. Uploading evidence starts or updates one intended Draft Expense, copies the evidence into Billbi-managed storage, and may trigger AI extraction in the background. AI extraction produces draft suggestions, not authoritative finance data. The user confirms title, amount, currency, category, status, and relevant finance dates during **Expense Review** before the expense can count toward profit or tax exports. The detailed review interaction is intentionally design-pending and may become an AI chat-led sheet or overlay, but the confirmed structured Expense fields remain the source of truth.
 
 Once reviewed, Expenses are managed through a calm list/detail pattern inspired by the existing Invoices view. The list uses chip-style states and filters. The detail view is evidence-first after review, with an explicit edit-details mode when the user needs to correct extracted data.
 
@@ -21,14 +21,14 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 ## User Stories
 
 1. As a freelancer, I want an Expenses sidebar item near Invoices, so that outgoing business costs have a clear home.
-2. As a freelancer, I want to upload a PDF invoice for a business purchase, so that Pika can create a Draft Expense from it.
+2. As a freelancer, I want to upload a PDF invoice for a business purchase, so that Billbi can create a Draft Expense from it.
 3. As a freelancer, I want to upload a photo of a receipt, so that offline purchases can be recorded like online bills.
 4. As a freelancer, I want one expense intake flow to accept multiple evidence files, so that a receipt and payment screenshot can belong to the same Expense.
-5. As a freelancer, I want Pika to treat uploaded evidence as belonging to one intended Expense, so that unrelated mixed batch imports are not encouraged.
-6. As a freelancer, I want Pika to flag unrelated uploaded files during review, so that accidental mixed uploads can be corrected.
-7. As a freelancer, I want uploaded evidence copied into Pika-managed storage, so that deleting the original Downloads file does not break my records.
+5. As a freelancer, I want Billbi to treat uploaded evidence as belonging to one intended Expense, so that unrelated mixed batch imports are not encouraged.
+6. As a freelancer, I want Billbi to flag unrelated uploaded files during review, so that accidental mixed uploads can be corrected.
+7. As a freelancer, I want uploaded evidence copied into Billbi-managed storage, so that deleting the original Downloads file does not break my records.
 8. As a freelancer, I want evidence files to sync with my workspace through Apple cloud storage, so that my receipts and invoices are available on my other devices.
-9. As a freelancer, I want Pika to show a syncing/loading state when metadata arrives before evidence files, so that synced attachments are not mistaken for missing evidence.
+9. As a freelancer, I want Billbi to show a syncing/loading state when metadata arrives before evidence files, so that synced attachments are not mistaken for missing evidence.
 10. As a freelancer, I want to create a manual Expense without evidence, so that costs can be recorded even when no receipt is available yet.
 11. As a freelancer, I want manual Expenses without evidence to be visibly flagged, so that I can fill gaps before tax handoff.
 12. As a freelancer, I want AI to extract title, vendor name, amount, dates, VAT, currency, and category suggestions from evidence, so that review is faster.
@@ -53,17 +53,17 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 31. As a freelancer, I want deleting a used category to require a replacement, so that expenses are not left with orphaned category labels.
 32. As a freelancer, I want AI to suggest new categories during review, so that unusual expenses can still be categorized naturally.
 33. As a freelancer, I want to approve new AI-suggested categories inline, so that I do not have to leave review for Settings.
-34. As a freelancer, I want Pika to store original amount and currency, so that evidence remains faithful to the purchase.
+34. As a freelancer, I want Billbi to store original amount and currency, so that evidence remains faithful to the purchase.
 35. As a freelancer, I want cross-currency Expenses to require a reviewed Reporting Amount in workspace currency, so that profit and exports use a consistent currency.
-36. As a freelancer, I do not want Pika to fetch exchange rates automatically in v1, so that it does not silently choose the wrong conversion.
-37. As a freelancer, I want VAT details extracted and stored when available, so that Pika is ready for non-Kleinunternehmer workflows.
+36. As a freelancer, I do not want Billbi to fetch exchange rates automatically in v1, so that it does not silently choose the wrong conversion.
+37. As a freelancer, I want VAT details extracted and stored when available, so that Billbi is ready for non-Kleinunternehmer workflows.
 38. As a freelancer, I want missing VAT details not to block review, so that no-VAT and unusual receipts can still be recorded.
 39. As a freelancer, I want Actual Profit to use gross Reporting Amount in v1, so that the dashboard matches cash-out reality.
 40. As a freelancer, I want an Expense to optionally link to one Project, so that project-specific costs can be understood later.
 41. As a freelancer, I want Client to be implied from the linked Project, so that I do not have to duplicate relationships.
 42. As a freelancer, I want most Expenses to stay workspace-wide, so that business-wide costs like software, equipment, domains, and office supplies are easy to record.
 43. As a freelancer, I want v1 to avoid multi-project splits, so that expense capture stays simple.
-44. As a freelancer, I want duplicate detection to be advisory during review, so that Pika can warn me without auto-merging or deleting records.
+44. As a freelancer, I want duplicate detection to be advisory during review, so that Billbi can warn me without auto-merging or deleting records.
 45. As a freelancer, I want duplicate warnings to offer attach, create separately, or ignore decisions, so that related evidence can be handled safely.
 46. As a freelancer, I want evidence attachments to have optional Evidence Kind, so that invoices, receipts, payment proof, and other files are easier to review and export.
 47. As a freelancer, I want evidence kind not to block review, so that uncertain files do not slow me down.
@@ -75,7 +75,7 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 53. As a freelancer, I want hard delete only from archived expenses, so that incorrect records can be removed deliberately.
 54. As a freelancer, I want archived expenses excluded from normal Actual Profit charts and Tax Exports by default, so that invalid or removed records do not affect reporting.
 55. As a freelancer, I want archiving to keep copied evidence, so that archived records remain inspectable.
-56. As a freelancer, I want hard delete to remove Pika's copied evidence when no longer attached elsewhere, so that erroneous files do not linger in Pika storage.
+56. As a freelancer, I want hard delete to remove Billbi's copied evidence when no longer attached elsewhere, so that erroneous files do not linger in Billbi storage.
 57. As a freelancer, I want meaningful Expense lifecycle events in Activity, so that I can see history without noisy extraction details.
 58. As a freelancer, I want draft extraction edits and minor AI suggestion changes omitted from Activity, so that history stays readable.
 59. As a freelancer, I want the Expenses view to follow the Invoices list/detail pattern, so that the app feels familiar and calm.
@@ -98,7 +98,7 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 76. As a freelancer, I want the existing Workspace Archive format extended instead of a separate expense archive, so that restore stays one coherent workflow.
 77. As a freelancer, I want subscriptions to be ordinary Expenses in v1, so that recurring logic does not overcomplicate the first version.
 78. As a freelancer, I want structured expense line items out of scope in v1, so that the system stays focused on expense-level records and evidence.
-79. As a freelancer, I want AI analysis to happen only for files I intentionally import, so that Pika does not scan unrelated folders or documents.
+79. As a freelancer, I want AI analysis to happen only for files I intentionally import, so that Billbi does not scan unrelated folders or documents.
 80. As a freelancer, I want importing files into expense intake to be the confirmation for AI analysis, so that the privacy boundary is clear.
 
 ## Implementation Decisions
@@ -112,7 +112,7 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - Store vendor name as a plain Expense field, not a managed Vendor object.
 - Store original amount/currency and reviewed Reporting Amount in workspace currency; do not fetch exchange rates automatically in v1.
 - Store VAT details from day one when available, including net amount, VAT amount, and VAT rate, while keeping gross Reporting Amount as the v1 profit amount.
-- Model Expense Evidence as attachments copied into Pika-managed storage, respecting ADR 0001.
+- Model Expense Evidence as attachments copied into Billbi-managed storage, respecting ADR 0001.
 - Sync Expense Evidence with the workspace and tolerate eventual attachment availability, respecting ADR 0002.
 - Represent Evidence Availability separately from "missing evidence" so the UI can distinguish syncing/unavailable files from expenses with no evidence attached.
 - Add Evidence Kind as optional attachment metadata: invoice, receipt, payment proof, or other.
@@ -142,7 +142,7 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - Reporting tests should cover Actual Profit as paid invoice revenue minus paid expenses, Payment Date placement, Due Expense exclusion, Draft Expense exclusion, Archived Expense exclusion, and cross-currency Reporting Amount requirements.
 - Tax Export tests should cover selected-year eligibility by Payment Date, category-first organization metadata, missing evidence flags, unavailable evidence flags, VAT fields when available, and exclusion of Draft/Due/Archived expenses by default.
 - Workspace Archive tests should extend existing archive export/import coverage to include expenses, categories, evidence metadata, and attachment references.
-- Evidence storage tests should verify import copies files into Pika-managed storage and hard delete removes Pika's copy only when no longer referenced.
+- Evidence storage tests should verify import copies files into Billbi-managed storage and hard delete removes Billbi's copy only when no longer referenced.
 - Evidence availability tests should cover locally available, syncing, unavailable, and missing states.
 - Category tests should cover defaults, inline suggested category approval, rename propagation, and replacement-required deletion.
 - Duplicate detection tests should focus on advisory outputs and user choices, not on a brittle exact matching algorithm.
@@ -169,8 +169,8 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 ## Further Notes
 
 - The domain glossary in CONTEXT.md is the source of truth for Expense language.
-- ADR 0001 records the decision to copy imported Expense Evidence into Pika-managed storage.
+- ADR 0001 records the decision to copy imported Expense Evidence into Billbi-managed storage.
 - ADR 0002 records the expectation that Expense Evidence syncs with the workspace and that UI handles evidence-file availability as eventually consistent.
-- The feature should keep Pika small and native: calm list/detail surfaces, clear chip states, focused projections, and testable workflow modules.
+- The feature should keep Billbi small and native: calm list/detail surfaces, clear chip states, focused projections, and testable workflow modules.
 - The current Invoices view is the strongest interaction reference for the reviewed Expenses area.
 - The exact AI provider or harness is intentionally undecided. The product decision is that AI supports extraction and review; implementation can choose the provider later based on privacy, cost, latency, and local architecture constraints.

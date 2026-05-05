@@ -1,5 +1,5 @@
 // happ.ines_creations tokens — warm artisanal palette.
-// Same structure as PikaTokens so all atoms work unchanged. Accent is a warm
+// Same structure as BillbiTokens so all atoms work unchanged. Accent is a warm
 // terracotta/clay (handmade ceramics vibe), surfaces are slightly creamy in
 // light, deep warm-brown in dark instead of cool slate.
 
@@ -44,7 +44,7 @@ window.HappinesTokens = {
     danger: '#B0463A',
     dangerMuted: '#B0463A14',
   },
-  // Same type/space/radius scales as Pika.
+  // Same type/space/radius scales as Billbi.
   type: {
     display: { size: 32, lh: 48, weight: 700 },
     heading: { size: 20, lh: 28, weight: 600 },

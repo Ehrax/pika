@@ -6,12 +6,12 @@ WORKSPACE_SEED="empty"
 PERSISTENCE_MODE=""
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Run"
-PROJECT_FILE="$ROOT_DIR/pika.xcodeproj"
-SCHEME="Pika Dev"
+PROJECT_FILE="$ROOT_DIR/billbi.xcodeproj"
+SCHEME="Billbi Dev"
 CONFIGURATION="Debug Dev"
 DESTINATION="platform=macOS"
-APP_EXECUTABLE="pika-dev"
-APP_BUNDLE_NAME="pika-dev.app"
+APP_EXECUTABLE="billbi-dev"
+APP_BUNDLE_NAME="billbi-dev.app"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,22 +28,22 @@ while [[ $# -gt 0 ]]; do
       WORKSPACE_SEED="empty"
       ;;
     --dev|dev)
-      SCHEME="Pika Dev"
+      SCHEME="Billbi Dev"
       CONFIGURATION="Debug Dev"
-      APP_EXECUTABLE="pika-dev"
-      APP_BUNDLE_NAME="pika-dev.app"
+      APP_EXECUTABLE="billbi-dev"
+      APP_BUNDLE_NAME="billbi-dev.app"
       ;;
     --prod|prod)
-      SCHEME="Pika Prod"
+      SCHEME="Billbi Prod"
       CONFIGURATION="Debug Prod"
-      APP_EXECUTABLE="pika"
-      APP_BUNDLE_NAME="pika.app"
+      APP_EXECUTABLE="billbi"
+      APP_BUNDLE_NAME="billbi.app"
       ;;
     --release-prod|release-prod)
-      SCHEME="Pika Prod"
+      SCHEME="Billbi Prod"
       CONFIGURATION="Release Prod"
-      APP_EXECUTABLE="pika"
-      APP_BUNDLE_NAME="pika.app"
+      APP_EXECUTABLE="billbi"
+      APP_BUNDLE_NAME="billbi.app"
       ;;
     --local|local)
       PERSISTENCE_MODE="local"
@@ -66,8 +66,8 @@ done
 kill_running_app() {
   local pids
   pids="$(
-    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/pika-dev.app/Contents/MacOS/pika-dev"
-    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/pika.app/Contents/MacOS/pika"
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/billbi-dev.app/Contents/MacOS/billbi-dev"
+    process_ids_for_executable "$DERIVED_DATA_DIR/Build/Products/$CONFIGURATION/billbi.app/Contents/MacOS/billbi"
   )"
   if [[ -n "$pids" ]]; then
     kill $pids >/dev/null 2>&1 || true
@@ -112,9 +112,9 @@ find_app_bundle() {
 launch_app() {
   local app_bundle="$1"
 
-  local launch_args=(--pika-workspace-seed "$WORKSPACE_SEED")
+  local launch_args=(--billbi-workspace-seed "$WORKSPACE_SEED")
   if [[ -n "$PERSISTENCE_MODE" ]]; then
-    launch_args+=(--pika-persistence "$PERSISTENCE_MODE")
+    launch_args+=(--billbi-persistence "$PERSISTENCE_MODE")
   fi
 
   /usr/bin/open -n "$app_bundle" --args "${launch_args[@]}"

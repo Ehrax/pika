@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA_DIR="$ROOT_DIR/.build/DerivedData/Coverage"
-RESULT_BUNDLE="$ROOT_DIR/.build/coverage/PikaCoverage.xcresult"
+RESULT_BUNDLE="$ROOT_DIR/.build/coverage/BillbiCoverage.xcresult"
 COVERAGE_REPORT="$ROOT_DIR/.build/coverage/xccov-report.json"
 THRESHOLD="90.0"
 
@@ -11,13 +11,13 @@ rm -rf "$RESULT_BUNDLE"
 mkdir -p "$(dirname "$RESULT_BUNDLE")"
 
 xcodebuild test \
-  -project "$ROOT_DIR/pika.xcodeproj" \
-  -scheme "Pika Dev" \
+  -project "$ROOT_DIR/billbi.xcodeproj" \
+  -scheme "Billbi Dev" \
   -configuration "Debug Dev" \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   -resultBundlePath "$RESULT_BUNDLE" \
-  -only-testing:pikaTests \
+  -only-testing:billbiTests \
   -parallel-testing-enabled NO \
   -enableCodeCoverage YES \
   CODE_SIGNING_ALLOWED=NO
@@ -37,19 +37,19 @@ if raw_coverage is None:
     raise SystemExit("error: xccov report did not include lineCoverage")
 
 excluded_path_parts = (
-    "/pika/DesignSystem/",
-    "/pika/Shell/",
-    "/pikaUITests/",
-    "/pikaTests/",
+    "/billbi/DesignSystem/",
+    "/billbi/Shell/",
+    "/billbiUITests/",
+    "/billbiTests/",
 )
 excluded_files = {
-    f"{root}/pika/Support/PreviewSupport.swift",
+    f"{root}/billbi/Support/PreviewSupport.swift",
 }
 
 covered_lines = 0
 executable_lines = 0
 for target in report.get("targets", []):
-    if target.get("name") not in ("pika-dev.app", "pika.app"):
+    if target.get("name") not in ("billbi-dev.app", "billbi.app"):
         continue
 
     for file_report in target.get("files", []):

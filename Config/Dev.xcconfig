@@ -1,7 +1,7 @@
 #include "Base.xcconfig"
 
-INFOPLIST_KEY_CFBundleDisplayName = [DEV] Pika
-PIKA_CLOUDKIT_CONTAINER_IDENTIFIER = iCloud.ehrax.dev.pika.dev
-PIKA_ENVIRONMENT_NAME = dev
-PIKA_PRODUCT_BUNDLE_IDENTIFIER = ehrax.dev.pika.dev
-PIKA_PRODUCT_NAME = pika-dev
+INFOPLIST_KEY_CFBundleDisplayName = [DEV] Billbi
+BILLBI_CLOUDKIT_CONTAINER_IDENTIFIER = iCloud.ehrax.dev.billbi.dev
+BILLBI_ENVIRONMENT_NAME = dev
+BILLBI_PRODUCT_BUNDLE_IDENTIFIER = ehrax.dev.billbi.dev
+BILLBI_PRODUCT_NAME = billbi-dev

@@ -26,7 +26,7 @@ Removed from app persistence logic:
 ## CloudKit Config
 
 - `AppPersistenceMode.cloudKitPrivate` uses:
-  - `cloudKitDatabase: .private("iCloud.ehrax.dev.pika")`
+  - `cloudKitDatabase: .private("iCloud.ehrax.dev.billbi")`
 - `AppPersistenceMode.local` and `AppPersistenceMode.inMemory` use:
   - `cloudKitDatabase: .none`
 

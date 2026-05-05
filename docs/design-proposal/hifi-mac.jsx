@@ -1,4 +1,4 @@
-// Pika hi-fi Mac screens — A2, A3, B1, B3, B4.
+// Billbi hi-fi Mac screens — A2, A3, B1, B3, B4.
 // All accept a `theme` prop so they render in dark or light identically.
 
 // Shared: app shell wraps sidebar + main column.

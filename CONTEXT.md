@@ -1,4 +1,4 @@
-# Pika Context
+# Billbi Context
 
 ## Domain Language
 
@@ -25,16 +25,16 @@
 - **Expense VAT**: reviewed tax details extracted from expense evidence, such as net amount, VAT amount, and VAT rate.
 - **Expense Review**: the user confirmation step where extracted expense suggestions become finance records.
 - **Actual Profit**: paid invoice revenue minus paid expenses for a selected period.
-- **Workspace Archive**: a full backup or transfer package for restoring a Pika workspace.
+- **Workspace Archive**: a full backup or transfer package for restoring a Billbi workspace.
 - **Tax Export**: a focused yearly handoff package of tax-relevant paid expenses, summaries, and evidence.
 - **Activity**: a local audit-style event shown in the app for notable workspace changes.
 
 ## Flagged Ambiguities
 
 - "cost" exists in invoiceable bucket language as a fixed cost that can be billed to a client; use **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
-- "tax document" was considered for generic tax paperwork, but Pika's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
+- "tax document" was considered for generic tax paperwork, but Billbi's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
 - "receipt" and "invoice PDF" both refer to **Expense Evidence** when they prove an outgoing business cost; do not model them as separate top-level records.
-- "batch import" was considered for mixed uploads, but Pika's expense intake flow is centered on one intended **Expense** at a time; multiple uploaded files should be treated as evidence for that intended expense and flagged for review if they appear unrelated.
+- "batch import" was considered for mixed uploads, but Billbi's expense intake flow is centered on one intended **Expense** at a time; multiple uploaded files should be treated as evidence for that intended expense and flagged for review if they appear unrelated.
 - "bill" refers to a **Due Expense** when it is an unpaid outgoing business cost; do not model it as a separate top-level record.
 - The product surface should call the area **Expenses**, not Bills or Costs.
 - **Expenses** should have their own sidebar destination near **Invoices**.
@@ -42,14 +42,14 @@
 - "vendor" is useful as a plain vendor-name field on an **Expense**, but should not be a separate managed domain object in v1.
 - "category" should be controlled by user-approved **Expense Categories**; AI may suggest a new category during review, but it should not silently expand the category list.
 - "subscription" is not a separate recurring domain object in v1; repeated subscription bills are recorded as ordinary **Expenses**.
-- Duplicate detection for **Expenses** is advisory in review; Pika may flag likely duplicates or related evidence, but the user decides whether to attach, create separately, or ignore.
-- Pika v1 should not have a separate document or evidence library; evidence is accessed through its **Expense**.
+- Duplicate detection for **Expenses** is advisory in review; Billbi may flag likely duplicates or related evidence, but the user decides whether to attach, create separately, or ignore.
+- Billbi v1 should not have a separate document or evidence library; evidence is accessed through its **Expense**.
 - Normal expense search excludes **Archived Expenses** unless the user is searching the archived view.
-- Pika v1 should not model structured expense line items; the reviewed expense is the finance record and the original evidence remains available for detail.
+- Billbi v1 should not model structured expense line items; the reviewed expense is the finance record and the original evidence remains available for detail.
 - AI extraction produces draft suggestions for **Expense Review**, not authoritative finance data.
 - Extracted evidence text may be stored for expense search and duplicate detection, without creating a standalone document-search surface in v1.
 - Importing files into an expense intake flow is the user's confirmation that those files may be analyzed for expense extraction.
-- Pika should not scan or analyze files that the user has not intentionally imported into an expense intake flow.
+- Billbi should not scan or analyze files that the user has not intentionally imported into an expense intake flow.
 
 ## Architecture Language
 
@@ -62,12 +62,12 @@
 
 ## Current Architecture Direction
 
-- Keep `WorkspaceStore` as Pika's app-facing Workspace Module for now.
+- Keep `WorkspaceStore` as Billbi's app-facing Workspace Module for now.
 - Deepen its implementation rather than replacing it with a Redux-style reducer or a Flutter BLoC-style event hub.
 - Treat SwiftData plus private CloudKit as load-bearing persistence.
 - Inject `ModelContext` at app composition time, then keep it inside `WorkspacePersistence`.
 - Keep SwiftUI views focused on local presentation state, projections, and calls to `WorkspaceStore` commands.
-- Keep Pika MV-first for SwiftUI. Use lightweight DDD-informed layering only to name where domain decisions live:
+- Keep Billbi MV-first for SwiftUI. Use lightweight DDD-informed layering only to name where domain decisions live:
   - SwiftUI views are presentation.
   - `WorkspaceStore` is the application coordinator.
   - `WorkspaceInvoicingWorkflow`, `WorkspaceMutationPolicy`, and `InvoiceWorkflowPolicy` own domain decisions.
@@ -93,13 +93,13 @@
 
 - An **Expense** may have zero, one, or many **Expense Evidence** attachments.
 - **Evidence Kind** helps review and export attached files, but does not block expense review.
-- **Expense Evidence** files are copied into Pika-managed storage when imported.
+- **Expense Evidence** files are copied into Billbi-managed storage when imported.
 - **Expense Evidence** should sync through the user's Apple cloud storage path; expense metadata may become visible before evidence files finish syncing.
-- If expense metadata references evidence that is not locally available yet, Pika should show a syncing or unavailable evidence state rather than treating the expense as missing evidence.
+- If expense metadata references evidence that is not locally available yet, Billbi should show a syncing or unavailable evidence state rather than treating the expense as missing evidence.
 - An **Expense** may be reviewed without **Expense Evidence**, but should remain visibly flagged as missing evidence.
 - Archiving is the normal delete-like action for **Expenses**; hard deletion is only available for archived expenses when a record was created incorrectly.
 - **Archived Expenses** are excluded from normal actual-profit charts and tax exports by default.
-- Archiving an **Expense** keeps its copied **Expense Evidence** in Pika storage; hard deletion removes Pika's copy when the evidence is no longer attached elsewhere.
+- Archiving an **Expense** keeps its copied **Expense Evidence** in Billbi storage; hard deletion removes Billbi's copy when the evidence is no longer attached elsewhere.
 - **Activity** includes notable **Expense** lifecycle events, but not every draft extraction, review-field edit, or AI suggestion change.
 - One expense intake flow is intended to create or update exactly one **Expense**.
 - Uploading evidence while an active **Expense** is selected should attach it to that expense; uploading with no selected expense should start a new **Draft Expense**.
@@ -108,10 +108,10 @@
 - **Expense Title** is the primary list label; vendor name, category, and finance dates are supporting details.
 - Renaming an **Expense Category** updates that label everywhere it is used.
 - Deleting a used **Expense Category** requires moving its expenses to a replacement category.
-- Pika should ship with default **Expense Categories**, and users can add, rename, or remove them in Settings.
+- Billbi should ship with default **Expense Categories**, and users can add, rename, or remove them in Settings.
 - AI-suggested new **Expense Categories** can be approved inline during **Expense Review**.
 - When an **Expense** links to a **Project**, its **Client** is implied by that project.
-- Pika v1 does not split one **Expense** across multiple projects or clients.
+- Billbi v1 does not split one **Expense** across multiple projects or clients.
 - A **Draft Expense** does not count toward profit or tax/export totals.
 - A **Due Expense** represents an outstanding obligation but does not reduce actual paid profit.
 - A **Paid Expense** reduces actual paid profit and is eligible for tax/export totals.
@@ -135,9 +135,9 @@
 - A **Paid Expense** requires a **Payment Date** before it can count toward actual profit.
 - Payment proof is optional; a user may mark a reviewed **Expense** as paid by confirming its **Payment Date**.
 - Cross-currency **Expenses** keep their original amount and currency, but require a reviewed **Reporting Amount** in the workspace currency before they count toward profit or exports.
-- Pika v1 should not fetch exchange rates automatically for **Expenses**.
+- Billbi v1 should not fetch exchange rates automatically for **Expenses**.
 - **Expense VAT** should be extracted and stored from day one when available, but missing VAT details do not block expense review in v1.
-- Pika v1 uses the gross **Reporting Amount** for actual-profit calculations.
+- Billbi v1 uses the gross **Reporting Amount** for actual-profit calculations.
 - A **Workspace Archive** includes expenses and their copied **Expense Evidence** so the workspace can be restored completely.
 - The existing **Workspace Archive** format should be extended for expenses instead of creating a separate expense archive.
 - A **Tax Export** includes tax-relevant paid expenses and evidence for a selected year, not the full workspace.
