@@ -51,11 +51,17 @@ extension WorkspaceStore {
         let activityBeforeFinalization = workspace.activity
 
         while true {
-            let result = try finalizeInvoiceWorkflowResult(
-                projectID: projectID,
-                bucketID: bucketID,
-                draft: draft
-            )
+            let result: InvoiceFinalizationResult
+            do {
+                result = try finalizeInvoiceWorkflowResult(
+                    projectID: projectID,
+                    bucketID: bucketID,
+                    draft: draft
+                )
+            } catch WorkspaceStoreError.bucketStatusNotReady(.finalized) {
+                try reloadNormalizedWorkspace(preservingActivity: activityBeforeFinalization)
+                throw WorkspaceStoreError.persistenceConflict
+            }
             let finalizedActivity = WorkspaceActivity(
                 message: "\(result.invoice.number) finalized",
                 detail: result.invoice.clientName,

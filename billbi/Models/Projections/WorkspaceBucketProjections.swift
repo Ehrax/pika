@@ -308,7 +308,7 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
             statusTitle = linkedInvoice.status.displayTitle(dueDate: linkedInvoice.dueDate, on: date)
             statusTone = linkedInvoice.status.displayTone(dueDate: linkedInvoice.dueDate, on: date)
         } else {
-            statusTitle = bucket.status == .open ? nil : bucket.status.rawValue.capitalized
+            statusTitle = bucket.status.displayTitle
             statusTone = bucket.status.displayTone
         }
     }
@@ -366,6 +366,19 @@ private extension InvoiceStatus {
 }
 
 private extension BucketStatus {
+    var displayTitle: String? {
+        switch self {
+        case .open:
+            nil
+        case .ready:
+            String(localized: "Ready")
+        case .finalized:
+            String(localized: "Finalized")
+        case .archived:
+            String(localized: "Archived")
+        }
+    }
+
     var displayTone: BillbiStatusTone {
         switch self {
         case .open:

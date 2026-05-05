@@ -8,6 +8,9 @@ enum WorkspaceArchiveFileMenuCommandSurface {
     static let exportWorkspaceArchiveTitle = "Export Workspace Archive…"
     static let importWorkspaceArchiveTitle = "Import Workspace Archive…"
     static let revealWorkspaceBackupsTitle = "Reveal Workspace Backups"
+    static let localizedExportWorkspaceArchiveTitle = String(localized: "Export Workspace Archive…")
+    static let localizedImportWorkspaceArchiveTitle = String(localized: "Import Workspace Archive…")
+    static let localizedRevealWorkspaceBackupsTitle = String(localized: "Reveal Workspace Backups")
     static let commandTitles = [
         exportWorkspaceArchiveTitle,
         importWorkspaceArchiveTitle,
@@ -38,7 +41,7 @@ struct WorkspaceArchiveCommands: Commands {
                 importWorkspaceArchive()
             } label: {
                 Label(
-                    WorkspaceArchiveFileMenuCommandSurface.importWorkspaceArchiveTitle,
+                    WorkspaceArchiveFileMenuCommandSurface.localizedImportWorkspaceArchiveTitle,
                     systemImage: "square.and.arrow.down"
                 )
             }
@@ -49,7 +52,7 @@ struct WorkspaceArchiveCommands: Commands {
                 exportWorkspaceArchive()
             } label: {
                 Label(
-                    WorkspaceArchiveFileMenuCommandSurface.exportWorkspaceArchiveTitle,
+                    WorkspaceArchiveFileMenuCommandSurface.localizedExportWorkspaceArchiveTitle,
                     systemImage: "square.and.arrow.up"
                 )
             }
@@ -60,7 +63,7 @@ struct WorkspaceArchiveCommands: Commands {
                 revealWorkspaceBackups()
             } label: {
                 Label(
-                    WorkspaceArchiveFileMenuCommandSurface.revealWorkspaceBackupsTitle,
+                    WorkspaceArchiveFileMenuCommandSurface.localizedRevealWorkspaceBackupsTitle,
                     systemImage: "folder"
                 )
             }
@@ -71,9 +74,9 @@ struct WorkspaceArchiveCommands: Commands {
         guard let workspaceStore else { return }
 
         let panel = NSOpenPanel()
-        panel.title = "Import Workspace Archive"
-        panel.message = "Choose a .billbiarchive file to validate before replacing your workspace."
-        panel.prompt = "Validate"
+        panel.title = String(localized: "Import Workspace Archive")
+        panel.message = String(localized: "Choose a .billbiarchive file to validate before replacing your workspace.")
+        panel.prompt = String(localized: "Validate")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -125,10 +128,12 @@ struct WorkspaceArchiveCommands: Commands {
     ) throws {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Replace Current Workspace?"
-        alert.informativeText = "\(formattedSummary(summary))\n\nContinuing will replace the current workspace and cannot be undone."
-        alert.addButton(withTitle: "Replace Workspace")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Replace Current Workspace?")
+        alert.informativeText = String(
+            localized: "\(formattedSummary(summary))\n\nContinuing will replace the current workspace and cannot be undone."
+        )
+        alert.addButton(withTitle: String(localized: "Replace Workspace"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else {
@@ -139,77 +144,77 @@ struct WorkspaceArchiveCommands: Commands {
 
         let successAlert = NSAlert()
         successAlert.alertStyle = .informational
-        successAlert.messageText = "Workspace Replaced"
-        successAlert.informativeText = "The selected archive replaced the current workspace."
-        successAlert.addButton(withTitle: "OK")
+        successAlert.messageText = String(localized: "Workspace Replaced")
+        successAlert.informativeText = String(localized: "The selected archive replaced the current workspace.")
+        successAlert.addButton(withTitle: String(localized: "OK"))
         successAlert.runModal()
     }
 
     private func showImportError(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "Archive Import Failed"
+        alert.messageText = String(localized: "Archive Import Failed")
         alert.informativeText = message(for: error)
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "OK"))
         alert.runModal()
     }
 
     private func formattedSummary(_ summary: WorkspaceArchiveImportSummary) -> String {
         [
-            "Clients: \(summary.clientCount)",
-            "Projects: \(summary.projectCount)",
-            "Buckets: \(summary.bucketCount)",
-            "Time Entries: \(summary.timeEntryCount)",
-            "Fixed Costs: \(summary.fixedCostCount)",
-            "Invoices: \(summary.invoiceCount)",
+            String(localized: "Clients: \(summary.clientCount)"),
+            String(localized: "Projects: \(summary.projectCount)"),
+            String(localized: "Buckets: \(summary.bucketCount)"),
+            String(localized: "Time Entries: \(summary.timeEntryCount)"),
+            String(localized: "Fixed Costs: \(summary.fixedCostCount)"),
+            String(localized: "Invoices: \(summary.invoiceCount)"),
         ].joined(separator: " · ")
     }
 
     private func message(for error: Error) -> String {
         switch error {
         case WorkspaceArchiveError.invalidFormatMarker(_, let found):
-            return "Unsupported archive format: \(found)."
+            return String(localized: "Unsupported archive format: \(found).")
         case WorkspaceArchiveError.unsupportedVersion(_, let found):
-            return "Unsupported archive version: \(found)."
+            return String(localized: "Unsupported archive version: \(found).")
         case WorkspaceArchiveError.invalidExportedAt(let value):
-            return "Invalid export timestamp: \(value)."
+            return String(localized: "Invalid export timestamp: \(value).")
         case WorkspaceArchiveError.invalidDate(let field, let value):
-            return "Invalid date value in \(field): \(value)."
+            return String(localized: "Invalid date value in \(field): \(value).")
         case WorkspaceArchiveError.unknownField(let field):
-            return "Unsupported archive field: \(field)."
+            return String(localized: "Unsupported archive field: \(field).")
         case WorkspaceArchiveError.decodingFailed(let message):
-            return "Archive decoding failed: \(message)"
+            return String(localized: "Archive decoding failed: \(message)")
         case WorkspaceArchiveImportError.duplicateEntityID(let entity, let id):
-            return "Duplicate \(entity) identity found: \(id.uuidString)."
+            return String(localized: "Duplicate \(entity) identity found: \(id.uuidString).")
         case WorkspaceArchiveImportError.missingRelationship(let entity, let id, let relationship, let targetID):
-            return "\(entity) \(id.uuidString) references missing \(relationship): \(targetID.uuidString)."
+            return String(localized: "\(entity) \(id.uuidString) references missing \(relationship): \(targetID.uuidString).")
         case WorkspaceArchiveImportError.inconsistentRelationship(let entity, let id, let relationship, let targetID):
-            return "\(entity) \(id.uuidString) references mismatched \(relationship): \(targetID.uuidString)."
+            return String(localized: "\(entity) \(id.uuidString) references mismatched \(relationship): \(targetID.uuidString).")
         case WorkspaceArchiveImportError.invalidCurrencyCode(let field, let value):
-            return "Invalid currency value in \(field): \(value)."
+            return String(localized: "Invalid currency value in \(field): \(value).")
         case WorkspaceArchiveImportError.invalidMoneyValue(let field, let value):
-            return "Invalid numeric value in \(field): \(value)."
+            return String(localized: "Invalid numeric value in \(field): \(value).")
         case WorkspaceArchiveImportError.invalidTermsDays(let field, let value):
-            return "Invalid terms value in \(field): \(value)."
+            return String(localized: "Invalid terms value in \(field): \(value).")
         case WorkspaceArchiveImportError.invalidInvoiceTemplate(let value):
-            return "Invalid invoice template: \(value)."
+            return String(localized: "Invalid invoice template: \(value).")
         case WorkspaceArchiveImportError.duplicateInvoiceNumber(let normalizedNumber):
             if normalizedNumber.isEmpty {
-                return "Invoice numbers must not be empty."
+                return String(localized: "Invoice numbers must not be empty.")
             }
-            return "Duplicate invoice number found after normalization: \(normalizedNumber)."
+            return String(localized: "Duplicate invoice number found after normalization: \(normalizedNumber).")
         case WorkspaceArchiveImportError.invoiceTotalMismatch(let invoiceID, let expected, let actual):
-            return "Invoice \(invoiceID.uuidString) total mismatch. Expected \(expected), got \(actual)."
+            return String(localized: "Invoice \(invoiceID.uuidString) total mismatch. Expected \(expected), got \(actual).")
         case WorkspaceStoreError.persistenceFailed:
-            return "Workspace replacement failed. The previous workspace was kept."
+            return String(localized: "Workspace replacement failed. The previous workspace was kept.")
         case WorkspaceArchiveActionError.backupsDirectoryUnavailable:
-            return "Import is blocked because the backups directory could not be located."
+            return String(localized: "Import is blocked because the backups directory could not be located.")
         case WorkspaceArchiveActionError.backupsDirectoryOpenFailed:
-            return "The backups folder could not be opened."
+            return String(localized: "The backups folder could not be opened.")
         case let decodingError as DecodingError:
-            return "Archive decoding failed: \(decodingError.localizedDescription)"
+            return String(localized: "Archive decoding failed: \(decodingError.localizedDescription)")
         default:
-            return "Archive validation failed: \(error.localizedDescription)"
+            return String(localized: "Archive validation failed: \(error.localizedDescription)")
         }
     }
 }

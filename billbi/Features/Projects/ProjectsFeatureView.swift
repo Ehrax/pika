@@ -127,7 +127,9 @@ struct ProjectsFeatureView: View {
     }
 
     private var summaryLine: String {
-        "\(formatter.string(fromMinorUnits: summary.openMinorUnits)) open · \(formatter.string(fromMinorUnits: summary.readyMinorUnits)) ready · \(formatter.string(fromMinorUnits: summary.overdueMinorUnits)) overdue"
+        String(
+            localized: "\(formatter.string(fromMinorUnits: summary.openMinorUnits)) open · \(formatter.string(fromMinorUnits: summary.readyMinorUnits)) ready · \(formatter.string(fromMinorUnits: summary.overdueMinorUnits)) overdue"
+        )
     }
 
     private var archivedProjectsSection: some View {
@@ -210,7 +212,7 @@ struct ProjectsFeatureView: View {
             try workspaceStore.updateProject(projectID: projectID, draft)
             projectBeingEdited = nil
         } catch {
-            listActionFailure = ProjectListActionFailure(message: "Project could not be updated.")
+            listActionFailure = ProjectListActionFailure(message: String(localized: "Project could not be updated."))
         }
     }
 
@@ -218,7 +220,7 @@ struct ProjectsFeatureView: View {
         do {
             try workspaceStore.archiveProject(projectID: projectID)
         } catch {
-            listActionFailure = ProjectListActionFailure(message: "Project could not be archived.")
+            listActionFailure = ProjectListActionFailure(message: String(localized: "Project could not be archived."))
         }
     }
 
@@ -226,9 +228,9 @@ struct ProjectsFeatureView: View {
         do {
             try workspaceStore.removeProject(projectID: projectID)
         } catch WorkspaceStoreError.projectNotArchived {
-            listActionFailure = ProjectListActionFailure(message: "Only archived projects can be deleted.")
+            listActionFailure = ProjectListActionFailure(message: String(localized: "Only archived projects can be deleted."))
         } catch {
-            listActionFailure = ProjectListActionFailure(message: "Project could not be deleted.")
+            listActionFailure = ProjectListActionFailure(message: String(localized: "Project could not be deleted."))
         }
     }
 

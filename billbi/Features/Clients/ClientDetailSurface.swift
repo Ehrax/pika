@@ -167,9 +167,11 @@ struct ClientDetailSurface: View {
             billingAddress = BillingAddressComponents(rawAddress: updatedDraft.billingAddress)
             saveFailure = nil
         } catch WorkspaceStoreError.invalidClient {
-            saveFailure = ClientSaveFailure(message: "Name, billing email, billing address, and payment terms are required.")
+            saveFailure = ClientSaveFailure(
+                message: String(localized: "Name, billing email, billing address, and payment terms are required.")
+            )
         } catch {
-            saveFailure = ClientSaveFailure(message: "Client could not be saved.")
+            saveFailure = ClientSaveFailure(message: String(localized: "Client could not be saved."))
         }
     }
 
@@ -183,7 +185,7 @@ struct ClientDetailSurface: View {
         do {
             try workspaceStore.archiveClient(clientID: client.id)
         } catch {
-            clientActionFailure = ClientActionFailure(message: "Client could not be archived.")
+            clientActionFailure = ClientActionFailure(message: String(localized: "Client could not be archived."))
         }
     }
 
@@ -191,7 +193,7 @@ struct ClientDetailSurface: View {
         do {
             try workspaceStore.restoreClient(clientID: client.id)
         } catch {
-            clientActionFailure = ClientActionFailure(message: "Client could not be restored.")
+            clientActionFailure = ClientActionFailure(message: String(localized: "Client could not be restored."))
         }
     }
 
@@ -199,11 +201,13 @@ struct ClientDetailSurface: View {
         do {
             try workspaceStore.removeClient(clientID: client.id)
         } catch WorkspaceStoreError.clientHasLinkedProjects {
-            clientActionFailure = ClientActionFailure(message: "Clients with linked projects cannot be deleted. Archive can still be used.")
+            clientActionFailure = ClientActionFailure(
+                message: String(localized: "Clients with linked projects cannot be deleted. Archive can still be used.")
+            )
         } catch WorkspaceStoreError.clientNotArchived {
-            clientActionFailure = ClientActionFailure(message: "Archive this client before deleting.")
+            clientActionFailure = ClientActionFailure(message: String(localized: "Archive this client before deleting."))
         } catch {
-            clientActionFailure = ClientActionFailure(message: "Client could not be deleted.")
+            clientActionFailure = ClientActionFailure(message: String(localized: "Client could not be deleted."))
         }
     }
 }

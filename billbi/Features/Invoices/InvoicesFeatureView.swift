@@ -140,7 +140,7 @@ struct InvoicesFeatureView: View {
         #if os(macOS)
         ""
         #else
-        "Invoices"
+        String(localized: "Invoices")
         #endif
     }
 
@@ -240,7 +240,7 @@ private enum PDFActionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noSelectedInvoice:
-            return "Select an invoice before opening or exporting a PDF."
+            return String(localized: "Select an invoice before opening or exporting a PDF.")
         }
     }
 }
@@ -254,6 +254,40 @@ private enum InvoiceListFilter: String, CaseIterable, Equatable, Identifiable {
     case cancelled = "Cancelled"
 
     var id: String { rawValue }
+
+    var displayTitle: String {
+        switch self {
+        case .all:
+            String(localized: "All")
+        case .finalized:
+            String(localized: "Finalized")
+        case .sent:
+            String(localized: "Sent")
+        case .paid:
+            String(localized: "Paid")
+        case .overdue:
+            String(localized: "Overdue")
+        case .cancelled:
+            String(localized: "Cancelled")
+        }
+    }
+
+    var sectionTitle: String {
+        switch self {
+        case .all:
+            String(localized: "All Invoices")
+        case .finalized:
+            String(localized: "Finalized Invoices")
+        case .sent:
+            String(localized: "Sent Invoices")
+        case .paid:
+            String(localized: "Paid Invoices")
+        case .overdue:
+            String(localized: "Overdue Invoices")
+        case .cancelled:
+            String(localized: "Cancelled Invoices")
+        }
+    }
 
     func includes(_ row: WorkspaceInvoiceRowProjection) -> Bool {
         switch self {
@@ -291,7 +325,9 @@ private struct InvoiceListSummary {
     }
 
     var displayText: String {
-        "\(total) total · \(finalized) finalized · \(sent) sent · \(paid) paid · \(overdue) overdue · \(cancelled) cancelled"
+        String(
+            localized: "\(total) total · \(finalized) finalized · \(sent) sent · \(paid) paid · \(overdue) overdue · \(cancelled) cancelled"
+        )
     }
 }
 
@@ -306,7 +342,7 @@ private struct InvoiceListColumn: View {
         BillbiSecondarySidebarColumn(
             title: "Invoices",
             subtitle: summary.displayText,
-            sectionTitle: "\(filter.rawValue) Invoices",
+            sectionTitle: filter.sectionTitle,
             wrapsContentInScrollView: false
         ) {
             EmptyView()
@@ -364,7 +400,7 @@ private struct FlowingInvoiceFilters: View {
                     Button {
                         filter = option
                     } label: {
-                        Text(option.rawValue)
+                        Text(option.displayTitle)
                             .font(BillbiTypography.small.weight(filter == option ? .medium : .regular))
                             .lineLimit(1)
                     }
