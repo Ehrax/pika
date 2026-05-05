@@ -145,6 +145,54 @@ struct WorkspaceProjectionTests {
         #expect(summary.thisMonthMinorUnits == 0)
     }
 
+    @Test func dashboardUnbilledProjectRevenueIncludesOpenAndReadyBuckets() {
+        let workspace = WorkspaceFixtures.demoWorkspace
+        let summary = workspace.dashboardSummary(on: WorkspaceFixtures.today)
+
+        #expect(summary.unbilledProjectRevenue.map(\.projectName) == [
+            "Launch sprint",
+            "Mobile QA",
+        ])
+        #expect(summary.unbilledProjectRevenue.map(\.amountMinorUnits) == [
+            315_000,
+            187_500,
+        ])
+        #expect(summary.unbilledProjectRevenue.map(\.colorIndex) == [
+            0,
+            7,
+        ])
+        #expect(summary.unbilledRevenueHistory.map(\.label) == [
+            "Apr 23, 2026",
+            "Apr 23, 2026",
+            "Apr 24, 2026",
+            "Apr 24, 2026",
+            "Apr 26, 2026",
+            "Apr 27, 2026",
+            "Apr 27, 2026",
+            "Apr 27, 2026",
+        ])
+        #expect(summary.unbilledRevenueHistory.map(\.amountMinorUnits) == [
+            70_000,
+            140_000,
+            180_000,
+            200_000,
+            250_000,
+            315_000,
+            157_500,
+            187_500,
+        ])
+        #expect(summary.unbilledRevenueHistory.map(\.projectID) == [
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000002")!,
+            UUID(uuidString: "20000000-0000-0000-0000-000000000002")!,
+        ])
+    }
+
     @Test func dashboardRevenueHistoryReflectsPaidInvoicesByIssueMonth() {
         var workspace = WorkspaceFixtures.demoWorkspace
         let projectIndex = workspace.projects.firstIndex { $0.name == "Launch sprint" }!

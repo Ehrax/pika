@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum DashboardPanel: String, Hashable {
+    case unbilledProjectRevenue
     case revenueHistory
     case needsAttention
 }
@@ -11,8 +12,10 @@ enum DashboardPanelLayoutMode: Equatable {
 
 struct DashboardPanelLayoutPolicy: Equatable {
     static let layoutMode: DashboardPanelLayoutMode = .stackedAtAllWidths
-    static let stackedOrder: [DashboardPanel] = [.revenueHistory, .needsAttention]
+    static let revenuePanels: [DashboardPanel] = [.unbilledProjectRevenue, .revenueHistory]
+    static let stackedOrder: [DashboardPanel] = [.needsAttention]
     static let revenueChartHeight: CGFloat = 220
+    static let revenuePanelContentHeight: CGFloat = 290
 }
 
 struct DashboardFeatureView: View {
@@ -21,6 +24,7 @@ struct DashboardFeatureView: View {
     let onSelectAttentionItem: (DashboardAttentionItem) -> Void
 
     @State private var selectedRevenueRange: DashboardRevenueRange = .twelveMonths
+    @State private var selectedUnbilledProjectID: WorkspaceProject.ID?
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -72,6 +76,16 @@ struct DashboardFeatureView: View {
 
     private func dashboardPanels(summary: DashboardSummary) -> some View {
         VStack(alignment: .leading, spacing: PikaSpacing.lg) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 360), spacing: PikaSpacing.lg, alignment: .top)],
+                alignment: .leading,
+                spacing: PikaSpacing.lg
+            ) {
+                ForEach(DashboardPanelLayoutPolicy.revenuePanels, id: \.self) { panel in
+                    dashboardPanel(panel, summary: summary)
+                }
+            }
+
             ForEach(DashboardPanelLayoutPolicy.stackedOrder, id: \.self) { panel in
                 dashboardPanel(panel, summary: summary)
             }
@@ -81,6 +95,8 @@ struct DashboardFeatureView: View {
     @ViewBuilder
     private func dashboardPanel(_ panel: DashboardPanel, summary: DashboardSummary) -> some View {
         switch panel {
+        case .unbilledProjectRevenue:
+            unbilledProjectRevenue(summary: summary, chartHeight: DashboardPanelLayoutPolicy.revenueChartHeight)
         case .revenueHistory:
             revenueHistory(summary: summary, chartHeight: DashboardPanelLayoutPolicy.revenueChartHeight)
         case .needsAttention:
@@ -148,6 +164,7 @@ struct DashboardFeatureView: View {
                 .foregroundStyle(PikaColor.textMuted)
             }
             .padding(PikaSpacing.md)
+            .frame(height: DashboardPanelLayoutPolicy.revenuePanelContentHeight, alignment: .topLeading)
             .pikaSurface()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,6 +173,92 @@ struct DashboardFeatureView: View {
                 range: newRange.rawValue,
                 visiblePointCount: newRange.visiblePoints(from: summary.revenueHistory, endingAt: currentDate).count
             )
+        }
+    }
+
+    private func unbilledProjectRevenue(summary: DashboardSummary, chartHeight: CGFloat) -> some View {
+        let points = summary.unbilledProjectRevenue
+            .sorted { left, right in
+                if left.amountMinorUnits == right.amountMinorUnits {
+                    return left.projectName < right.projectName
+                }
+
+                return left.amountMinorUnits > right.amountMinorUnits
+            }
+        let selectedPoint = selectedUnbilledProject(from: points)
+        let selectedHistory = selectedPoint.map { selectedPoint in
+            summary.unbilledRevenueHistory.filter { $0.projectID == selectedPoint.projectID }
+        } ?? []
+
+        return VStack(alignment: .leading, spacing: PikaSpacing.md) {
+            unbilledProjectHeader(projects: points, selectedProject: selectedPoint)
+
+            VStack(alignment: .leading, spacing: PikaSpacing.md) {
+                Text(money(selectedPoint?.amountMinorUnits ?? 0))
+                    .font(.system(size: 28, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(PikaColor.textPrimary)
+
+                ProjectRevenueSparkline(points: selectedHistory)
+                    .frame(height: chartHeight)
+
+                HStack {
+                    Text(selectedHistory.first?.label ?? "")
+                    Spacer()
+                    Text(selectedHistory.last?.label ?? "")
+                }
+                .font(.caption)
+                .foregroundStyle(PikaColor.textMuted)
+            }
+            .padding(PikaSpacing.md)
+            .frame(height: DashboardPanelLayoutPolicy.revenuePanelContentHeight, alignment: .topLeading)
+            .pikaSurface()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func selectedUnbilledProject(from projects: [ProjectRevenuePoint]) -> ProjectRevenuePoint? {
+        projects.first { $0.projectID == selectedUnbilledProjectID } ?? projects.first
+    }
+
+    private func unbilledProjectHeader(
+        projects: [ProjectRevenuePoint],
+        selectedProject: ProjectRevenuePoint?
+    ) -> some View {
+        HStack(alignment: .center, spacing: PikaSpacing.md) {
+            Text("Unbilled · Projects")
+                .font(PikaTypography.subheading)
+                .foregroundStyle(PikaColor.textPrimary)
+
+            Spacer(minLength: PikaSpacing.md)
+
+            Menu {
+                ForEach(projects) { project in
+                    Button {
+                        selectedUnbilledProjectID = project.projectID
+                    } label: {
+                        Text(project.projectName)
+                    }
+                }
+            } label: {
+                HStack(spacing: PikaSpacing.xs) {
+                    Text(selectedProject?.projectName ?? "No projects")
+                        .lineLimit(1)
+
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(PikaColor.textMuted)
+                }
+                .font(PikaTypography.small)
+                .padding(.horizontal, PikaSpacing.sm)
+                .padding(.vertical, PikaSpacing.xs)
+                .background(PikaColor.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: PikaRadius.sm))
+            }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: false)
+            .disabled(projects.isEmpty)
+            .accessibilityLabel("Unbilled project")
+            .accessibilityHint("Changes the project shown in the unbilled revenue chart")
         }
     }
 
@@ -265,6 +368,80 @@ private struct RevenueSparkline: View {
             return CGPoint(x: x, y: y)
         }
     }
+}
+
+private struct ProjectRevenueSparkline: View {
+    let points: [ProjectRevenueHistoryPoint]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let samples = normalizedPoints(in: proxy.size)
+
+            ZStack {
+                if samples.isEmpty {
+                    Text("No unbilled revenue yet")
+                        .font(PikaTypography.small)
+                        .foregroundStyle(PikaColor.textMuted)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                } else {
+                    SparklineArea(points: samples.map(\.point))
+                        .fill(
+                            LinearGradient(
+                                colors: [primaryColor.opacity(0.28), primaryColor.opacity(0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+
+                    SparklineLine(points: samples.map(\.point))
+                        .stroke(primaryColor, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+                    ForEach(samples) { sample in
+                        Circle()
+                            .fill(sample.color)
+                            .frame(width: 7, height: 7)
+                            .position(sample.point)
+                    }
+                }
+            }
+        }
+        .accessibilityLabel("Unbilled revenue sparkline by project")
+    }
+
+    private var primaryColor: Color {
+        points.first.map(color(for:)) ?? PikaColor.accent
+    }
+
+    private func normalizedPoints(in size: CGSize) -> [ProjectSparklineSample] {
+        guard !points.isEmpty, let maxAmount = points.map(\.amountMinorUnits).max(), maxAmount > 0 else {
+            return []
+        }
+
+        let padding: CGFloat = 4
+        let availableWidth = max(size.width - padding * 2, 1)
+        let availableHeight = max(size.height - padding * 2, 1)
+        let step = points.count > 1 ? availableWidth / CGFloat(points.count - 1) : availableWidth
+        let orderedPoints = points.count > 1 ? points : [
+            points[0],
+            points[0],
+        ]
+
+        return orderedPoints.enumerated().map { index, point in
+            let x = points.count > 1 ? padding + CGFloat(index) * step : padding + CGFloat(index) * step
+            let y = padding + (1 - CGFloat(point.amountMinorUnits) / CGFloat(maxAmount)) * availableHeight
+            return ProjectSparklineSample(id: "\(point.id)-\(index)", point: CGPoint(x: x, y: y), color: color(for: point))
+        }
+    }
+
+    private func color(for point: ProjectRevenueHistoryPoint) -> Color {
+        PikaColor.projectDotPalette[point.colorIndex % PikaColor.projectDotPalette.count]
+    }
+}
+
+private struct ProjectSparklineSample: Identifiable {
+    let id: String
+    let point: CGPoint
+    let color: Color
 }
 
 private struct SparklineLine: Shape {

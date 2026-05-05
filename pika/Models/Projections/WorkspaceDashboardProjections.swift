@@ -56,6 +56,19 @@ enum WorkspaceDashboardProjections {
             activeProjectCount: workspace.activeProjects.count,
             clientCount: workspace.clients.count,
             needsAttention: overdueItems + readyItems,
+            unbilledProjectRevenue: workspace.activeProjects.enumerated().compactMap { index, project in
+                let buckets = project.buckets.filter { $0.status == .open || $0.status == .ready }
+                let amountMinorUnits = buckets.map(\.effectiveTotalMinorUnits).reduce(0, +)
+                guard amountMinorUnits > 0 else { return nil }
+
+                return ProjectRevenuePoint(
+                    projectID: project.id,
+                    projectName: project.name,
+                    amountMinorUnits: amountMinorUnits,
+                    colorIndex: ProjectColorPalette.colorIndex(forProjectAt: index)
+                )
+            },
+            unbilledRevenueHistory: unbilledRevenueHistory(for: workspace, on: date),
             revenueHistory: paidInvoices
                 .sorted { left, right in
                     if left.issueDate == right.issueDate {
@@ -77,6 +90,72 @@ enum WorkspaceDashboardProjections {
     private static func readyAttentionTitle(for project: WorkspaceProject) -> String {
         "\(project.clientName) \(project.name.lowercased()) ready to invoice"
     }
+
+    private static func unbilledRevenueHistory(for workspace: WorkspaceSnapshot, on date: Date) -> [ProjectRevenueHistoryPoint] {
+        workspace.activeProjects.enumerated().flatMap { index, project in
+            let colorIndex = ProjectColorPalette.colorIndex(forProjectAt: index)
+            let events = project.buckets
+                .filter { $0.status == .open || $0.status == .ready }
+                .flatMap { bucket in
+                    unbilledRevenueEvents(for: bucket, fallbackDate: date, colorIndex: colorIndex)
+                }
+                .sorted { left, right in
+                    if left.date == right.date {
+                        return left.amountMinorUnits < right.amountMinorUnits
+                    }
+
+                    return left.date < right.date
+                }
+
+            var cumulativeAmount = 0
+            return events.map { event in
+                cumulativeAmount += event.amountMinorUnits
+                return ProjectRevenueHistoryPoint(
+                    projectID: project.id,
+                    date: event.date,
+                    label: event.date.formatted(date: .abbreviated, time: .omitted),
+                    amountMinorUnits: cumulativeAmount,
+                    colorIndex: event.colorIndex
+                )
+            }
+        }
+    }
+
+    private static func unbilledRevenueEvents(
+        for bucket: WorkspaceBucket,
+        fallbackDate: Date,
+        colorIndex: Int
+    ) -> [ProjectRevenueEvent] {
+        guard bucket.hasRowLevelEntries else {
+            guard bucket.effectiveTotalMinorUnits > 0 else { return [] }
+            return [
+                ProjectRevenueEvent(
+                    date: bucket.updatedAt ?? fallbackDate,
+                    amountMinorUnits: bucket.effectiveTotalMinorUnits,
+                    colorIndex: colorIndex
+                ),
+            ]
+        }
+
+        return bucket.timeEntries
+            .map { entry in
+                ProjectRevenueEvent(
+                    date: entry.date,
+                    amountMinorUnits: entry.billableAmountMinorUnits,
+                    colorIndex: colorIndex
+                )
+            }
+            .filter { $0.amountMinorUnits > 0 }
+            + bucket.fixedCostEntries
+            .map { fixedCost in
+                ProjectRevenueEvent(
+                    date: fixedCost.date,
+                    amountMinorUnits: fixedCost.amountMinorUnits,
+                    colorIndex: colorIndex
+                )
+            }
+            .filter { $0.amountMinorUnits > 0 }
+    }
 }
 
 extension WorkspaceSnapshot {
@@ -93,6 +172,8 @@ struct DashboardSummary: Equatable {
     var activeProjectCount: Int
     var clientCount: Int
     var needsAttention: [DashboardAttentionItem]
+    var unbilledProjectRevenue: [ProjectRevenuePoint]
+    var unbilledRevenueHistory: [ProjectRevenueHistoryPoint]
     var revenueHistory: [RevenuePoint]
 }
 
@@ -124,4 +205,33 @@ struct RevenuePoint: Equatable, Identifiable {
     var id: String {
         "\(date.timeIntervalSinceReferenceDate)-\(label)"
     }
+}
+
+struct ProjectRevenuePoint: Equatable, Identifiable {
+    var projectID: WorkspaceProject.ID
+    var projectName: String
+    var amountMinorUnits: Int
+    var colorIndex: Int
+
+    var id: WorkspaceProject.ID {
+        projectID
+    }
+}
+
+struct ProjectRevenueHistoryPoint: Equatable, Identifiable {
+    var projectID: WorkspaceProject.ID
+    var date: Date
+    var label: String
+    var amountMinorUnits: Int
+    var colorIndex: Int
+
+    var id: String {
+        "\(projectID)-\(date.timeIntervalSinceReferenceDate)-\(amountMinorUnits)-\(colorIndex)"
+    }
+}
+
+private struct ProjectRevenueEvent: Equatable {
+    var date: Date
+    var amountMinorUnits: Int
+    var colorIndex: Int
 }

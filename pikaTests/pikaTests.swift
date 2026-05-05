@@ -58,9 +58,10 @@ struct PikaScaffoldTests {
         #expect(ClientRowHitTargetPolicy.hitTarget == .fullCell)
     }
 
-    @Test func dashboardStackedLayoutPromotesRevenueBeforeAttention() {
+    @Test func dashboardLayoutPromotesRevenuePanelsBeforeAttention() {
         #expect(DashboardPanelLayoutPolicy.layoutMode == .stackedAtAllWidths)
-        #expect(DashboardPanelLayoutPolicy.stackedOrder == [.revenueHistory, .needsAttention])
+        #expect(DashboardPanelLayoutPolicy.revenuePanels == [.unbilledProjectRevenue, .revenueHistory])
+        #expect(DashboardPanelLayoutPolicy.stackedOrder == [.needsAttention])
         #expect(DashboardPanelLayoutPolicy.revenueChartHeight == 220)
     }
 

@@ -50,6 +50,22 @@ enum PikaColor {
     static let dangerMuted = Color.pikaAdaptive(light: 0xC24545, lightOpacity: 0.08, dark: 0xE07B7B, darkOpacity: 0.12)
 }
 
+enum ProjectColorPalette {
+    static let colors = PikaColor.projectDotPalette
+
+    static var colorCount: Int {
+        colors.count
+    }
+
+    static func color(forProjectAt index: Int) -> Color {
+        colors[colorIndex(forProjectAt: index)]
+    }
+
+    static func colorIndex(forProjectAt index: Int) -> Int {
+        abs(index * 7) % colorCount
+    }
+}
+
 private extension Color {
     static func pikaAdaptive(
         light: UInt,

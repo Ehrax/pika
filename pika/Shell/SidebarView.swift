@@ -258,18 +258,18 @@ struct SidebarProjectRowLayout: Equatable {
 }
 
 enum SidebarProjectDotPalette {
-    static let colors = PikaColor.projectDotPalette
+    static let colors = ProjectColorPalette.colors
 
     static var colorCount: Int {
-        colors.count
+        ProjectColorPalette.colorCount
     }
 
     static func color(forProjectAt index: Int) -> Color {
-        colors[colorIndex(forProjectAt: index)]
+        ProjectColorPalette.color(forProjectAt: index)
     }
 
     static func colorIndex(forProjectAt index: Int) -> Int {
-        abs(index * 7) % colorCount
+        ProjectColorPalette.colorIndex(forProjectAt: index)
     }
 }
 
