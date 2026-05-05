@@ -71,11 +71,11 @@ enum InvoicePDFActionsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .openFailed:
-            return "The selected PDF could not be opened."
+            return String(localized: "The selected PDF could not be opened.")
         case .unsupportedPlatform:
-            return "This PDF action is only available on Mac."
+            return String(localized: "This PDF action is only available on Mac.")
         case .previewDocumentRequired:
-            return "Open the invoice preview before generating a PDF."
+            return String(localized: "Open the invoice preview before generating a PDF.")
         }
     }
 }

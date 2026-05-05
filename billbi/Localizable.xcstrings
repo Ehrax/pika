@@ -1551,6 +1551,16 @@
         }
       }
     },
+    "Open the invoice preview before generating a PDF.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the invoice preview before generating a PDF."
+          }
+        }
+      }
+    },
     "Open PDF": {
       "localizations": {
         "en": {
@@ -1617,6 +1627,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Overdue Invoices"
+          }
+        }
+      }
+    },
+    "PDF preview is currently available on Mac.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF preview is currently available on Mac."
           }
         }
       }
@@ -2177,6 +2197,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "The selected invoice could not be rendered."
+          }
+        }
+      }
+    },
+    "The selected PDF could not be opened.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected PDF could not be opened."
+          }
+        }
+      }
+    },
+    "This PDF action is only available on Mac.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This PDF action is only available on Mac."
           }
         }
       }
