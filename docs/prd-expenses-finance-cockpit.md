@@ -10,7 +10,7 @@ Freelancers also need tax-relevant expense evidence to stay organized throughout
 
 Add an **Expenses** area to Billbi as a first-class workspace surface near **Invoices**. An **Expense** is an amount-bearing business cost with a lifecycle of **Draft Expense**, **Due Expense**, **Paid Expense**, and **Archived Expense**. Expenses may attach zero, one, or many **Expense Evidence** files, such as invoice PDFs, receipt photos, payment screenshots, or other proof documents.
 
-Expense intake starts from an add/import action in the Expenses toolbar. Uploading evidence starts or updates one intended Draft Expense, copies the evidence into Billbi-managed storage, and may trigger AI extraction in the background. AI extraction produces draft suggestions, not authoritative finance data. The user confirms title, amount, currency, category, status, and relevant finance dates during **Expense Review** before the expense can count toward profit or tax exports. The detailed review interaction is intentionally design-pending and may become an AI chat-led sheet or overlay, but the confirmed structured Expense fields remain the source of truth.
+Expense intake starts from an add/import action in the Expenses toolbar. Uploading evidence starts or updates one intended Draft Expense, copies the evidence into Billbi-managed storage, and may trigger AI extraction in the background. AI extraction is Billbi-managed, not a bring-your-own-provider user setting in v1, and runs behind a provider-neutral extraction harness so the app operator can switch providers or models without changing Expense workflow semantics. The initial managed extraction provider should be Google Gemini Flash 3-series, currently represented by Gemini 3 Flash Preview (`gemini-3-flash-preview`) in the public Gemini API docs, with the exact model identifier kept configurable as Gemini stable/3.1 variants become available. AI extraction produces draft suggestions, not authoritative finance data. The user confirms title, amount, currency, category, status, and relevant finance dates during **Expense Review** before the expense can count toward profit or tax exports. The detailed review interaction is intentionally design-pending and may become an AI chat-led sheet or overlay, but the confirmed structured Expense fields remain the source of truth.
 
 Once reviewed, Expenses are managed through a calm list/detail pattern inspired by the existing Invoices view. The list uses chip-style states and filters. The detail view is evidence-first after review, with an explicit edit-details mode when the user needs to correct extracted data.
 
@@ -100,6 +100,9 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 78. As a freelancer, I want structured expense line items out of scope in v1, so that the system stays focused on expense-level records and evidence.
 79. As a freelancer, I want AI analysis to happen only for files I intentionally import, so that Billbi does not scan unrelated folders or documents.
 80. As a freelancer, I want importing files into expense intake to be the confirmation for AI analysis, so that the privacy boundary is clear.
+81. As a freelancer, I want AI extraction to work without configuring my own API key or local model, so that receipt review feels like a normal part of Billbi.
+82. As a freelancer, I want AI document-analysis limits to be clear and predictable, so that I understand when extraction is available and when I should review manually.
+83. As a freelancer, I want manual Expense review to remain available when AI extraction is unavailable, rate-limited, or fails, so that my bookkeeping is not blocked by the AI provider.
 
 ## Implementation Decisions
 
@@ -120,6 +123,10 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - Add persistent Draft Expense creation at the start of intake, allowing the user to resume if the sheet or overlay closes.
 - Keep Analyzing as an extraction state within Draft Expense rather than a separate Expense lifecycle status.
 - Keep AI extraction advisory: it can update draft suggestions and provide review/chat assistance, but confirmed structured fields are authoritative.
+- Add a provider-neutral Expense extraction harness for Billbi-managed AI analysis, keeping provider/model choice outside the Expense workflow and persistence semantics.
+- Use Google Gemini Flash 3-series as the initial managed extraction provider; the current public model identifier is Gemini 3 Flash Preview (`gemini-3-flash-preview`), and the concrete model string should remain configurable so Billbi can move to a stable Gemini 3.1 Flash or another provider later without changing the Expense domain.
+- Keep bring-your-own-provider settings out of v1 user-facing product scope; users should not need to configure API keys, local model endpoints, or custom extraction commands to use the managed AI extraction path.
+- Treat AI analysis allowances, monthly limits, rate limits, and provider outages as application/service-layer concerns. When extraction is unavailable, the Draft Expense and evidence remain intact and manual review remains available.
 - Make payment proof optional; Paid Expense requires Payment Date, not separate payment evidence.
 - Add workspace-wide Expense Categories with defaults, Settings management, inline AI-suggested category approval, global rename, and replacement-on-delete for used categories.
 - Keep Expense links optional and single-project only in v1; Client is derived from Project.
@@ -146,6 +153,8 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - Evidence availability tests should cover locally available, syncing, unavailable, and missing states.
 - Category tests should cover defaults, inline suggested category approval, rename propagation, and replacement-required deletion.
 - Duplicate detection tests should focus on advisory outputs and user choices, not on a brittle exact matching algorithm.
+- Extraction harness tests should cover structured suggestion parsing, provider failure, rate-limit exhaustion, retry/manual-fallback behavior, and the rule that AI suggestions never mutate reviewed authoritative Expense fields without user confirmation.
+- Provider adapter tests should prefer deterministic fixtures and contract-level behavior over live provider calls in the default test suite.
 - Projection tests should mirror the existing WorkspaceProjectionTests style for dashboard and list summaries.
 - Store mutation tests should mirror the existing WorkspaceStoreMutationTests style for app-facing commands and persistence reload behavior.
 - Archive action tests should mirror existing WorkspaceArchiveActionsTests and WorkspaceArchiveImportValidationTests.
@@ -163,6 +172,8 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - Automatic background scanning of Downloads, email, folders, or unrelated files.
 - A standalone document/evidence library or global document search surface.
 - Silent AI authority over finance records; user review remains required before an Expense counts.
+- Bring-your-own AI provider keys, local model harnesses, custom extraction endpoints, or user-facing model/provider selection in v1.
+- Unlimited AI extraction; managed AI usage should be bounded by clear app-level allowances or rate limits.
 - Final visual design of the intake/review sheet, overlay, second-page flow, or AI chat interface.
 - Re-invoicing Expenses to clients or replacing invoice FixedCostEntry behavior with supplier-bill pass-through.
 
@@ -173,4 +184,4 @@ Tax exports are a separate concept from workspace archives. A **Workspace Archiv
 - ADR 0002 records the expectation that Expense Evidence syncs with the workspace and that UI handles evidence-file availability as eventually consistent.
 - The feature should keep Billbi small and native: calm list/detail surfaces, clear chip states, focused projections, and testable workflow modules.
 - The current Invoices view is the strongest interaction reference for the reviewed Expenses area.
-- The exact AI provider or harness is intentionally undecided. The product decision is that AI supports extraction and review; implementation can choose the provider later based on privacy, cost, latency, and local architecture constraints.
+- AI provider choice is an app-operator concern, not a user-facing v1 preference. The initial direction is Billbi-managed Gemini Flash 3-series extraction, with the provider/model kept configurable behind the extraction harness so Billbi can respond to cost, quality, availability, or Gemini model naming changes without changing the Expense workflow.
