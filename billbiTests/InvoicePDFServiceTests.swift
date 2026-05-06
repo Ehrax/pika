@@ -113,6 +113,67 @@ struct InvoicePDFServiceTests {
         #expect(!rendered.html.contains("<script"))
     }
 
+    @Test func renderInvoiceHTMLDoesNotUseTaxIdentifierAsFooterTaxNote() throws {
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+        let invoice = WorkspaceInvoice(
+            id: UUID(uuidString: "40000000-0000-0000-0000-000000000089")!,
+            number: "EHX-2026-089",
+            businessSnapshot: BusinessProfileProjection(
+                businessName: "Snapshot Studio",
+                personName: "Ada Grace",
+                email: "billing@example.test",
+                address: "Snapshot Street 4\n10115 Berlin",
+                taxIdentifier: "151/260/41486",
+                economicIdentifier: "DE320253387",
+                invoicePrefix: "EHX",
+                nextInvoiceNumber: 90,
+                currencyCode: "EUR",
+                paymentDetails: "IBAN DE32 1001 1001 2141 1444 52",
+                taxNote: "Steuernummer: 151/260/41486",
+                defaultTermsDays: 14
+            ),
+            clientSnapshot: WorkspaceClient(
+                id: UUID(uuidString: "20000000-0000-0000-0000-000000000089")!,
+                name: "Client Co",
+                email: "casey@example.test",
+                billingAddress: "Client Road 9\n10999 Berlin",
+                defaultTermsDays: 14
+            ),
+            clientName: "Mutable Client Name",
+            projectName: "Website Refresh",
+            bucketName: "Launch QA",
+            issueDate: Date.billbiDate(year: 2026, month: 5, day: 1),
+            dueDate: Date.billbiDate(year: 2026, month: 5, day: 15),
+            servicePeriod: "April 2026",
+            status: .finalized,
+            totalMinorUnits: 120_000,
+            lineItems: [
+                WorkspaceInvoiceLineItemSnapshot(
+                    description: "Design implementation",
+                    quantityLabel: "12h",
+                    amountMinorUnits: 120_000
+                ),
+            ],
+            note: "Steuernummer: 151/260/41486"
+        )
+        let row = WorkspaceInvoiceRowProjection(
+            invoice: invoice,
+            projectName: "Mutable Project",
+            billingAddress: "Mutable Address",
+            on: WorkspaceFixtures.today,
+            formatter: formatter
+        )
+
+        let rendered = try InvoicePDFService.placeholder().renderInvoiceHTML(
+            profile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            row: row
+        )
+
+        #expect(rendered.html.contains(#"<span class="tax-label">Steuernummer:</span> <strong>151/260/41486</strong>"#))
+        #expect(!rendered.html.contains(#"<p>Steuernummer: 151/260/41486</p>"#))
+        #expect(!rendered.html.contains(#"<p class="invoice-note">Steuernummer: 151/260/41486</p>"#))
+    }
+
     @Test func invoiceTemplateResourceLookupFindsBundledDocumentStylesheetAndPartials() throws {
         let resources = try InvoiceTemplateResources(template: .kleinunternehmerClassic)
 

@@ -59,6 +59,10 @@ body {
   font-weight: 700;
 }
 
+.business-tax .tax-label {
+  font-weight: 400;
+}
+
 .invoice-title {
   padding-top: 1mm;
   text-align: right;

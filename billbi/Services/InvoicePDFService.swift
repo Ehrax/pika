@@ -154,8 +154,8 @@ struct InvoiceRenderContext: Equatable {
             row: row,
             paymentDetails: parsedPaymentDetails
         )
-        taxNote = profile.taxNote
-        note = Self.invoiceNote(row.invoice.note, taxNote: profile.taxNote)
+        taxNote = Self.taxNote(profile.taxNote, taxIdentifier: profile.taxIdentifier)
+        note = Self.invoiceNote(row.invoice.note, taxNote: profile.taxNote, taxIdentifier: profile.taxIdentifier)
         thankYouNote = "Vielen Dank für die Zusammenarbeit!"
     }
 
@@ -179,10 +179,23 @@ struct InvoiceRenderContext: Equatable {
         return "\(cleaned).pdf"
     }
 
-    private static func invoiceNote(_ value: String?, taxNote: String) -> String {
+    private static func taxNote(_ value: String, taxIdentifier: String) -> String {
+        let note = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return isTaxIdentifierNote(note, taxIdentifier: taxIdentifier) ? "" : note
+    }
+
+    private static func invoiceNote(_ value: String?, taxNote: String, taxIdentifier: String) -> String {
         let note = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let taxNote = taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
-        return note == taxNote ? "" : note
+        return note == taxNote || isTaxIdentifierNote(note, taxIdentifier: taxIdentifier) ? "" : note
+    }
+
+    private static func isTaxIdentifierNote(_ note: String, taxIdentifier: String) -> Bool {
+        let taxIdentifier = taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !taxIdentifier.isEmpty else {
+            return false
+        }
+        return note == "Steuernummer: \(taxIdentifier)"
     }
 
     private static func paymentQRCodeDataURL(

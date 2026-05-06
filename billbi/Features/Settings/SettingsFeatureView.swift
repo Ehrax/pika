@@ -113,6 +113,22 @@ struct SettingsFeatureView: View {
                                 .font(BillbiTypography.body.monospacedDigit())
                         }
                     }
+                    SettingsDivider()
+                    SettingsEditableFieldRow(label: "Tax / VAT note", alignment: .top) {
+                        TextEditor(text: $draft.taxNote)
+                            .font(BillbiTypography.body)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 56)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(BillbiColor.surfaceAlt)
+                            .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
+                                    .stroke(BillbiColor.border, lineWidth: 1)
+                            }
+                            .accessibilityLabel("Tax / VAT note")
+                    }
                 }
 
                 settingsSection(title: "Payment details", detail: "Invoice footer") {
