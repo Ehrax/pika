@@ -11,6 +11,11 @@ enum BillbiColor {
     static let surface = Color.billbiAdaptive(light: 0xFFFFFF, dark: 0x111113)
     static let surfaceAlt = Color.billbiAdaptive(light: 0xF2F2F4, dark: 0x16161A)
     static let surfaceAlt2 = Color.billbiAdaptive(light: 0xE8E8EC, dark: 0x1B1B20)
+    #if os(macOS)
+    static let inputSurface = Color(nsColor: .controlBackgroundColor)
+    #else
+    static let inputSurface = Color(uiColor: .secondarySystemBackground)
+    #endif
     static let border = Color.billbiAdaptive(light: 0xE5E5E7, dark: 0x232329)
     static let borderStrong = Color.billbiAdaptive(light: 0xD4D4D8, dark: 0x2E2E36)
 

@@ -30,18 +30,21 @@ struct StatusBadge: View {
 
 struct SectionHeader: View {
     var title: String
-    var detail: String
+    var detail: String = ""
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(BillbiTypography.subheading)
                 .foregroundStyle(BillbiColor.textPrimary)
-            Spacer()
-            Text(detail)
-                .font(BillbiTypography.small)
-                .foregroundStyle(BillbiColor.textSecondary)
+            if !detail.isEmpty {
+                Spacer()
+                Text(detail)
+                    .font(BillbiTypography.small)
+                    .foregroundStyle(BillbiColor.textSecondary)
+            }
         }
+        .padding(.bottom, BillbiSpacing.xs)
     }
 }
 
