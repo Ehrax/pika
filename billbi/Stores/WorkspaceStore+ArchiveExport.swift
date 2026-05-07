@@ -17,7 +17,7 @@ extension WorkspaceStore {
         exportedAt: Date,
         generator: WorkspaceArchiveGenerator?
     ) throws -> WorkspaceArchiveEnvelope {
-        let context = workspacePersistenceModelContext()
+        let context = normalizedRecordStore
         let profileRecords = try context.fetch(FetchDescriptor<BusinessProfileRecord>())
         let clientRecords = try context.fetch(FetchDescriptor<ClientRecord>())
         let projectRecords = try context.fetch(FetchDescriptor<ProjectRecord>())

@@ -122,7 +122,7 @@ extension WorkspaceStore {
             createdAt: now,
             updatedAt: now
         )
-        workspacePersistenceModelContext().insert(record)
+        normalizedRecordStore.insert(record)
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
             throw WorkspaceStoreError.persistenceFailed

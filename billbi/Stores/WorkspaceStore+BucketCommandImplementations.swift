@@ -67,23 +67,25 @@ extension WorkspaceStore {
             updatedAt: now,
             project: projectRecord
         )
-        workspacePersistenceModelContext().insert(bucketRecord)
+        normalizedRecordStore.insert(bucketRecord)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let project = workspace.projects.first(where: { $0.id == projectID }),
-              let bucket = project.buckets.first(where: { $0.id == bucketRecord.id })
-        else {
-            throw WorkspaceStoreError.persistenceFailed
+        let committed = try commitNormalizedWorkspaceMutation {
+            guard let project = workspace.projects.first(where: { $0.id == projectID }),
+                  let bucket = project.buckets.first(where: { $0.id == bucketRecord.id })
+            else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return (project: project, bucket: bucket)
+        } activity: { project, bucket in
+            WorkspaceActivity(
+                message: "\(bucket.name) bucket created",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
+        } telemetry: { project, bucket in
+            AppTelemetry.bucketCreated(bucketName: bucket.name, projectName: project.name)
         }
-
-        appendActivity(
-            message: "\(bucket.name) bucket created",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketCreated(bucketName: bucket.name, projectName: project.name)
-        try persistWorkspace()
-        return bucket
+        return committed.1
     }
 
     @discardableResult
@@ -108,20 +110,21 @@ extension WorkspaceStore {
         bucketRecord.defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
         bucketRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let project = workspace.projects.first(where: { $0.id == projectID }),
-              let bucket = project.buckets.first(where: { $0.id == bucketID })
-        else {
-            throw WorkspaceStoreError.persistenceFailed
+        let committed = try commitNormalizedWorkspaceMutation {
+            guard let project = workspace.projects.first(where: { $0.id == projectID }),
+                  let bucket = project.buckets.first(where: { $0.id == bucketID })
+            else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return (project: project, bucket: bucket)
+        } activity: { project, bucket in
+            WorkspaceActivity(
+                message: "\(bucket.name) bucket updated",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
         }
-
-        appendActivity(
-            message: "\(bucket.name) bucket updated",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        try persistWorkspace()
-        return bucket
+        return committed.1
     }
 
     func markBucketReadyInNormalizedRecords(
@@ -142,14 +145,17 @@ extension WorkspaceStore {
         bucketRecord.status = .ready
         bucketRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        appendActivity(
-            message: "\(bucket.name) marked ready",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketMarkedReady(bucketName: bucket.name, projectName: project.name)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            (project, bucket)
+        } activity: { project, bucket in
+            WorkspaceActivity(
+                message: "\(bucket.name) marked ready",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
+        } telemetry: { project, bucket in
+            AppTelemetry.bucketMarkedReady(bucketName: bucket.name, projectName: project.name)
+        }
     }
 
     func updateBucketStatusInNormalizedRecords(
@@ -178,20 +184,21 @@ extension WorkspaceStore {
         bucketRecord.status = status
         bucketRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        appendActivity(
-            message: "\(bucketName) \(activityVerb)",
-            detail: projectName,
-            occurredAt: occurredAt
-        )
-
-        if status == .archived {
-            AppTelemetry.bucketArchived(bucketName: bucketName, projectName: projectName)
-        } else {
-            AppTelemetry.bucketRestored(bucketName: bucketName, projectName: projectName)
+        try commitNormalizedWorkspaceMutation {
+            (projectName, bucketName)
+        } activity: { projectName, bucketName in
+            WorkspaceActivity(
+                message: "\(bucketName) \(activityVerb)",
+                detail: projectName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { projectName, bucketName in
+            if status == .archived {
+                AppTelemetry.bucketArchived(bucketName: bucketName, projectName: projectName)
+            } else {
+                AppTelemetry.bucketRestored(bucketName: bucketName, projectName: projectName)
+            }
         }
-
-        try persistWorkspace()
     }
 
     func removeBucketFromNormalizedRecords(
@@ -216,25 +223,28 @@ extension WorkspaceStore {
             .name ?? bucketRecord.name
 
         try deleteNormalizedBucketDependencies(bucketID)
-        workspacePersistenceModelContext().delete(bucketRecord)
+        normalizedRecordStore.delete(bucketRecord)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        appendActivity(
-            message: "\(bucketName) removed",
-            detail: projectName,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketRemoved(bucketName: bucketName, projectName: projectName)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            (projectName, bucketName)
+        } activity: { projectName, bucketName in
+            WorkspaceActivity(
+                message: "\(bucketName) removed",
+                detail: projectName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { projectName, bucketName in
+            AppTelemetry.bucketRemoved(bucketName: bucketName, projectName: projectName)
+        }
     }
 
     private func deleteNormalizedBucketDependencies(_ bucketID: WorkspaceBucket.ID) throws {
         for timeEntry in try timeEntryRecords(for: bucketID) {
-            workspacePersistenceModelContext().delete(timeEntry)
+            normalizedRecordStore.delete(timeEntry)
         }
 
         for fixedCost in try fixedCostRecords(for: bucketID) {
-            workspacePersistenceModelContext().delete(fixedCost)
+            normalizedRecordStore.delete(fixedCost)
         }
     }
 }

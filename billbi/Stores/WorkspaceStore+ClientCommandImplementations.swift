@@ -51,21 +51,22 @@ extension WorkspaceStore {
             createdAt: now,
             updatedAt: now
         )
-        workspacePersistenceModelContext().insert(record)
+        normalizedRecordStore.insert(record)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        return try commitNormalizedWorkspaceMutation {
+            guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return client
+        } activity: { client in
+            WorkspaceActivity(
+                message: "\(client.name) client created",
+                detail: client.email,
+                occurredAt: occurredAt
+            )
+        } telemetry: { client in
+            AppTelemetry.clientCreated(clientName: client.name)
         }
-
-        appendActivity(
-            message: "\(client.name) client created",
-            detail: client.email,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.clientCreated(clientName: client.name)
-        try persistWorkspace()
-        return client
     }
 
     @discardableResult
@@ -96,19 +97,20 @@ extension WorkspaceStore {
         record.defaultTermsDays = draft.defaultTermsDays
         record.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        return try commitNormalizedWorkspaceMutation {
+            guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return client
+        } activity: { client in
+            WorkspaceActivity(
+                message: "\(client.name) client updated",
+                detail: client.email,
+                occurredAt: occurredAt
+            )
+        } telemetry: { client in
+            AppTelemetry.clientUpdated(clientName: client.name)
         }
-
-        appendActivity(
-            message: "\(client.name) client updated",
-            detail: client.email,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.clientUpdated(clientName: client.name)
-        try persistWorkspace()
-        return client
     }
 
     func setClientArchivedInNormalizedRecords(
@@ -123,24 +125,24 @@ extension WorkspaceStore {
         record.isArchived = isArchived
         record.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        try commitNormalizedWorkspaceMutation {
+            guard let client = workspace.clients.first(where: { $0.id == clientID }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return client
+        } activity: { client in
+            WorkspaceActivity(
+                message: "\(client.name) \(isArchived ? "archived" : "restored")",
+                detail: client.email,
+                occurredAt: occurredAt
+            )
+        } telemetry: { client in
+            if isArchived {
+                AppTelemetry.clientArchived(clientName: client.name)
+            } else {
+                AppTelemetry.clientRestored(clientName: client.name)
+            }
         }
-
-        appendActivity(
-            message: "\(client.name) \(isArchived ? "archived" : "restored")",
-            detail: client.email,
-            occurredAt: occurredAt
-        )
-
-        if isArchived {
-            AppTelemetry.clientArchived(clientName: client.name)
-        } else {
-            AppTelemetry.clientRestored(clientName: client.name)
-        }
-
-        try persistWorkspace()
     }
 
     func removeClientFromNormalizedRecords(
@@ -161,15 +163,18 @@ extension WorkspaceStore {
 
         let clientName = record.name
         let clientEmail = record.email
-        workspacePersistenceModelContext().delete(record)
+        normalizedRecordStore.delete(record)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        appendActivity(
-            message: "\(clientName) client removed",
-            detail: clientEmail,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.clientRemoved(clientName: clientName)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            clientName
+        } activity: { clientName in
+            WorkspaceActivity(
+                message: "\(clientName) client removed",
+                detail: clientEmail,
+                occurredAt: occurredAt
+            )
+        } telemetry: { clientName in
+            AppTelemetry.clientRemoved(clientName: clientName)
+        }
     }
 }

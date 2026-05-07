@@ -77,6 +77,7 @@ final class WorkspaceStore {
     var workspace: WorkspaceSnapshot
 
     private let modelContext: ModelContext
+    let normalizedRecordStore: any WorkspaceNormalizedRecordStore
     let workspacePersistence: any WorkspacePersistence
     let mutationPolicy: any WorkspaceMutationPolicy
     let invoicingWorkflow: any WorkspaceInvoicing
@@ -99,6 +100,7 @@ final class WorkspaceStore {
         } else {
             self.modelContext = WorkspaceStore.makeDefaultModelContext()
         }
+        self.normalizedRecordStore = SwiftDataWorkspaceNormalizedRecordStore(modelContext: self.modelContext)
 
         if let workspacePersistence {
             self.workspacePersistence = workspacePersistence
@@ -141,9 +143,5 @@ final class WorkspaceStore {
 
     func isUsingNormalizedWorkspacePersistence() -> Bool {
         workspacePersistence.isUsingNormalizedPersistence()
-    }
-
-    func workspacePersistenceModelContext() -> ModelContext {
-        modelContext
     }
 }
