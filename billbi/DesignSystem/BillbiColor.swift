@@ -27,7 +27,7 @@ enum BillbiColor {
     static let brandMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
     static let brandBorder = brand.opacity(0.34)
     static let inputFocusBorderWidth = 1.5
-    static let primarySidebarSelection = Color.billbiAdaptive(light: 0x5423B9, dark: 0x5423B9)
+    static let primarySidebarSelection = brand
     static let projectDotPalette = [
         Color.billbiAdaptive(light: 0xFF5C7A, dark: 0xFF6F8D),
         Color.billbiAdaptive(light: 0xF97316, dark: 0xFB923C),

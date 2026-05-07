@@ -46,7 +46,11 @@ struct CreateInvoiceConfirmationSheet: View {
                         BillbiInputSheetFieldRow(label: "Issue date") {
                             DatePicker("", selection: $draft.issueDate, displayedComponents: .date)
                                 .labelsHidden()
+                            #if os(macOS)
                                 .datePickerStyle(.field)
+                            #else
+                                .datePickerStyle(.compact)
+                            #endif
                                 .controlSize(.regular)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -55,7 +59,11 @@ struct CreateInvoiceConfirmationSheet: View {
                         BillbiInputSheetFieldRow(label: "Due date") {
                             DatePicker("", selection: $draft.dueDate, displayedComponents: .date)
                                 .labelsHidden()
+                            #if os(macOS)
                                 .datePickerStyle(.field)
+                            #else
+                                .datePickerStyle(.compact)
+                            #endif
                                 .controlSize(.regular)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(maxWidth: .infinity, alignment: .leading)
