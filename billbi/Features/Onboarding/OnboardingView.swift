@@ -189,8 +189,8 @@ struct OnboardingView: View {
         ) {
             VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
                 onboardingFormSection("Project") {
-                    labeledTextField("Project name", text: $projectDraft.name)
                     selectedClientContext
+                    labeledTextField("Project name", text: $projectDraft.name)
                     labeledNumberField("Project rate", value: $projectDraft.hourlyRateMinorUnits)
                 }
 
