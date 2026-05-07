@@ -14,8 +14,8 @@ struct BillbiTextFieldStyle: TextFieldStyle {
             .overlay {
                 RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
                     .stroke(
-                        isFocused ? BillbiColor.actionAccentBorder : BillbiColor.border,
-                        lineWidth: isFocused ? BillbiColor.focusedInputBorderWidth : 1
+                        isFocused ? BillbiColor.brandBorder : BillbiColor.border,
+                        lineWidth: isFocused ? BillbiColor.inputFocusBorderWidth : 1
                     )
             }
     }

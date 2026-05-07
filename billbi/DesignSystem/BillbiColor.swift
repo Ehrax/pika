@@ -23,14 +23,11 @@ enum BillbiColor {
     static let textSecondary = Color.billbiAdaptive(light: 0x52525B, dark: 0xA1A1AA)
     static let textMuted = Color.billbiAdaptive(light: 0x8E8E93, dark: 0x6B6B75)
 
-    static let accent = Color.billbiAdaptive(light: 0x7B61FF, dark: 0x9B8CFF)
-    static let accentHover = Color.billbiAdaptive(light: 0x6F55F2, dark: 0xB2A7FF)
-    static let accentMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
-    static let actionAccent = Color.billbiAdaptive(light: 0x7B61FF, dark: 0xB2A7FF)
-    static let actionAccentMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.10, dark: 0xB2A7FF, darkOpacity: 0.14)
-    static let actionAccentBorder = actionAccent.opacity(0.34)
-    static let focusedInputBorderWidth = 1.5
-    static let sidebarSelection = Color.billbiAdaptive(light: 0x5423B9, dark: 0x5423B9)
+    static let brand = Color.billbiAdaptive(light: 0x7B61FF, dark: 0x9B8CFF)
+    static let brandMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
+    static let brandBorder = brand.opacity(0.34)
+    static let inputFocusBorderWidth = 1.5
+    static let primarySidebarSelection = Color.billbiAdaptive(light: 0x5423B9, dark: 0x5423B9)
     static let projectDotPalette = [
         Color.billbiAdaptive(light: 0xFF5C7A, dark: 0xFF6F8D),
         Color.billbiAdaptive(light: 0xF97316, dark: 0xFB923C),

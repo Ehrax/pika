@@ -12,7 +12,7 @@ struct SidebarView: View {
         #if os(macOS)
         List(selection: $selection) {
             Section("Workspace") {
-                NavigationLink(value: BillbiShellDestination.dashboard) {
+                primarySidebarButton(for: .dashboard) {
                     Label("Dashboard", systemImage: "gauge")
                 }
                 projectsFolderRow
@@ -37,13 +37,13 @@ struct SidebarView: View {
                         .listRowBackground(Color.clear)
                     }
                 }
-                NavigationLink(value: BillbiShellDestination.invoices) {
+                primarySidebarButton(for: .invoices) {
                     Label("Invoices", systemImage: "doc.text")
                 }
-                NavigationLink(value: BillbiShellDestination.clients) {
+                primarySidebarButton(for: .clients) {
                     Label("Clients", systemImage: "person.2")
                 }
-                NavigationLink(value: BillbiShellDestination.settings) {
+                primarySidebarButton(for: .settings) {
                     Label("Settings", systemImage: "gearshape")
                 }
             }
@@ -123,10 +123,37 @@ struct SidebarView: View {
         .background {
             if selection == .projects {
                 RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous)
-                    .fill(BillbiColor.sidebarSelection)
+                    .fill(BillbiColor.primarySidebarSelection)
             }
         }
         .contentShape(Rectangle())
+    }
+
+    private func primarySidebarButton<LabelContent: View>(
+        for destination: BillbiShellDestination,
+        @ViewBuilder label: () -> LabelContent
+    ) -> some View {
+        Button {
+            selection = destination
+        } label: {
+            label()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, SidebarProjectRowLayout.contentHorizontalPadding)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .foregroundStyle(selection == destination ? Color.white : BillbiColor.textPrimary)
+        .background {
+            if selection == destination {
+                RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous)
+                    .fill(BillbiColor.primarySidebarSelection)
+            }
+        }
+        .contentShape(Rectangle())
+        .listRowInsets(SidebarProjectsFolderRowLayout.listInsets.edgeInsets)
+        .listRowBackground(Color.clear)
     }
 
     private func projectRow(
@@ -172,7 +199,7 @@ struct SidebarView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(selection == destination ? BillbiColor.sidebarSelection : BillbiColor.textPrimary)
+        .foregroundStyle(selection == destination ? BillbiColor.primarySidebarSelection : BillbiColor.textPrimary)
     }
     #endif
 }
@@ -275,22 +302,22 @@ enum SidebarProjectDotPalette {
 
 enum SidebarProjectSelectionTreatment: Equatable {
     case none
-    case sidebarAccent
+    case primarySidebarSelection
 }
 
 struct SidebarProjectRowAppearance: Equatable {
     let isSelected: Bool
 
     var selectionTreatment: SidebarProjectSelectionTreatment {
-        isSelected ? .sidebarAccent : .none
+        isSelected ? .primarySidebarSelection : .none
     }
 
     var selectionBackgroundColor: Color? {
         switch selectionTreatment {
         case .none:
             nil
-        case .sidebarAccent:
-            BillbiColor.sidebarSelection
+        case .primarySidebarSelection:
+            BillbiColor.primarySidebarSelection
         }
     }
 
@@ -298,7 +325,7 @@ struct SidebarProjectRowAppearance: Equatable {
         switch selectionTreatment {
         case .none:
             BillbiColor.textPrimary
-        case .sidebarAccent:
+        case .primarySidebarSelection:
             Color.white
         }
     }

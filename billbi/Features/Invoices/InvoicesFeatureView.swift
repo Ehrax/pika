@@ -457,11 +457,11 @@ private struct FlowingInvoiceFilters: View {
                     .foregroundStyle(filter == option ? Color.white : BillbiColor.textSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(filter == option ? BillbiColor.accent : BillbiColor.surfaceAlt)
+                    .background(filter == option ? BillbiColor.brand : BillbiColor.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.pill))
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.pill)
-                            .stroke(filter == option ? BillbiColor.accent : BillbiColor.border)
+                            .stroke(filter == option ? BillbiColor.brand : BillbiColor.border)
                     }
                 }
             }

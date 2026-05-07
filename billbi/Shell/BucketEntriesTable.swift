@@ -30,7 +30,7 @@ struct BucketEntriesTable: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Add a fixed cost")
-                    .tint(BillbiColor.actionAccent)
+                    .tint(BillbiColor.brand)
                 }
 
                 if let selectedRow, canDeleteRows {
@@ -240,11 +240,11 @@ private struct BucketEntryRow: View {
         .foregroundStyle(rowForeground)
         .padding(.horizontal, BillbiSpacing.md)
         .padding(.vertical, 10)
-        .background(isSelected ? BillbiColor.actionAccentMuted : BillbiColor.surface)
+        .background(isSelected ? BillbiColor.brandMuted : BillbiColor.surface)
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
-                    .stroke(BillbiColor.actionAccentBorder, lineWidth: 1)
+                    .stroke(BillbiColor.brandBorder, lineWidth: 1)
             }
         }
     }
@@ -283,7 +283,7 @@ private struct BucketEntryRow: View {
 
     private var rowForeground: Color {
         if isSelected {
-            BillbiColor.actionAccent
+            BillbiColor.brand
         } else if row.isBillable {
             BillbiColor.textPrimary
         } else {

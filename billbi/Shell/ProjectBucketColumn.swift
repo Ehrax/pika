@@ -21,7 +21,7 @@ struct ProjectBucketColumn: View {
             } label: {
                 Label("Create a bucket", systemImage: "plus")
             }
-            .buttonStyle(BillbiColumnHeaderIconButtonStyle(foreground: BillbiColor.actionAccent))
+            .buttonStyle(BillbiColumnHeaderIconButtonStyle(foreground: BillbiColor.brand))
             .help("Create a bucket")
         } controls: {
             EmptyView()
