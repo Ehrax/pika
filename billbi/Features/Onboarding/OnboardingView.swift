@@ -5,12 +5,14 @@ struct OnboardingView: View {
     let currentDate: Date
     let onComplete: (OnboardingPrimaryCTA) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var flow = OnboardingFlowModel()
     @State private var businessDraft: OnboardingBusinessDraft
     @State private var clientDraft: OnboardingClientDraft
     @State private var projectDraft: OnboardingProjectDraft
     @State private var savedClientID: WorkspaceClient.ID?
     @State private var errorMessage: String?
+    @State private var stepTransitionDirection = 1.0
 #if os(macOS)
     @StateObject private var welcomeInvoicePreviewState = InvoiceHTMLPreviewState()
 #endif
@@ -63,7 +65,10 @@ struct OnboardingView: View {
                         readyStep
                     }
                 }
+                .id(flow.step)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(onboardingStepTransition)
+                .animation(onboardingStepAnimation, value: flow.step)
 
                 stepFooterActions
             }
@@ -81,6 +86,10 @@ struct OnboardingView: View {
                 BillbiWordmark()
 
                 Spacer()
+
+                Text(String(format: "%02d / 05", flow.step.displayIndex))
+                    .font(BillbiTypography.small.monospacedDigit())
+                    .foregroundStyle(BillbiColor.textSecondary)
             }
         }
         .padding(.horizontal, BillbiSpacing.xl)
@@ -90,15 +99,37 @@ struct OnboardingView: View {
 
     private var progressIndicator: some View {
         HStack(spacing: BillbiSpacing.xs) {
-            Text(String(format: "%02d / 05", flow.step.displayIndex))
-                .font(BillbiTypography.small.monospacedDigit())
-                .foregroundStyle(BillbiColor.textSecondary)
             ForEach(OnboardingStep.allCases, id: \.self) { step in
                 Capsule()
                     .fill(step == flow.step ? BillbiColor.brand : BillbiColor.surfaceAlt2)
                     .frame(width: step == flow.step ? 26 : 7, height: 7)
+                    .animation(onboardingProgressAnimation, value: flow.step)
             }
         }
+    }
+
+    private var onboardingProgressAnimation: Animation? {
+        reduceMotion ? nil : .smooth(duration: 0.24, extraBounce: 0.02)
+    }
+
+    private var onboardingStepAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.18)
+    }
+
+    private var onboardingStepTransition: AnyTransition {
+        guard !reduceMotion else {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .modifier(
+                active: OnboardingStepSlideTransitionModifier(opacity: 0, xOffset: 28 * stepTransitionDirection),
+                identity: OnboardingStepSlideTransitionModifier(opacity: 1, xOffset: 0)
+            ),
+            removal: .modifier(
+                active: OnboardingStepSlideTransitionModifier(opacity: 0, xOffset: -16 * stepTransitionDirection),
+                identity: OnboardingStepSlideTransitionModifier(opacity: 1, xOffset: 0)
+            )
+        )
     }
 
     private var welcomeStep: some View {
@@ -289,6 +320,7 @@ struct OnboardingView: View {
     private var stepNavigationButtons: some View {
         HStack(spacing: BillbiSpacing.sm) {
             Button {
+                stepTransitionDirection = -1
                 flow.back()
             } label: {
                 Label("Back", systemImage: "arrow.left")
@@ -349,6 +381,7 @@ struct OnboardingView: View {
                 return
             }
             errorMessage = nil
+            stepTransitionDirection = 1
             flow.advance()
         } catch {
             errorMessage = error.localizedDescription
@@ -1002,6 +1035,17 @@ private struct BillbiWordmark: View {
     private enum Layout {
         static let iconSize: CGFloat = 36
         static let iconCornerRadius: CGFloat = 12
+    }
+}
+
+private struct OnboardingStepSlideTransitionModifier: ViewModifier {
+    let opacity: Double
+    let xOffset: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .offset(x: xOffset)
     }
 }
 
