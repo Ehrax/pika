@@ -59,6 +59,30 @@
 - The onboarding welcome screen is visual step 1. It introduces the setup flow but does not itself create workspace data.
 - Choosing "Skip setup" from any onboarding screen should mark onboarding done and enter the main app immediately. The final ready screen is shown only when the user reaches the end of the setup flow.
 - Onboarding should avoid separate per-step "skip for now" controls. The flow uses Back, a primary Continue action, and the global Skip setup action. Optional later setup can be skipped only by leaving onboarding through Skip setup.
+- Continue should remain available throughout onboarding. Steps save only meaningful entered data and should not create empty placeholder records. Later dependent forms unlock only when the prerequisite data exists: business details enable client setup, a saved client enables project setup, and project setup creates the initial bucket.
+- For onboarding unlocks, a non-empty business name is enough to treat business details as started and enable client setup. Other business fields may be saved opportunistically but should not be required to progress.
+- For onboarding unlocks, a non-empty client name is enough to create a Client and enable project setup. Client invoice details such as billing address may be completed later, but invoice finalization should block if recipient-required details are missing.
+- For onboarding project setup, a non-empty project name is enough to create the Project when a saved Client exists. The initial Bucket may use a sensible default name when blank, and currency or hourly rate should inherit from business defaults where possible.
+- When onboarding creates an initial Bucket without a user-entered bucket name, the default bucket name should be **General**.
+- The final onboarding screen is a ready summary and handoff, not a product preview. It should show the setup data that actually exists, offer contextual navigation such as opening the created project workbench or going to the dashboard, and include lightweight later tips.
+- The final onboarding summary should only show cards for setup data that actually exists. It should not show placeholder Business, Client, Project, or Bucket cards for skipped or empty steps.
+- On the final onboarding screen, the primary call to action should open the created project workbench when a project and bucket exist; otherwise it should go to the dashboard. A dashboard action may remain secondary when the project workbench is primary.
+- Final onboarding tips should adapt to skipped setup data and only reference features that exist in the app or are in the immediate implementation scope. Prototype ideas such as choosing a base color should be ignored until those settings actually exist.
+- The business onboarding step should include a header-only live invoice preview so users can see how their business identity appears on invoices. Full template selection can be added later when Billbi supports multiple invoice templates.
+- The onboarding invoice header preview should use an obviously fake invoice number such as **PREVIEW-001**. Invoice numbering setup should stay out of onboarding for now and remain governed by existing defaults or Settings.
+- The onboarding invoice header preview should update from the current business-step draft values as the user types. Persisting those values happens when the user continues from the step.
+- The first-client onboarding step should include a lightweight client-list preview driven by the current draft values. The preview teaches where the client will appear without creating the Client until the user continues from the step.
+- The first-project onboarding step should preview both the project and its initial bucket from draft values. Continuing from the step creates the Project and its initial Bucket together when the prerequisites and project name exist.
+- Onboarding completion belongs to the Workspace data model, not local-only app preferences, so completion follows the workspace across restore or sync.
+- Skip setup should immediately persist onboarding completion for the workspace, even when no onboarding form data has been saved.
+- A debug-only menu bar action may reset onboarding completion for development and QA. Normal production users should not see a re-run onboarding action.
+- The debug onboarding reset should only clear onboarding completion. It should not delete business profile data, clients, projects, buckets, invoices, or other workspace records.
+- On first launch for a workspace without onboarding completion, onboarding should appear as a full-window replacement in the main window rather than a sheet or modal over the app.
+- While onboarding is active, the normal app navigation and toolbar should be hidden in favor of an onboarding-specific top bar inside the content. Standard macOS window controls should remain native.
+- Onboarding should support keyboard-friendly progression such as Return for Continue where it does not conflict with text entry. Escape should not trigger Skip setup because skipping permanently completes onboarding for the workspace.
+- If the app quits during onboarding before completion or skip, reopening should restart the onboarding flow at the welcome screen while preserving any workspace data saved by completed steps.
+- Onboarding forms should prefill from existing workspace data when available, including after a debug reset or a mid-flow restart.
+- When prefilling onboarding from existing clients or projects, v1 can use the existing active projection order rather than introducing special ranking.
 - "cost" exists in invoiceable bucket language as a fixed cost that can be billed to a client; use **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
 - "tax document" was considered for generic tax paperwork, but Billbi's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
 - "receipt" and "invoice PDF" both refer to **Expense Evidence** when they prove an outgoing business cost; do not model them as separate top-level records.

@@ -42,8 +42,8 @@ struct BillbiApp: App {
                     modelContainer: sharedModelContainer
                 )
                 .font(BillbiTypography.body)
-                .tint(BillbiColor.actionAccent)
-                .accentColor(BillbiColor.actionAccent)
+                .tint(BillbiColor.brand)
+                .accentColor(BillbiColor.brand)
 #if os(macOS)
                 .background(MainWindowPersistenceView())
 #endif

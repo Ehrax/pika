@@ -22,7 +22,7 @@ struct ClientListColumn: View {
             } label: {
                 Label("Create a client", systemImage: "plus")
             }
-            .buttonStyle(BillbiColumnHeaderIconButtonStyle(foreground: BillbiColor.actionAccent))
+            .buttonStyle(BillbiColumnHeaderIconButtonStyle(foreground: BillbiColor.brand))
             .help("Create a client")
         } controls: {
             EmptyView()

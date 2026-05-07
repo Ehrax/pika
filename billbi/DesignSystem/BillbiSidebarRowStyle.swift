@@ -9,7 +9,7 @@ private struct BillbiSecondarySidebarRowModifier: ViewModifier {
             .overlay(alignment: .leading) {
                 if isSelected {
                     Capsule()
-                        .fill(BillbiColor.accent)
+                        .fill(BillbiColor.brand)
                         .frame(width: 3)
                         .padding(.vertical, 9)
                 }

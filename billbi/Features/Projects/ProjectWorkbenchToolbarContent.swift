@@ -57,7 +57,7 @@ struct ProjectWorkbenchToolbarContent: ToolbarContent {
                     Label("Mark Sent", systemImage: "paperplane")
                 }
                 .disabled(!InvoiceWorkflowPolicy.canMarkSent(status: invoiceRow.status))
-                .tint(BillbiColor.actionAccent)
+                .tint(BillbiColor.brand)
 
                 Button {
                     onMarkInvoicePaid(invoiceRow)

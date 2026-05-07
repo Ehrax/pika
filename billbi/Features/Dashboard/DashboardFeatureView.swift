@@ -351,18 +351,18 @@ private struct RevenueSparkline: View {
                 SparklineArea(points: samples)
                     .fill(
                         LinearGradient(
-                            colors: [BillbiColor.accent.opacity(0.28), BillbiColor.accent.opacity(0)],
+                            colors: [BillbiColor.brand.opacity(0.28), BillbiColor.brand.opacity(0)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
 
                 SparklineLine(points: samples)
-                    .stroke(BillbiColor.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .stroke(BillbiColor.brand, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
                 if let last = samples.last {
                     Circle()
-                        .fill(BillbiColor.accent)
+                        .fill(BillbiColor.brand)
                         .frame(width: 7, height: 7)
                         .position(last)
                 }
@@ -428,7 +428,7 @@ private struct ProjectRevenueSparkline: View {
     }
 
     private var primaryColor: Color {
-        points.first.map(color(for:)) ?? BillbiColor.accent
+        points.first.map(color(for:)) ?? BillbiColor.brand
     }
 
     private func normalizedPoints(in size: CGSize) -> [ProjectSparklineSample] {

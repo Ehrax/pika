@@ -36,7 +36,7 @@ struct BillbiActionButtonStyle: ButtonStyle {
     private var foreground: Color {
         switch tone {
         case .primary:
-            BillbiColor.actionAccent
+            BillbiColor.brand
         case .neutral:
             BillbiColor.textPrimary
         case .destructive:
@@ -51,7 +51,7 @@ struct BillbiActionButtonStyle: ButtonStyle {
     private var background: Color {
         switch tone {
         case .primary:
-            BillbiColor.actionAccentMuted
+            BillbiColor.brandMuted
         case .neutral:
             BillbiColor.textPrimary.opacity(0.07)
         case .destructive:
@@ -66,7 +66,7 @@ struct BillbiActionButtonStyle: ButtonStyle {
     private var border: Color {
         switch tone {
         case .primary:
-            BillbiColor.actionAccentBorder
+            BillbiColor.brandBorder
         case .neutral:
             BillbiColor.textPrimary.opacity(0.16)
         case .destructive:

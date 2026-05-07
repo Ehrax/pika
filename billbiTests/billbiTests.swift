@@ -11,8 +11,8 @@ struct BillbiScaffoldTests {
         #expect(BillbiStatusTone.success.accessibilityLabel == "Success")
     }
 
-    @Test func selectedSidebarProjectUsesAccentSelectionTreatment() {
-        #expect(SidebarProjectRowAppearance(isSelected: true).selectionTreatment == .sidebarAccent)
+    @Test func selectedSidebarProjectUsesPrimarySidebarSelectionTreatment() {
+        #expect(SidebarProjectRowAppearance(isSelected: true).selectionTreatment == .primarySidebarSelection)
         #expect(SidebarProjectRowAppearance(isSelected: false).selectionTreatment == .none)
     }
 
@@ -572,6 +572,8 @@ struct BillbiScaffoldTests {
         let projectURL = repositoryRoot.appendingPathComponent("billbi.xcodeproj/project.pbxproj")
         let devSchemeURL = repositoryRoot.appendingPathComponent("billbi.xcodeproj/xcshareddata/xcschemes/Billbi Dev.xcscheme")
         let prodSchemeURL = repositoryRoot.appendingPathComponent("billbi.xcodeproj/xcshareddata/xcschemes/Billbi Prod.xcscheme")
+        let devConfigurationURL = repositoryRoot.appendingPathComponent("Config/Dev.xcconfig")
+        let prodConfigurationURL = repositoryRoot.appendingPathComponent("Config/Prod.xcconfig")
         let telemetryURL = repositoryRoot.appendingPathComponent("billbi/Services/AppTelemetry.swift")
         let workspacePersistenceURL = repositoryRoot.appendingPathComponent("billbi/Stores/WorkspaceStore+Persistence.swift")
 
@@ -579,6 +581,8 @@ struct BillbiScaffoldTests {
         let project = try String(contentsOf: projectURL, encoding: .utf8)
         let devScheme = try String(contentsOf: devSchemeURL, encoding: .utf8)
         let prodScheme = try String(contentsOf: prodSchemeURL, encoding: .utf8)
+        let devConfiguration = try String(contentsOf: devConfigurationURL, encoding: .utf8)
+        let prodConfiguration = try String(contentsOf: prodConfigurationURL, encoding: .utf8)
         let telemetry = try String(contentsOf: telemetryURL, encoding: .utf8)
         let workspacePersistence = try String(contentsOf: workspacePersistenceURL, encoding: .utf8)
         let remoteNotificationBackgroundModeSettings = [
@@ -604,10 +608,11 @@ struct BillbiScaffoldTests {
         }
         #expect(devScheme.contains(#"buildConfiguration = "Debug Dev""#))
         #expect(devScheme.contains(#"buildConfiguration = "Release Dev""#))
-        #expect(devScheme.contains(#"BuildableName = "billbi-dev.app""#))
         #expect(prodScheme.contains(#"buildConfiguration = "Debug Prod""#))
         #expect(prodScheme.contains(#"buildConfiguration = "Release Prod""#))
-        #expect(prodScheme.contains(#"BuildableName = "billbi.app""#))
+        #expect(devConfiguration.contains("BILLBI_PRODUCT_NAME = billbi-dev"))
+        #expect(prodConfiguration.contains("BILLBI_PRODUCT_NAME = billbi"))
+        #expect(project.contains(#"TEST_HOST = "$(BUILT_PRODUCTS_DIR)/$(BILLBI_PRODUCT_NAME).app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/$(BILLBI_PRODUCT_NAME)";"#))
         #expect(telemetry.contains("persistence.container_configured"))
         #expect(telemetry.contains("persistence.save_failed"))
         #expect(telemetry.contains("persistence.projection_reload_failed"))

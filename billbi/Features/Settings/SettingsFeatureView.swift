@@ -121,7 +121,7 @@ struct SettingsFeatureView: View {
             HStack(spacing: BillbiSpacing.sm) {
                 Image(systemName: selectedCategory.systemImage)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(BillbiColor.accent)
+                    .foregroundStyle(BillbiColor.brand)
                     .frame(width: 24)
 
                 Text(selectedCategory.title)
@@ -263,8 +263,8 @@ struct SettingsFeatureView: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
                             .stroke(
-                                focusedField == .taxNote ? BillbiColor.actionAccentBorder : BillbiColor.border,
-                                lineWidth: focusedField == .taxNote ? BillbiColor.focusedInputBorderWidth : 1
+                                focusedField == .taxNote ? BillbiColor.brandBorder : BillbiColor.border,
+                                lineWidth: focusedField == .taxNote ? BillbiColor.inputFocusBorderWidth : 1
                             )
                     }
                     .focused($focusedField, equals: .taxNote)

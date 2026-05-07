@@ -46,8 +46,8 @@ struct InlineEntryEditor: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm)
                             .stroke(
-                                focusedField == .time ? BillbiColor.actionAccentBorder : BillbiColor.borderStrong,
-                                lineWidth: focusedField == .time ? BillbiColor.focusedInputBorderWidth : 1
+                                focusedField == .time ? BillbiColor.brandBorder : BillbiColor.borderStrong,
+                                lineWidth: focusedField == .time ? BillbiColor.inputFocusBorderWidth : 1
                             )
                     }
                     .focused($focusedField, equals: .time)
@@ -64,8 +64,8 @@ struct InlineEntryEditor: View {
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm)
                             .stroke(
-                                focusedField == .description ? BillbiColor.actionAccentBorder : BillbiColor.borderStrong,
-                                lineWidth: focusedField == .description ? BillbiColor.focusedInputBorderWidth : 1
+                                focusedField == .description ? BillbiColor.brandBorder : BillbiColor.borderStrong,
+                                lineWidth: focusedField == .description ? BillbiColor.inputFocusBorderWidth : 1
                             )
                     }
                     .focused($focusedField, equals: .description)
@@ -85,15 +85,15 @@ struct InlineEntryEditor: View {
             }
             .padding(.horizontal, BillbiSpacing.md)
             .padding(.vertical, 10)
-            .background(BillbiColor.accentMuted)
+            .background(BillbiColor.brandMuted)
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(BillbiColor.accent)
+                    .fill(BillbiColor.brand)
                     .frame(height: 1)
             }
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(BillbiColor.accent)
+                    .fill(BillbiColor.brand)
                     .frame(height: 1)
             }
 
