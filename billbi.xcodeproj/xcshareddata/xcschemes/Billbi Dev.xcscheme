@@ -41,6 +41,17 @@
                ReferencedContainer = "container:billbi.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D1AEC45D2F9EA3690056E053"
+               BuildableName = "billbiUITests.xctest"
+               BlueprintName = "billbiUITests"
+               ReferencedContainer = "container:billbi.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

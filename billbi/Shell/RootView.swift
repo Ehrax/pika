@@ -15,20 +15,30 @@ struct RootView: View {
     var body: some View {
         let workspace = workspaceStore.workspace
 
-        NavigationSplitView {
-            SidebarView(
-                workspace: workspace,
-                selection: $selection
-            )
-        } detail: {
-            destinationView(for: selection, workspace: workspace)
-        }
-        .navigationSplitViewStyle(.balanced)
-        .onChange(of: selection) { _, newSelection in
-            AppTelemetry.shellSelectionChanged(newSelection.telemetryName)
-        }
-        .onAppear {
-            AppTelemetry.shellSelectionChanged(selection.telemetryName)
+        Group {
+            if workspace.onboardingCompleted {
+                NavigationSplitView {
+                    SidebarView(
+                        workspace: workspace,
+                        selection: $selection
+                    )
+                } detail: {
+                    destinationView(for: selection, workspace: workspace)
+                }
+                .navigationSplitViewStyle(.balanced)
+                .onChange(of: selection) { _, newSelection in
+                    AppTelemetry.shellSelectionChanged(newSelection.telemetryName)
+                }
+                .onAppear {
+                    AppTelemetry.shellSelectionChanged(selection.telemetryName)
+                }
+            } else {
+                OnboardingView(
+                    workspaceStore: workspaceStore,
+                    currentDate: currentDate,
+                    onComplete: handleOnboardingCompletion
+                )
+            }
         }
 #if os(macOS)
         .focusedSceneValue(\.workspaceStore, workspaceStore)
@@ -98,6 +108,16 @@ struct RootView: View {
         }
 
         return dashboardSelectedBucketID
+    }
+
+    private func handleOnboardingCompletion(_ cta: OnboardingPrimaryCTA) {
+        switch cta {
+        case .dashboard:
+            selection = .dashboard
+        case .project(let projectID, let bucketID):
+            dashboardSelectedBucketID = bucketID
+            selection = .project(projectID)
+        }
     }
 }
 

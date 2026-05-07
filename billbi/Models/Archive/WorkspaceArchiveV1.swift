@@ -55,6 +55,7 @@ struct WorkspaceArchiveGenerator: Codable, Equatable {
 }
 
 struct WorkspaceArchiveV1Workspace: Codable, Equatable {
+    var onboardingCompleted: Bool
     var businessProfile: BusinessProfile
     var clients: [Client]
     var projects: [Project]
@@ -63,6 +64,53 @@ struct WorkspaceArchiveV1Workspace: Codable, Equatable {
     var fixedCosts: [FixedCost]
     var invoices: [Invoice]
     var invoiceLineItems: [InvoiceLineItem]
+
+    init(
+        onboardingCompleted: Bool = false,
+        businessProfile: BusinessProfile,
+        clients: [Client],
+        projects: [Project],
+        buckets: [Bucket],
+        timeEntries: [TimeEntry],
+        fixedCosts: [FixedCost],
+        invoices: [Invoice],
+        invoiceLineItems: [InvoiceLineItem]
+    ) {
+        self.onboardingCompleted = onboardingCompleted
+        self.businessProfile = businessProfile
+        self.clients = clients
+        self.projects = projects
+        self.buckets = buckets
+        self.timeEntries = timeEntries
+        self.fixedCosts = fixedCosts
+        self.invoices = invoices
+        self.invoiceLineItems = invoiceLineItems
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case onboardingCompleted
+        case businessProfile
+        case clients
+        case projects
+        case buckets
+        case timeEntries
+        case fixedCosts
+        case invoices
+        case invoiceLineItems
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        onboardingCompleted = try container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted) ?? false
+        businessProfile = try container.decode(BusinessProfile.self, forKey: .businessProfile)
+        clients = try container.decode([Client].self, forKey: .clients)
+        projects = try container.decode([Project].self, forKey: .projects)
+        buckets = try container.decode([Bucket].self, forKey: .buckets)
+        timeEntries = try container.decode([TimeEntry].self, forKey: .timeEntries)
+        fixedCosts = try container.decode([FixedCost].self, forKey: .fixedCosts)
+        invoices = try container.decode([Invoice].self, forKey: .invoices)
+        invoiceLineItems = try container.decode([InvoiceLineItem].self, forKey: .invoiceLineItems)
+    }
 
     struct BusinessProfile: Codable, Equatable {
         var businessName: String
@@ -301,6 +349,7 @@ enum WorkspaceArchiveCodec {
             path: "workspace",
             allowedKeys: [
                 "businessProfile",
+                "onboardingCompleted",
                 "clients",
                 "projects",
                 "buckets",

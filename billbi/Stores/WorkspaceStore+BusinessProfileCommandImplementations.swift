@@ -30,6 +30,7 @@ extension WorkspaceStore {
             paymentDetails: profile.paymentDetails,
             taxNote: profile.taxNote,
             defaultTermsDays: profile.defaultTermsDays,
+            onboardingCompleted: workspace.onboardingCompleted,
             createdAt: createdAt,
             updatedAt: createdAt
         )
@@ -56,6 +57,16 @@ extension WorkspaceStore {
         record.taxNote = profile.taxNote
         record.defaultTermsDays = profile.defaultTermsDays
         record.updatedAt = updatedAt
+    }
+
+    func updateOnboardingCompletionInNormalizedRecords(isCompleted: Bool) throws {
+        let now = Date.now
+        let record = try latestBusinessProfileRecord() ?? makeBusinessProfileRecord(
+            from: workspace.businessProfile,
+            createdAt: now
+        )
+        record.onboardingCompleted = isCompleted
+        record.updatedAt = now
     }
 
     private func latestBusinessProfileRecord() throws -> BusinessProfileRecord? {

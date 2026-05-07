@@ -170,9 +170,13 @@ struct BillbiScaffoldTests {
 
     @Test func macOSLaunchChecksConfirmArchiveCommandGroupsAreWiredToFileMenu() {
         #expect(BillbiApp.workspaceArchiveCommandGroupTypeNames == WorkspaceArchiveFileMenuCommandSurface.commandGroupTypeNames)
-        #expect(BillbiApp.workspaceArchiveCommandGroupTypeNames == [
+        var expectedCommandGroupTypeNames = [
             "WorkspaceArchiveCommands",
-        ])
+        ]
+#if DEBUG
+        expectedCommandGroupTypeNames.append("WorkspaceOnboardingDebugCommands")
+#endif
+        #expect(BillbiApp.workspaceArchiveCommandGroupTypeNames == expectedCommandGroupTypeNames)
     }
 
     @Test func macOSPrimarySidebarPolicyStartsWithBreathingRoom() {

@@ -10,6 +10,7 @@ struct WorkspaceArchiveV1Tests {
         #expect(json.contains("\n  \"format\""))
         #expect(json.contains("\"format\" : \"billbi.workspace-archive\""))
         #expect(json.contains("\"version\" : 1"))
+        #expect(json.contains("\"onboardingCompleted\" : true"))
         #expect(json.contains("\"exportedAt\" : \"2026-05-02T10:00:00Z\""))
         #expect(json.contains("\"issueDate\" : \"2026-05-01\""))
         #expect(json.contains("\"totalMinorUnits\" : 52000"))
@@ -18,6 +19,7 @@ struct WorkspaceArchiveV1Tests {
         #expect(decoded.format == WorkspaceArchiveEnvelope.formatMarker)
         #expect(decoded.version == WorkspaceArchiveEnvelope.supportedVersion)
         #expect(decoded.generator?.app == "Billbi")
+        #expect(decoded.workspace.onboardingCompleted)
         #expect(decoded.workspace.projects.first?.name == "Snapshot Project")
         #expect(decoded.workspace.invoices.first?.totalMinorUnits == 52_000)
     }
@@ -110,6 +112,7 @@ struct WorkspaceArchiveV1Tests {
 
     private func fixtureWorkspace() -> WorkspaceArchiveV1Workspace {
         WorkspaceArchiveV1Workspace(
+            onboardingCompleted: true,
             businessProfile: .init(
                 businessName: "North Coast Studio",
                 personName: "Avery North",

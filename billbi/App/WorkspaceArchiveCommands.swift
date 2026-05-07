@@ -11,6 +11,8 @@ enum WorkspaceArchiveFileMenuCommandSurface {
     static let localizedExportWorkspaceArchiveTitle = String(localized: "Export Workspace Archive…")
     static let localizedImportWorkspaceArchiveTitle = String(localized: "Import Workspace Archive…")
     static let localizedRevealWorkspaceBackupsTitle = String(localized: "Reveal Workspace Backups")
+    static let resetOnboardingTitle = "Reset Onboarding Completion"
+    static let localizedResetOnboardingTitle = String(localized: "Reset Onboarding Completion")
     static let commandTitles = [
         exportWorkspaceArchiveTitle,
         importWorkspaceArchiveTitle,
@@ -18,13 +20,22 @@ enum WorkspaceArchiveFileMenuCommandSurface {
     ]
 
 #if os(macOS)
-    static let commandGroupTypeNames = [
-        String(describing: WorkspaceArchiveCommands.self),
-    ]
+    static var commandGroupTypeNames: [String] {
+        var typeNames = [
+            String(describing: WorkspaceArchiveCommands.self),
+        ]
+#if DEBUG
+        typeNames.append(String(describing: WorkspaceOnboardingDebugCommands.self))
+#endif
+        return typeNames
+    }
 
     @CommandsBuilder
     static var commands: some Commands {
         WorkspaceArchiveCommands()
+#if DEBUG
+        WorkspaceOnboardingDebugCommands()
+#endif
     }
 #endif
 }
@@ -219,4 +230,30 @@ struct WorkspaceArchiveCommands: Commands {
     }
 }
 
+#endif
+
+#if os(macOS) && DEBUG
+struct WorkspaceOnboardingDebugCommands: Commands {
+    @FocusedValue(\.workspaceStore) private var workspaceStore
+
+    var body: some Commands {
+        CommandMenu("Debug") {
+            Button {
+                resetOnboarding()
+            } label: {
+                Label(
+                    WorkspaceArchiveFileMenuCommandSurface.localizedResetOnboardingTitle,
+                    systemImage: "arrow.counterclockwise"
+                )
+            }
+            .keyboardShortcut("O", modifiers: [.command, .shift, .option])
+            .disabled(workspaceStore == nil)
+        }
+    }
+
+    private func resetOnboarding() {
+        guard let workspaceStore else { return }
+        try? workspaceStore.resetOnboardingCompletionForDebug()
+    }
+}
 #endif
