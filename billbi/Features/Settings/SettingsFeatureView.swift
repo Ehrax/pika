@@ -275,6 +275,12 @@ struct SettingsFeatureView: View {
 
     private var paymentDetailsSection: some View {
         settingsSection(title: "Payment details") {
+            SettingsEditableFieldRow(label: "Account name") {
+                TextField("Account name", text: $paymentDetails.accountName)
+                    .textFieldStyle(.billbiInput)
+                    .controlSize(.small)
+            }
+            SettingsDivider()
             SettingsEditableFieldRow(label: "IBAN") {
                 TextField("IBAN", text: $paymentDetails.iban)
                     .textFieldStyle(.billbiInput)

@@ -78,6 +78,17 @@ struct BillbiScaffoldTests {
         #expect(CurrencyTextFormatting.normalizedInput(" EUR ") == "EUR")
     }
 
+    @Test func paymentDetailsComponentsRoundTripAccountNameIBANAndBIC() {
+        let components = PaymentDetailsComponents(
+            rawValue: "Account name Alexander Rasputin\nIBAN DE02100110012125814433\nBIC PBNKDEFF"
+        )
+
+        #expect(components.accountName == "Alexander Rasputin")
+        #expect(components.iban == "DE02 1001 1001 2125 8144 33")
+        #expect(components.bic == "PBNKDEFF")
+        #expect(components.rawValue.contains("Account name Alexander Rasputin"))
+    }
+
     @Test func normalizedPersistenceRecordsUseCloudKitFriendlyDefaultsAndTypedEnums() throws {
         let clientID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000501"))
         let projectID = try #require(UUID(uuidString: "20000000-0000-0000-0000-000000000501"))

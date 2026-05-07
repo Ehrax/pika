@@ -169,22 +169,26 @@ struct OnboardingView: View {
             previewTitle: "How your invoice header will look"
         ) {
             VStack(alignment: .leading, spacing: BillbiSpacing.md) {
-                labeledTextField("Business name", text: $businessDraft.businessName)
-                twoColumnFields(
-                    left: labeledTextField("Legal name", text: $businessDraft.personName),
-                    right: labeledTextField("Tax ID / VAT no.", text: $businessDraft.taxIdentifier)
-                )
-                labeledTextField("Address", text: $businessDraft.address)
-                twoColumnFields(
-                    left: labeledTextField("Email on invoices", text: $businessDraft.email),
-                    right: labeledTextField("Phone", text: $businessDraft.phone)
-                )
-                currencyPicker
-                twoColumnFields(
-                    left: labeledNumberField("Default hourly rate", value: $businessDraft.defaultHourlyRateMinorUnits),
-                    right: labeledTextField("Payment terms", text: $businessDraft.paymentTerms)
-                )
-                labeledTextField("Payment details", text: $businessDraft.paymentDetails)
+                onboardingFormSection("Business profile") {
+                    labeledTextField("Business name", text: $businessDraft.businessName)
+                    labeledTextField("Legal name", text: $businessDraft.personName)
+                    labeledTextField("Address", text: $businessDraft.address)
+                    labeledTextField("Email on invoices", text: $businessDraft.email)
+                    labeledTextField("Phone", text: $businessDraft.phone)
+                }
+
+                onboardingFormSection("Invoice defaults") {
+                    labeledTextField("Tax ID / VAT no.", text: $businessDraft.taxIdentifier)
+                    labeledCurrencyPicker
+                    labeledNumberField("Default hourly rate", value: $businessDraft.defaultHourlyRateMinorUnits)
+                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays, suffix: "days")
+                }
+
+                onboardingFormSection("Bank account") {
+                    labeledTextField("Account name", text: paymentAccountNameBinding)
+                    labeledTextField("IBAN", text: paymentIBANBinding)
+                    labeledTextField("BIC", text: paymentBICBinding)
+                }
             }
         } preview: {
             invoiceHeaderPreview
@@ -200,16 +204,20 @@ struct OnboardingView: View {
             previewTitle: "Where your client list will live"
         ) {
             VStack(alignment: .leading, spacing: BillbiSpacing.md) {
-                labeledTextField("Client name", text: $clientDraft.name)
-                twoColumnFields(
-                    left: labeledTextField("Contact email", text: $clientDraft.email),
-                    right: labeledTextField("Contact person", text: $clientDraft.contactPerson)
-                )
-                twoColumnFields(
-                    left: labeledTextField("Phone", text: $clientDraft.phone),
-                    right: labeledTextField("VAT no.", text: $clientDraft.vatNumber)
-                )
-                labeledTextField("Billing address", text: $clientDraft.billingAddress)
+                onboardingFormSection("Client profile") {
+                    labeledTextField("Client name", text: $clientDraft.name)
+                    labeledTextField("VAT no.", text: $clientDraft.vatNumber)
+                }
+
+                onboardingFormSection("Contact") {
+                    labeledTextField("Contact email", text: $clientDraft.email)
+                    labeledTextField("Contact person", text: $clientDraft.contactPerson)
+                    labeledTextField("Phone", text: $clientDraft.phone)
+                }
+
+                onboardingFormSection("Billing") {
+                    labeledTextField("Billing address", text: $clientDraft.billingAddress)
+                }
             }
         } preview: {
             clientListPreview
@@ -225,21 +233,18 @@ struct OnboardingView: View {
             previewTitle: "What your project will look like"
         ) {
             VStack(alignment: .leading, spacing: BillbiSpacing.md) {
-                labeledTextField("Project name", text: $projectDraft.name)
-                twoColumnFields(
-                    left: Text("Client\n\(selectedClientName)")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(BillbiTypography.body)
-                        .foregroundStyle(BillbiColor.textPrimary)
-                        .padding(BillbiSpacing.md)
-                        .background(panelBackground, in: RoundedRectangle(cornerRadius: BillbiRadius.lg)),
-                    right: labeledNumberField("Project rate", value: $projectDraft.hourlyRateMinorUnits)
-                )
-                Divider().padding(.vertical, BillbiSpacing.sm)
-                labeledTextField("First bucket", text: $projectDraft.firstBucketName, prompt: "General")
-                Text("Leave it blank and Billbi will create a General bucket.")
-                    .font(BillbiTypography.small)
-                    .foregroundStyle(BillbiColor.textSecondary)
+                onboardingFormSection("Project") {
+                    labeledTextField("Project name", text: $projectDraft.name)
+                    selectedClientContext
+                    labeledNumberField("Project rate", value: $projectDraft.hourlyRateMinorUnits)
+                }
+
+                onboardingFormSection("First bucket") {
+                    labeledTextField("Bucket name", text: $projectDraft.firstBucketName, prompt: "General")
+                    Text("Leave it blank and Billbi will create a General bucket.")
+                        .font(BillbiTypography.small)
+                        .foregroundStyle(BillbiColor.textSecondary)
+                }
             }
         } preview: {
             projectPreview
@@ -375,6 +380,43 @@ struct OnboardingView: View {
         }
         return MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
             .string(fromMinorUnits: 0)
+    }
+
+    private var paymentAccountNameBinding: Binding<String> {
+        paymentDetailsBinding(
+            get: \.accountName,
+            set: { components, value in components.accountName = value }
+        )
+    }
+
+    private var paymentIBANBinding: Binding<String> {
+        paymentDetailsBinding(
+            get: \.iban,
+            set: { components, value in components.iban = value }
+        )
+    }
+
+    private var paymentBICBinding: Binding<String> {
+        paymentDetailsBinding(
+            get: \.bic,
+            set: { components, value in components.bic = value }
+        )
+    }
+
+    private func paymentDetailsBinding(
+        get: @escaping (PaymentDetailsComponents) -> String,
+        set: @escaping (inout PaymentDetailsComponents, String) -> Void
+    ) -> Binding<String> {
+        Binding(
+            get: {
+                get(PaymentDetailsComponents(rawValue: businessDraft.paymentDetails))
+            },
+            set: { newValue in
+                var components = PaymentDetailsComponents(rawValue: businessDraft.paymentDetails)
+                set(&components, newValue)
+                businessDraft.paymentDetails = components.rawValue
+            }
+        )
     }
 
     private var summaryBadge: String {
@@ -543,10 +585,63 @@ struct OnboardingView: View {
         }
     }
 
-    private func twoColumnFields<Left: View, Right: View>(left: Left, right: Right) -> some View {
-        HStack(alignment: .top, spacing: BillbiSpacing.md) {
-            left
-            right
+    private func labeledIntegerField(_ title: String, value: Binding<Int>, suffix: String) -> some View {
+        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
+            Text(title)
+                .font(BillbiTypography.small.weight(.medium))
+                .foregroundStyle(BillbiColor.textMuted)
+            HStack(spacing: BillbiSpacing.sm) {
+                TextField(title, value: Binding(
+                    get: { max(value.wrappedValue, 0) },
+                    set: { value.wrappedValue = max($0, 0) }
+                ), format: .number)
+                .textFieldStyle(.billbiInput)
+                .onSubmit { continueTapped() }
+
+                Text(suffix)
+                    .font(BillbiTypography.small)
+                    .foregroundStyle(BillbiColor.textSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func onboardingFormSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
+            Text(title)
+                .font(BillbiTypography.micro)
+                .foregroundStyle(BillbiColor.textMuted)
+            VStack(alignment: .leading, spacing: BillbiSpacing.md) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var selectedClientContext: some View {
+        HStack(alignment: .firstTextBaseline, spacing: BillbiSpacing.sm) {
+            Text("Client")
+                .font(BillbiTypography.small.weight(.medium))
+                .foregroundStyle(BillbiColor.textMuted)
+                .frame(width: 120, alignment: .leading)
+            Text(selectedClientName)
+                .font(BillbiTypography.body)
+                .foregroundStyle(BillbiColor.textPrimary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, BillbiSpacing.xs)
+    }
+
+    private var labeledCurrencyPicker: some View {
+        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
+            Text("Currency")
+                .font(BillbiTypography.small.weight(.medium))
+                .foregroundStyle(BillbiColor.textMuted)
+            currencyPicker
         }
     }
 
@@ -587,7 +682,7 @@ struct OnboardingView: View {
                 Spacer()
                 VStack(alignment: .leading) {
                     Text("TERMS").font(BillbiTypography.micro).foregroundStyle(Color.gray)
-                    Text(businessDraft.paymentTerms.nilIfTrimmedEmpty ?? "Net 14")
+                    Text("Net \(businessDraft.defaultTermsDays)")
                     Text("\(businessDraft.currencyCode) \(businessDraft.defaultHourlyRateMinorUnits / 100)/h")
                 }
             }
