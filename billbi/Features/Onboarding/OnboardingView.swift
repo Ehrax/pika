@@ -48,72 +48,61 @@ struct OnboardingView: View {
             header
             Divider()
 
-            Group {
-                switch flow.step {
-                case .welcome:
-                    welcomeStep
-                case .business:
-                    businessStep
-                case .client:
-                    clientStep
-                case .project:
-                    projectStep
-                case .ready:
-                    readyStep
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    switch flow.step {
+                    case .welcome:
+                        welcomeStep
+                    case .business:
+                        businessStep
+                    case .client:
+                        clientStep
+                    case .project:
+                        projectStep
+                    case .ready:
+                        readyStep
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                stepFooterActions
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if flow.step != .welcome && flow.step != .ready {
-                footer
-            }
         }
         .background(BillbiColor.background)
         .accessibilityIdentifier("Billbi Onboarding")
     }
 
     private var header: some View {
-        HStack {
-            HStack(spacing: BillbiSpacing.sm) {
-                RoundedRectangle(cornerRadius: BillbiRadius.lg)
-                    .fill(BillbiColor.brand)
-                    .frame(width: 28, height: 28)
-                    .overlay(Text("B").font(BillbiTypography.subheading.weight(.bold)).foregroundStyle(.white))
-                Text("Billbi")
-                    .font(BillbiTypography.heading)
-                    .foregroundStyle(BillbiColor.textPrimary)
+        ZStack {
+            progressIndicator
+
+            HStack {
+                BillbiWordmark()
+
+                Spacer()
             }
-
-            Spacer()
-
-            HStack(spacing: BillbiSpacing.xs) {
-                Text(String(format: "%02d / 05", flow.step.displayIndex))
-                    .font(BillbiTypography.small.monospacedDigit())
-                    .foregroundStyle(BillbiColor.textSecondary)
-                ForEach(OnboardingStep.allCases, id: \.self) { step in
-                    Capsule()
-                        .fill(step == flow.step ? BillbiColor.brand : BillbiColor.surfaceAlt2)
-                        .frame(width: step == flow.step ? 26 : 7, height: 7)
-                }
-            }
-
-            Spacer()
-
-            Button {
-                skip()
-            } label: {
-                Label("Skip setup", systemImage: "forward.end")
-            }
-            .buttonStyle(.billbiAction(.neutral))
-            .accessibilityIdentifier("Skip setup")
         }
         .padding(.horizontal, BillbiSpacing.xl)
         .padding(.vertical, BillbiSpacing.md)
         .background(BillbiColor.surface)
     }
 
+    private var progressIndicator: some View {
+        HStack(spacing: BillbiSpacing.xs) {
+            Text(String(format: "%02d / 05", flow.step.displayIndex))
+                .font(BillbiTypography.small.monospacedDigit())
+                .foregroundStyle(BillbiColor.textSecondary)
+            ForEach(OnboardingStep.allCases, id: \.self) { step in
+                Capsule()
+                    .fill(step == flow.step ? BillbiColor.brand : BillbiColor.surfaceAlt2)
+                    .frame(width: step == flow.step ? 26 : 7, height: 7)
+            }
+        }
+    }
+
     private var welcomeStep: some View {
-        HSplitView {
+        OnboardingFixedSplit(leadingMinimumWidth: 520) {
             VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                 Text("Welcome to Billbi")
                     .font(BillbiTypography.subheading)
@@ -133,24 +122,29 @@ struct OnboardingView: View {
                     setupRow("03", title: "Starter project", detail: "one bucket so work has a place")
                 }
 
-                HStack(spacing: BillbiSpacing.md) {
+                Text("About five minutes. Skip any detail you do not have yet.")
+                    .font(BillbiTypography.small)
+                    .foregroundStyle(BillbiColor.textSecondary)
+
+                Spacer()
+
+                HStack(spacing: BillbiSpacing.lg) {
+                    Spacer(minLength: BillbiSpacing.xl)
+
+                    skipSetupButton
+
                     Button {
                         continueTapped()
                     } label: {
                         Label("Start setup", systemImage: "arrow.right")
                     }
-                    .buttonStyle(.billbiAction(.primary))
+                    .buttonStyle(.billbiAction(.primary, size: .large))
                     .accessibilityIdentifier("Continue")
-
-                    Text("About five minutes. Skip any detail you do not have yet.")
-                        .font(BillbiTypography.small)
-                        .foregroundStyle(BillbiColor.textSecondary)
                 }
-                Spacer()
             }
             .padding(BillbiSpacing.xl)
             .frame(minWidth: 520)
-
+        } preview: {
             onboardingPreviewPanel(
                 eyebrow: "PREVIEW",
                 title: "A workspace for time, projects, and invoices"
@@ -168,7 +162,7 @@ struct OnboardingView: View {
             previewEyebrow: "LIVE PREVIEW",
             previewTitle: "How your invoice header will look"
         ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.md) {
+            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
                 onboardingFormSection("Business profile") {
                     labeledTextField("Business name", text: $businessDraft.businessName)
                     labeledTextField("Legal name", text: $businessDraft.personName)
@@ -181,7 +175,7 @@ struct OnboardingView: View {
                     labeledTextField("Tax ID / VAT no.", text: $businessDraft.taxIdentifier)
                     labeledCurrencyPicker
                     labeledNumberField("Default hourly rate", value: $businessDraft.defaultHourlyRateMinorUnits)
-                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays, suffix: "days")
+                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays)
                 }
 
                 onboardingFormSection("Bank account") {
@@ -203,7 +197,7 @@ struct OnboardingView: View {
             previewEyebrow: "CLIENTS",
             previewTitle: "Where your client list will live"
         ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.md) {
+            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
                 onboardingFormSection("Client profile") {
                     labeledTextField("Client name", text: $clientDraft.name)
                     labeledTextField("VAT no.", text: $clientDraft.vatNumber)
@@ -232,7 +226,7 @@ struct OnboardingView: View {
             previewEyebrow: "PREVIEW",
             previewTitle: "What your project will look like"
         ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.md) {
+            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
                 onboardingFormSection("Project") {
                     labeledTextField("Project name", text: $projectDraft.name)
                     selectedClientContext
@@ -252,56 +246,55 @@ struct OnboardingView: View {
     }
 
     private var readyStep: some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
-            StatusBadge(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace).isEmpty ? .neutral : .success, title: summaryBadge)
+        HStack {
+            Spacer(minLength: BillbiSpacing.xl)
 
-            Text(readyTitle)
-                .font(BillbiTypography.display)
-                .foregroundStyle(BillbiColor.textPrimary)
-            Text(readySubtitle)
-                .font(BillbiTypography.body)
-                .foregroundStyle(BillbiColor.textSecondary)
+            VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
+                StatusBadge(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace).isEmpty ? .neutral : .success, title: summaryBadge)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BillbiSpacing.md) {
-                ForEach(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace), id: \.self) { card in
-                    summaryCard(card)
+                Text(readyTitle)
+                    .font(BillbiTypography.display)
+                    .foregroundStyle(BillbiColor.textPrimary)
+                Text(readySubtitle)
+                    .font(BillbiTypography.body)
+                    .foregroundStyle(BillbiColor.textSecondary)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BillbiSpacing.md) {
+                    ForEach(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace), id: \.self) { card in
+                        summaryCard(card)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+
+                tips
+
+                HStack {
+                    Spacer(minLength: BillbiSpacing.xl)
+
+                    Button("Open Application") {
+                        finish()
+                    }
+                    .buttonStyle(.billbiAction(.primary, size: .large))
+                    .accessibilityIdentifier("Continue")
+                }
+                .padding(.top, BillbiSpacing.sm)
             }
-            .frame(maxWidth: 760)
+            .frame(maxWidth: OnboardingReadyLayout.contentMaximumWidth, maxHeight: .infinity, alignment: .topLeading)
 
-            HStack(spacing: BillbiSpacing.md) {
-                Button(primaryReadyTitle) {
-                    finish()
-                }
-                .buttonStyle(.billbiAction(.primary))
-                .accessibilityIdentifier("Continue")
-
-                Button {
-                    finish(forceDashboard: true)
-                } label: {
-                    Label("Go to dashboard", systemImage: "gauge")
-                }
-                .buttonStyle(.billbiAction(.neutral))
-            }
-
-            tips
+            Spacer(minLength: BillbiSpacing.xl)
         }
         .padding(BillbiSpacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
-    private var footer: some View {
-        HStack {
-            Text("\(flow.step.displayIndex) of 5")
-                .font(BillbiTypography.small.monospacedDigit())
-                .foregroundStyle(BillbiColor.textSecondary)
-            Spacer()
+    private var stepNavigationButtons: some View {
+        HStack(spacing: BillbiSpacing.sm) {
             Button {
                 flow.back()
             } label: {
                 Label("Back", systemImage: "arrow.left")
             }
-            .buttonStyle(.billbiAction(.neutral))
+            .buttonStyle(.billbiAction(.neutral, size: .large))
             .disabled(flow.step == .welcome)
 
             Button {
@@ -309,12 +302,30 @@ struct OnboardingView: View {
             } label: {
                 Label(flow.step == .client ? "Save client" : flow.step == .project ? "Create project" : "Continue", systemImage: "arrow.right")
             }
-            .buttonStyle(.billbiAction(.primary))
+            .buttonStyle(.billbiAction(.primary, size: .large))
             .keyboardShortcut(.return, modifiers: [])
             .accessibilityIdentifier("Continue")
         }
-        .padding(BillbiSpacing.md)
-        .background(BillbiColor.surface)
+    }
+
+    @ViewBuilder
+    private var stepFooterActions: some View {
+        if flow.step != .welcome && flow.step != .ready {
+            stepNavigationButtons
+                .padding(BillbiSpacing.xl)
+        }
+    }
+
+    private var skipSetupButton: some View {
+        Button {
+            skip()
+        } label: {
+            Text("Skip setup")
+        }
+        .buttonStyle(.plain)
+        .font(BillbiTypography.subheading.weight(.semibold))
+        .foregroundStyle(BillbiColor.textPrimary)
+        .accessibilityIdentifier("Skip setup")
     }
 
     private func continueTapped() {
@@ -441,15 +452,6 @@ struct OnboardingView: View {
         return "You can start from the dashboard and fill details later."
     }
 
-    private var primaryReadyTitle: String {
-        switch OnboardingFlowModel.primaryCTA(for: workspaceStore.workspace) {
-        case .dashboard:
-            "Enter workspace"
-        case .project:
-            "Open project"
-        }
-    }
-
     private var tips: some View {
         VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
             Text("NEXT")
@@ -489,7 +491,7 @@ struct OnboardingView: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder preview: () -> Preview
     ) -> some View {
-        HSplitView {
+        OnboardingFixedSplit(leadingMinimumWidth: 560) {
             ScrollView {
                 VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                     Text(eyebrow)
@@ -511,7 +513,7 @@ struct OnboardingView: View {
                 .padding(BillbiSpacing.xl)
             }
             .frame(minWidth: 560)
-
+        } preview: {
             onboardingPreviewPanel(eyebrow: previewEyebrow, title: previewTitle) {
                 preview()
             }
@@ -559,10 +561,7 @@ struct OnboardingView: View {
     }
 
     private func labeledTextField(_ title: String, text: Binding<String>, prompt: String = "") -> some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
-            Text(title)
-                .font(BillbiTypography.small.weight(.medium))
-                .foregroundStyle(BillbiColor.textMuted)
+        onboardingFieldRow(title) {
             TextField(prompt, text: text)
                 .textFieldStyle(.billbiInput)
                 .onSubmit { continueTapped() }
@@ -570,10 +569,7 @@ struct OnboardingView: View {
     }
 
     private func labeledNumberField(_ title: String, value: Binding<Int>) -> some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
-            Text(title)
-                .font(BillbiTypography.small.weight(.medium))
-                .foregroundStyle(BillbiColor.textMuted)
+        onboardingFieldRow(title) {
             TextField(title, value: Binding(
                 get: { max(value.wrappedValue / 100, 0) },
                 set: { value.wrappedValue = max($0, 0) * 100 }
@@ -583,11 +579,8 @@ struct OnboardingView: View {
         }
     }
 
-    private func labeledIntegerField(_ title: String, value: Binding<Int>, suffix: String) -> some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
-            Text(title)
-                .font(BillbiTypography.small.weight(.medium))
-                .foregroundStyle(BillbiColor.textMuted)
+    private func labeledIntegerField(_ title: String, value: Binding<Int>, suffix: String? = nil) -> some View {
+        onboardingFieldRow(title) {
             HStack(spacing: BillbiSpacing.sm) {
                 TextField(title, value: Binding(
                     get: { max(value.wrappedValue, 0) },
@@ -596,11 +589,29 @@ struct OnboardingView: View {
                 .textFieldStyle(.billbiInput)
                 .onSubmit { continueTapped() }
 
-                Text(suffix)
-                    .font(BillbiTypography.small)
-                    .foregroundStyle(BillbiColor.textSecondary)
+                if let suffix {
+                    Text(suffix)
+                        .font(BillbiTypography.small)
+                        .foregroundStyle(BillbiColor.textSecondary)
+                }
             }
         }
+    }
+
+    private func onboardingFieldRow<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .center, spacing: BillbiSpacing.lg) {
+            Text(title)
+                .font(BillbiTypography.small.weight(.medium))
+                .foregroundStyle(BillbiColor.textMuted)
+                .frame(width: OnboardingFormLayout.labelWidth, alignment: .leading)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, BillbiSpacing.xs)
     }
 
     @ViewBuilder
@@ -608,37 +619,35 @@ struct OnboardingView: View {
         _ title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
+        VStack(alignment: .leading, spacing: BillbiSpacing.md) {
             Text(title)
-                .font(BillbiTypography.micro)
-                .foregroundStyle(BillbiColor.textMuted)
+                .font(BillbiTypography.heading)
+                .foregroundStyle(BillbiColor.textPrimary)
             VStack(alignment: .leading, spacing: BillbiSpacing.md) {
                 content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, BillbiSpacing.lg)
+            .padding(.vertical, BillbiSpacing.md)
+            .background(BillbiColor.surfaceAlt, in: RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous)
+                    .stroke(BillbiColor.borderStrong, lineWidth: 1)
+            }
         }
     }
 
     private var selectedClientContext: some View {
-        HStack(alignment: .firstTextBaseline, spacing: BillbiSpacing.sm) {
-            Text("Client")
-                .font(BillbiTypography.small.weight(.medium))
-                .foregroundStyle(BillbiColor.textMuted)
-                .frame(width: 120, alignment: .leading)
+        onboardingFieldRow("Client") {
             Text(selectedClientName)
                 .font(BillbiTypography.body)
                 .foregroundStyle(BillbiColor.textPrimary)
                 .lineLimit(1)
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, BillbiSpacing.xs)
     }
 
     private var labeledCurrencyPicker: some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
-            Text("Currency")
-                .font(BillbiTypography.small.weight(.medium))
-                .foregroundStyle(BillbiColor.textMuted)
+        onboardingFieldRow("Currency") {
             currencyPicker
         }
     }
@@ -963,6 +972,82 @@ struct OnboardingView: View {
     private static let sampleLineItemAID = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
     private static let sampleLineItemBID = UUID(uuidString: "66666666-6666-6666-6666-666666666666")!
     private static let sampleLineItemCID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+}
+
+private enum OnboardingReadyLayout {
+    static let contentMaximumWidth: CGFloat = 640
+}
+
+private enum OnboardingFormLayout {
+    static let labelWidth: CGFloat = 180
+}
+
+private struct BillbiWordmark: View {
+    var body: some View {
+        HStack(spacing: BillbiSpacing.sm) {
+            Image("BillbiLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: Layout.iconSize, height: Layout.iconSize)
+                .clipShape(RoundedRectangle(cornerRadius: Layout.iconCornerRadius, style: .continuous))
+                .accessibilityHidden(true)
+
+            Text("Billbi")
+                .font(BillbiTypography.heading)
+                .foregroundStyle(BillbiColor.textPrimary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Billbi")
+    }
+
+    private enum Layout {
+        static let iconSize: CGFloat = 36
+        static let iconCornerRadius: CGFloat = 12
+    }
+}
+
+private struct OnboardingFixedSplit<Leading: View, Preview: View>: View {
+    private static var leadingRatio: CGFloat { 0.42 }
+
+    let leadingMinimumWidth: CGFloat
+    let leading: Leading
+    let preview: Preview
+
+    init(
+        leadingMinimumWidth: CGFloat,
+        @ViewBuilder leading: () -> Leading,
+        @ViewBuilder preview: () -> Preview
+    ) {
+        self.leadingMinimumWidth = leadingMinimumWidth
+        self.leading = leading()
+        self.preview = preview()
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let leadingWidth = fixedLeadingWidth(for: proxy.size.width)
+
+            HStack(spacing: 0) {
+                leading
+                    .frame(width: leadingWidth, alignment: .topLeading)
+                    .frame(maxHeight: .infinity, alignment: .topLeading)
+
+                Divider()
+
+                preview
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        }
+    }
+
+    private func fixedLeadingWidth(for totalWidth: CGFloat) -> CGFloat {
+        guard totalWidth > 0 else { return leadingMinimumWidth }
+
+        let centeredWidth = totalWidth * Self.leadingRatio
+        let maximumWidth = max(leadingMinimumWidth, totalWidth - 480)
+        return min(max(centeredWidth, leadingMinimumWidth), maximumWidth)
+    }
 }
 
 private extension String {

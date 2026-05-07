@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(macOS)
+import AppKit
+#endif
+
 struct SidebarView: View {
     let workspace: WorkspaceSnapshot
     @Binding var selection: BillbiShellDestination
@@ -11,6 +15,10 @@ struct SidebarView: View {
     var body: some View {
         #if os(macOS)
         List(selection: $selection) {
+            sidebarAppIcon
+                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+
             Section("Workspace") {
                 primarySidebarButton(for: .dashboard) {
                     Label("Dashboard", systemImage: "gauge")
@@ -20,21 +28,15 @@ struct SidebarView: View {
                     .listRowBackground(Color.clear)
                 if projectsExpanded && SidebarProjectsDisclosurePolicy.showsDisclosure(activeProjectCount: workspace.activeProjects.count) {
                     ForEach(Array(workspace.activeProjects.enumerated()), id: \.element.id) { index, project in
-                        Button {
-                            selection = .project(project.id)
-                        } label: {
+                        NavigationLink(value: BillbiShellDestination.project(project.id)) {
                             projectRow(
                                 project,
-                                appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id)),
+                                appearance: SidebarProjectRowAppearance(isSelected: false),
                                 contentLeadingPadding: SidebarProjectRowLayout.contentLeadingPadding,
                                 projectDotColor: SidebarProjectDotPalette.color(forProjectAt: index)
                             )
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .buttonStyle(.plain)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .listRowInsets(SidebarProjectRowLayout.listInsets.edgeInsets)
-                        .listRowBackground(Color.clear)
                     }
                 }
                 primarySidebarButton(for: .invoices) {
@@ -49,6 +51,7 @@ struct SidebarView: View {
             }
 
         }
+        .listStyle(.sidebar)
         .navigationTitle("Billbi")
         .navigationSplitViewColumnWidth(
             min: CGFloat(PrimarySidebarColumnLayout.minimumWidth),
@@ -92,6 +95,21 @@ struct SidebarView: View {
         #endif
     }
 
+    #if os(macOS)
+    private var sidebarAppIcon: some View {
+        HStack {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 34, height: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityLabel("Billbi")
+
+            Spacer(minLength: 0)
+        }
+    }
+    #endif
+
     private var projectsFolderRow: some View {
         HStack(spacing: BillbiSpacing.xs) {
             if SidebarProjectsDisclosurePolicy.showsDisclosure(activeProjectCount: workspace.activeProjects.count) {
@@ -104,7 +122,7 @@ struct SidebarView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(selection == .projects ? Color.white.opacity(0.78) : BillbiColor.textSecondary)
+                .foregroundStyle(BillbiColor.textSecondary)
             }
 
             Button {
@@ -119,13 +137,7 @@ struct SidebarView: View {
         .padding(.horizontal, SidebarProjectRowLayout.contentHorizontalPadding)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(selection == .projects ? Color.white : BillbiColor.textPrimary)
-        .background {
-            if selection == .projects {
-                RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous)
-                    .fill(BillbiColor.primarySidebarSelection)
-            }
-        }
+        .tag(BillbiShellDestination.projects)
         .contentShape(Rectangle())
     }
 
@@ -138,19 +150,7 @@ struct SidebarView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
         }
-        .padding(.horizontal, SidebarProjectRowLayout.contentHorizontalPadding)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .foregroundStyle(selection == destination ? Color.white : BillbiColor.textPrimary)
-        .background {
-            if selection == destination {
-                RoundedRectangle(cornerRadius: BillbiRadius.lg, style: .continuous)
-                    .fill(BillbiColor.primarySidebarSelection)
-            }
-        }
-        .contentShape(Rectangle())
         .listRowInsets(SidebarProjectsFolderRowLayout.listInsets.edgeInsets)
-        .listRowBackground(Color.clear)
     }
 
     private func projectRow(

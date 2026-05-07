@@ -347,6 +347,32 @@ struct BillbiScaffoldTests {
 
         #expect(configuration.workspaceSeed == .sample)
         #expect(configuration.persistenceMode == .local)
+        #expect(configuration.resetsPersistentWorkspaceForSeedImport == true)
+    }
+
+    @Test func appLaunchConfigurationUsesLocalModeForExplicitEmptySeedReset() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["billbi", "--billbi-workspace-seed", "empty"],
+            environment: [:],
+            isRunningTests: false
+        )
+
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.initialWorkspace == .empty)
+        #expect(configuration.persistenceMode == .local)
+        #expect(configuration.resetsPersistentWorkspaceForSeedImport == true)
+    }
+
+    @Test func appLaunchConfigurationDoesNotResetDefaultEmptyWorkspace() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["billbi"],
+            environment: [:],
+            isRunningTests: false
+        )
+
+        #expect(configuration.workspaceSeed == .empty)
+        #expect(configuration.persistenceMode == .cloudKitPrivate)
+        #expect(configuration.resetsPersistentWorkspaceForSeedImport == false)
     }
 
     @Test func appLaunchConfigurationUsesExplicitLocalPersistenceOverride() {
@@ -439,6 +465,7 @@ struct BillbiScaffoldTests {
 
         #expect(configuration.workspaceSeed == .empty)
         #expect(configuration.initialWorkspace == .empty)
+        #expect(configuration.resetsPersistentWorkspaceForSeedImport == true)
     }
 
     @Test func appLaunchConfigurationParsesDemoWorkspaceSeed() {

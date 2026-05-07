@@ -54,6 +54,24 @@ enum WorkspaceSeed: String, CaseIterable, Equatable {
         return .empty
     }
 
+    nonisolated static func isExplicitlyRequested(arguments: [String], environment: [String: String]) -> Bool {
+        if arguments.contains(emptyArgument)
+            || arguments.contains(sampleArgument)
+            || arguments.contains(bikeparkArgument) {
+            return true
+        }
+
+        if seedValue(after: namedArgument, in: arguments).flatMap(WorkspaceSeed.init(seedValue:)) != nil {
+            return true
+        }
+
+        if environment[environmentKey].flatMap(WorkspaceSeed.init(seedValue:)) != nil {
+            return true
+        }
+
+        return environment[legacyEnvironmentKey].flatMap(WorkspaceSeed.init(seedValue:)) != nil
+    }
+
     var initialWorkspace: WorkspaceSnapshot {
         switch self {
         case .empty:
