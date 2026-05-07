@@ -22,19 +22,19 @@
 ## Architecture
 
 - Preserve the existing app shape unless the task explicitly changes architecture.
+- Keep platform behavior native to macOS desktop patterns.
 - Prefer deep modules with small interfaces; avoid shallow pass-through modules that only move complexity around.
-- Break massive SwiftUI views into small feature files: root views wire layout/state/dependencies, while rows, sections, toolbars, sheets, dialogs, and empty states live beside the feature they serve.
-- Do not define model classes, domain enums, reusable extensions, projections, parsers, or formatting helpers inside SwiftUI view files. Move them to `Models/`, `Support/`, or a focused feature file/folder.
+- Break massive SwiftUI views into small feature files: root views wire layout/state/dependencies; rows, sections, toolbars, sheets, dialogs, and empty states live beside the feature they serve.
+- Do not define model classes, domain enums, reusable extensions, projections, parsers, or formatting helpers inside SwiftUI view files; move them to `Models/`, `Support/`, or a focused feature file/folder.
 
 ## Localization
 
 - Do not introduce hardcoded user-facing strings in Swift code.
-- Billbi uses `billbi/Localizable.xcstrings` as the app string catalog; add new UI copy there and use SwiftUI localization APIs such as `LocalizedStringKey`, `Text("...")`, `Button("...")`, or `String(localized:)` for non-view strings.
-- Keep internal identifiers, log event names, test names, and non-user-facing diagnostics as plain strings when appropriate.
+- Billbi uses `billbi/Localizable.xcstrings` as the app string catalog; add new UI copy there and use SwiftUI localization APIs such as `LocalizedStringKey`, `Text("...")`, `Button("...")`, or `String(localized:)` for non-view strings. Keep internal identifiers, log event names, test names, and non-user-facing diagnostics as plain strings when appropriate.
 
 ## macOS Dev Loop
 
-- Use macOS app skills and build/run/debug tooling, including XcodeBuildMCP when useful, for launch failures, screenshots, runtime logs, and UI-state investigation.
+- Use macOS app skills and build/run/debug tooling, including XcodeBuildMCP when useful, for launch failures, screenshots, runtime logs, UI-state investigation, SwiftUI refactors, AppKit/window work, packaging/signing, and telemetry.
 - Do not hand-roll unsigned dev launches with raw `xcodebuild` and `open` unless debugging the launch script itself. Use `./script/build_and_run.sh` so agents build the `Billbi Dev` scheme with local DerivedData and the correct derived app bundle.
 - Prefer verified launches while developing: `./script/build_and_run.sh --verify --empty --local`, `./script/build_and_run.sh --verify --seeded --local`, or `./script/build_and_run.sh --verify --bikepark --local`.
 - Seed flags map to deterministic workspace modes: `--empty`, `--seeded` / `--sample` / `--demo`, and `--bikepark` / `--bikepark-thunersee`. Pass `--local` for normal development so seed runs do not hit CloudKit.
@@ -43,7 +43,7 @@
 ## Testing
 
 - Run the focused macOS unit-test gate with `./script/test.sh`; it runs `billbiTests` only, with coverage enabled, against `Billbi Dev` / `Debug Dev` on `platform=macOS` and `CODE_SIGNING_ALLOWED=NO`.
-- Run iOS simulator unit coverage only when touched behavior should work cross-platform: `./script/test_ios.sh`. Set `IOS_DESTINATION` when the default simulator selection is not right for the machine.
+- Use iOS skills and `./script/test_ios.sh` only when touched behavior should work cross-platform, or when a change explicitly touches iOS, App Intents, or simulator behavior. Set `IOS_DESTINATION` when the default simulator selection is not right for the machine.
 - Run `./script/coverage.sh` when changes touch meaningful production logic or coverage risk matters.
 - Keep UI tests and launch checks focused on real product flows; the default unit-test loop intentionally excludes noisy scaffold UI tests.
 
@@ -52,9 +52,3 @@
 - Add lightweight telemetry with `Logger` / `os.Logger` or the project's established logging helper when it helps future agents diagnose launch, persistence, seed import, navigation, or data-flow problems.
 - Prefer stable event names and useful context fields. Remove noisy temporary probes before finishing unless they remain useful product/debug instrumentation.
 - When debugging persistence or seed behavior, record the seed and persistence mode in the investigation notes and prefer local or in-memory modes for repeatability.
-
-## Platform Guardrails
-
-- Keep platform behavior native to macOS desktop patterns.
-- Use macOS app skills for build/run/debug, test triage, SwiftUI refactors, AppKit/window work, packaging/signing, and telemetry when the task calls for them.
-- Use iOS skills only when a change explicitly touches iOS, App Intents, simulator behavior, or cross-platform coverage.
