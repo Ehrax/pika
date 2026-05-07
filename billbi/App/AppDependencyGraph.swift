@@ -10,6 +10,7 @@ struct AppLaunchConfiguration: Equatable {
     let workspaceSeed: WorkspaceSeed
     let initialWorkspace: WorkspaceSnapshot
     let persistenceMode: AppPersistenceMode
+    let resetsPersistentWorkspaceForSeedImport: Bool
 
     init(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -19,10 +20,15 @@ struct AppLaunchConfiguration: Equatable {
         let resolvedIsRunningTests = (isRunningTests == true) || Self.resolveIsRunningTests(environment: environment)
         workspaceSeed = WorkspaceSeed.resolve(arguments: arguments, environment: environment)
         initialWorkspace = workspaceSeed.initialWorkspace
+        resetsPersistentWorkspaceForSeedImport = WorkspaceSeed.isExplicitlyRequested(
+            arguments: arguments,
+            environment: environment
+        )
         persistenceMode = Self.resolvePersistenceMode(
             arguments: arguments,
             environment: environment,
             workspaceSeed: workspaceSeed,
+            shouldResetForSeedImport: resetsPersistentWorkspaceForSeedImport,
             isRunningTests: resolvedIsRunningTests
         )
     }
@@ -48,6 +54,7 @@ struct AppLaunchConfiguration: Equatable {
         arguments: [String],
         environment: [String: String],
         workspaceSeed: WorkspaceSeed,
+        shouldResetForSeedImport: Bool,
         isRunningTests: Bool
     ) -> AppPersistenceMode {
         if isRunningTests {
@@ -59,6 +66,10 @@ struct AppLaunchConfiguration: Equatable {
             environment: environment
         ) {
             return explicitPersistenceMode
+        }
+
+        if shouldResetForSeedImport {
+            return .local
         }
 
         switch workspaceSeed {
@@ -95,7 +106,7 @@ private struct BillbiDependencyModifier: ViewModifier {
             initialValue: WorkspaceStore(
                 seed: configuration.initialWorkspace,
                 modelContext: ModelContext(modelContainer),
-                resetForSeedImport: configuration.workspaceSeed.requiresDeterministicResetImport
+                resetForSeedImport: configuration.resetsPersistentWorkspaceForSeedImport
             )
         )
     }

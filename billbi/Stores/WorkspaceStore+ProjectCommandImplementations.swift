@@ -43,10 +43,10 @@ extension WorkspaceStore {
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let initialBucketName = bucketName.isEmpty ? "General" : bucketName
 
         guard !projectName.isEmpty,
               !currencyCode.isEmpty,
-              !bucketName.isEmpty,
               draft.hourlyRateMinorUnits > 0
         else {
             throw WorkspaceStoreError.invalidProject
@@ -70,7 +70,7 @@ extension WorkspaceStore {
         )
         let bucketRecord = BucketRecord(
             projectID: projectID,
-            name: bucketName,
+            name: initialBucketName,
             defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits,
             createdAt: now,
             updatedAt: now,

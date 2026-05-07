@@ -197,6 +197,7 @@ extension WorkspaceStore {
         }
 
         return WorkspaceSnapshot(
+            onboardingCompleted: archiveWorkspace.onboardingCompleted,
             businessProfile: businessProfile,
             clients: clients,
             projects: projects,

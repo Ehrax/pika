@@ -28,6 +28,10 @@ struct LocalizationCatalogTests {
             "Search clients",
             "Unbilled project",
             "Export Workspace Archive…",
+            "Welcome to Billbi",
+            "Start setup",
+            "Open Application",
+            "You can start from the dashboard and fill details later.",
         ] {
             #expect(catalog.containsLocalizedEnglishValue(for: key))
         }

@@ -2,6 +2,7 @@ import Foundation
 
 struct WorkspaceSnapshot: Codable, Equatable {
     static let empty = WorkspaceSnapshot(
+        onboardingCompleted: false,
         businessProfile: BusinessProfileProjection(
             businessName: "",
             email: "",
@@ -19,10 +20,42 @@ struct WorkspaceSnapshot: Codable, Equatable {
         activity: []
     )
 
+    var onboardingCompleted: Bool
     var businessProfile: BusinessProfileProjection
     var clients: [WorkspaceClient]
     var projects: [WorkspaceProject]
     var activity: [WorkspaceActivity]
+
+    private enum CodingKeys: String, CodingKey {
+        case onboardingCompleted
+        case businessProfile
+        case clients
+        case projects
+        case activity
+    }
+
+    init(
+        onboardingCompleted: Bool = false,
+        businessProfile: BusinessProfileProjection,
+        clients: [WorkspaceClient],
+        projects: [WorkspaceProject],
+        activity: [WorkspaceActivity]
+    ) {
+        self.onboardingCompleted = onboardingCompleted
+        self.businessProfile = businessProfile
+        self.clients = clients
+        self.projects = projects
+        self.activity = activity
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        onboardingCompleted = try container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted) ?? false
+        businessProfile = try container.decode(BusinessProfileProjection.self, forKey: .businessProfile)
+        clients = try container.decode([WorkspaceClient].self, forKey: .clients)
+        projects = try container.decode([WorkspaceProject].self, forKey: .projects)
+        activity = try container.decode([WorkspaceActivity].self, forKey: .activity)
+    }
 
     var activeProjects: [WorkspaceProject] {
         projects.filter { !$0.isArchived }

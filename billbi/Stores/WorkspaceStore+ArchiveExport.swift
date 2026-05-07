@@ -35,6 +35,7 @@ extension WorkspaceStore {
             exportedAt: exportedAt,
             generator: generator,
             workspace: WorkspaceArchiveV1Workspace(
+                onboardingCompleted: profileRecord.onboardingCompleted,
                 businessProfile: WorkspaceArchiveV1Workspace.BusinessProfile(
                     businessName: profileRecord.businessName,
                     personName: profileRecord.personName,
@@ -270,6 +271,7 @@ extension WorkspaceStore {
             exportedAt: exportedAt,
             generator: generator,
             workspace: WorkspaceArchiveV1Workspace(
+                onboardingCompleted: snapshot.onboardingCompleted,
                 businessProfile: WorkspaceArchiveV1Workspace.BusinessProfile(
                     businessName: snapshot.businessProfile.businessName,
                     personName: snapshot.businessProfile.personName,

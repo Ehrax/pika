@@ -22,6 +22,7 @@ A v1 archive is UTF-8 JSON in a `.billbiarchive` file with this envelope:
 
 The `workspace` object uses Billbi domain terms and normalized record tables:
 
+- `onboardingCompleted` (boolean, optional on import, defaults to `false`)
 - `businessProfile` (object, required)
 - `clients` (array, required)
 - `projects` (array, required)
@@ -175,6 +176,7 @@ Money values are integer minor units across the schema. Bucket totals are derive
   },
   "version" : 1,
   "workspace" : {
+    "onboardingCompleted" : true,
     "buckets" : [
       {
         "defaultHourlyRateMinorUnits" : 10000,

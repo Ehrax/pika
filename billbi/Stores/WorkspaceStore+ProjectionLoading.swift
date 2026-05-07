@@ -95,6 +95,7 @@ enum SwiftDataWorkspaceProjectionLoader {
         }
 
         return WorkspaceSnapshot(
+            onboardingCompleted: sortedBusinessProfiles(profileRecords).last?.onboardingCompleted ?? false,
             businessProfile: profile,
             clients: clients,
             projects: projects,

@@ -37,11 +37,7 @@ extension WorkspaceStore {
         let email = draft.email.trimmingCharacters(in: .whitespacesAndNewlines)
         let billingAddress = draft.billingAddress.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !name.isEmpty,
-              !email.isEmpty,
-              !billingAddress.isEmpty,
-              draft.defaultTermsDays > 0
-        else {
+        guard !name.isEmpty, draft.defaultTermsDays > 0 else {
             throw WorkspaceStoreError.invalidClient
         }
 

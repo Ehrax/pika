@@ -444,7 +444,12 @@ extension WorkspaceStore {
         let importedAt = Self.deterministicImportTimestamp
 
         let profile = snapshot.businessProfile
-        persistBusinessProfile(profile, importedAt: importedAt, into: context)
+        persistBusinessProfile(
+            profile,
+            onboardingCompleted: snapshot.onboardingCompleted,
+            importedAt: importedAt,
+            into: context
+        )
 
         var clientLookup = persistClients(snapshot.clients, importedAt: importedAt, into: context)
 
@@ -475,6 +480,7 @@ extension WorkspaceStore {
 
     private static func persistBusinessProfile(
         _ profile: BusinessProfileProjection,
+        onboardingCompleted: Bool,
         importedAt: Date,
         into context: ModelContext
     ) {
@@ -492,6 +498,7 @@ extension WorkspaceStore {
             paymentDetails: profile.paymentDetails,
             taxNote: profile.taxNote,
             defaultTermsDays: profile.defaultTermsDays,
+            onboardingCompleted: onboardingCompleted,
             createdAt: importedAt,
             updatedAt: importedAt
         ))

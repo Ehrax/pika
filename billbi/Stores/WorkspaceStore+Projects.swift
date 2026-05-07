@@ -88,6 +88,7 @@ extension WorkspaceStore {
         let projectName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let initialBucketName = bucketName.isEmpty ? "General" : bucketName
         guard let client = workspace.clients.first(where: { $0.id == draft.clientID }) else {
             throw WorkspaceStoreError.invalidProject
         }
@@ -95,7 +96,6 @@ extension WorkspaceStore {
 
         guard !projectName.isEmpty,
               !currencyCode.isEmpty,
-              !bucketName.isEmpty,
               draft.hourlyRateMinorUnits > 0
         else {
             throw WorkspaceStoreError.invalidProject
@@ -111,7 +111,7 @@ extension WorkspaceStore {
             buckets: [
                 WorkspaceBucket(
                     id: UUID(),
-                    name: bucketName,
+                    name: initialBucketName,
                     status: .open,
                     totalMinorUnits: 0,
                     billableMinutes: 0,

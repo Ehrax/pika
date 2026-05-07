@@ -395,7 +395,6 @@ private struct CreateProjectSheet: View {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && clientID != nil
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && hourlyRate > 0
     }
 }

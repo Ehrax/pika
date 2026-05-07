@@ -8,21 +8,28 @@ enum BillbiActionButtonTone {
     case warning
 }
 
+enum BillbiActionButtonSize {
+    case regular
+    case large
+}
+
 struct BillbiActionButtonStyle: ButtonStyle {
     let tone: BillbiActionButtonTone
+    let size: BillbiActionButtonSize
     @Environment(\.isEnabled) private var isEnabled
 
-    init(tone: BillbiActionButtonTone = .primary) {
+    init(tone: BillbiActionButtonTone = .primary, size: BillbiActionButtonSize = .regular) {
         self.tone = tone
+        self.size = size
     }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(BillbiTypography.small.weight(.medium))
+            .font(font)
             .labelStyle(.titleAndIcon)
             .foregroundStyle(foreground.opacity(isEnabled ? 1 : 0.38))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
             .background(background.opacity(isEnabled ? 1 : 0.45))
             .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous))
             .overlay {
@@ -31,6 +38,33 @@ struct BillbiActionButtonStyle: ButtonStyle {
             }
             .contentShape(RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous))
             .opacity(configuration.isPressed ? 0.78 : 1)
+    }
+
+    private var font: Font {
+        switch size {
+        case .regular:
+            BillbiTypography.small.weight(.medium)
+        case .large:
+            BillbiTypography.heading.weight(.semibold)
+        }
+    }
+
+    private var horizontalPadding: CGFloat {
+        switch size {
+        case .regular:
+            12
+        case .large:
+            18
+        }
+    }
+
+    private var verticalPadding: CGFloat {
+        switch size {
+        case .regular:
+            7
+        case .large:
+            10
+        }
     }
 
     private var foreground: Color {
@@ -80,7 +114,10 @@ struct BillbiActionButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == BillbiActionButtonStyle {
-    static func billbiAction(_ tone: BillbiActionButtonTone = .primary) -> BillbiActionButtonStyle {
-        BillbiActionButtonStyle(tone: tone)
+    static func billbiAction(
+        _ tone: BillbiActionButtonTone = .primary,
+        size: BillbiActionButtonSize = .regular
+    ) -> BillbiActionButtonStyle {
+        BillbiActionButtonStyle(tone: tone, size: size)
     }
 }

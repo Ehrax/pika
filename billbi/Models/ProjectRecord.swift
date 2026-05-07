@@ -17,6 +17,7 @@ final class BusinessProfileRecord {
     var paymentDetails: String = ""
     var taxNote: String = ""
     var defaultTermsDays: Int = 14
+    var onboardingCompleted: Bool = false
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
@@ -35,6 +36,7 @@ final class BusinessProfileRecord {
         paymentDetails: String = "",
         taxNote: String = "",
         defaultTermsDays: Int = 14,
+        onboardingCompleted: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -52,6 +54,7 @@ final class BusinessProfileRecord {
         self.paymentDetails = paymentDetails
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
+        self.onboardingCompleted = onboardingCompleted
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

@@ -2401,6 +2401,916 @@
         }
       }
     },
+    "Welcome to Billbi": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Billbi"
+          }
+        }
+      }
+    },
+    "Start with the parts every invoice needs.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start with the parts every invoice needs."
+          }
+        }
+      }
+    },
+    "Add your business, one client, and a starter project. Billbi keeps the setup light, and you can fill the rest in later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add your business, one client, and a starter project. Billbi keeps the setup light, and you can fill the rest in later."
+          }
+        }
+      }
+    },
+    "Business basics": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Business basics"
+          }
+        }
+      }
+    },
+    "name, currency, default rate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "name, currency, default rate"
+          }
+        }
+      }
+    },
+    "First client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First client"
+          }
+        }
+      }
+    },
+    "a real client, with details optional": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a real client, with details optional"
+          }
+        }
+      }
+    },
+    "Starter project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starter project"
+          }
+        }
+      }
+    },
+    "one bucket so work has a place": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "one bucket so work has a place"
+          }
+        }
+      }
+    },
+    "About five minutes. Skip any detail you do not have yet.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About five minutes. Skip any detail you do not have yet."
+          }
+        }
+      }
+    },
+    "Skip setup": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip setup"
+          }
+        }
+      }
+    },
+    "Start setup": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start setup"
+          }
+        }
+      }
+    },
+    "PREVIEW": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PREVIEW"
+          }
+        }
+      }
+    },
+    "A workspace for time, projects, and invoices": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A workspace for time, projects, and invoices"
+          }
+        }
+      }
+    },
+    "STEP 02 · BUSINESS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STEP 02 · BUSINESS"
+          }
+        }
+      }
+    },
+    "Set your business identity": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set your business identity"
+          }
+        }
+      }
+    },
+    "A business name is enough for now. These details become the default sender on future invoices.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A business name is enough for now. These details become the default sender on future invoices."
+          }
+        }
+      }
+    },
+    "LIVE PREVIEW": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LIVE PREVIEW"
+          }
+        }
+      }
+    },
+    "How your invoice header will look": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How your invoice header will look"
+          }
+        }
+      }
+    },
+    "Business profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Business profile"
+          }
+        }
+      }
+    },
+    "Legal name": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legal name"
+          }
+        }
+      }
+    },
+    "Email on invoices": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email on invoices"
+          }
+        }
+      }
+    },
+    "Tax ID / VAT no.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tax ID / VAT no."
+          }
+        }
+      }
+    },
+    "Default hourly rate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default hourly rate"
+          }
+        }
+      }
+    },
+    "Payment terms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment terms"
+          }
+        }
+      }
+    },
+    "Bank account": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bank account"
+          }
+        }
+      }
+    },
+    "Account name": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account name"
+          }
+        }
+      }
+    },
+    "STEP 03 · FIRST CLIENT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STEP 03 · FIRST CLIENT"
+          }
+        }
+      }
+    },
+    "Add the client you will bill first": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the client you will bill first"
+          }
+        }
+      }
+    },
+    "A client name creates the record. Email, contact, and billing details can wait until invoice review.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A client name creates the record. Email, contact, and billing details can wait until invoice review."
+          }
+        }
+      }
+    },
+    "CLIENTS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CLIENTS"
+          }
+        }
+      }
+    },
+    "Where your client list will live": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where your client list will live"
+          }
+        }
+      }
+    },
+    "Client profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Client profile"
+          }
+        }
+      }
+    },
+    "Client name": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Client name"
+          }
+        }
+      }
+    },
+    "VAT no.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VAT no."
+          }
+        }
+      }
+    },
+    "Contact": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact"
+          }
+        }
+      }
+    },
+    "Contact email": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact email"
+          }
+        }
+      }
+    },
+    "Contact person": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact person"
+          }
+        }
+      }
+    },
+    "Billing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Billing"
+          }
+        }
+      }
+    },
+    "Billing address": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Billing address"
+          }
+        }
+      }
+    },
+    "STEP 04 · FIRST PROJECT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STEP 04 · FIRST PROJECT"
+          }
+        }
+      }
+    },
+    "Create the first place for work": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create the first place for work"
+          }
+        }
+      }
+    },
+    "Projects belong to clients. Buckets group the time or costs you will eventually invoice.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projects belong to clients. Buckets group the time or costs you will eventually invoice."
+          }
+        }
+      }
+    },
+    "What your project will look like": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What your project will look like"
+          }
+        }
+      }
+    },
+    "Project rate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project rate"
+          }
+        }
+      }
+    },
+    "First bucket": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First bucket"
+          }
+        }
+      }
+    },
+    "Leave it blank and Billbi will create a General bucket.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave it blank and Billbi will create a General bucket."
+          }
+        }
+      }
+    },
+    "Open Application": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Application"
+          }
+        }
+      }
+    },
+    "NEXT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NEXT"
+          }
+        }
+      }
+    },
+    "SETUP SKIPPED": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SETUP SKIPPED"
+          }
+        }
+      }
+    },
+    "READY": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "READY"
+          }
+        }
+      }
+    },
+    "You're ready.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're ready."
+          }
+        }
+      }
+    },
+    "You're ready, %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're ready, %@."
+          }
+        }
+      }
+    },
+    "%@ is ready with %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is ready with %@."
+          }
+        }
+      }
+    },
+    "%@ is saved. Add a project when you're ready.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is saved. Add a project when you're ready."
+          }
+        }
+      }
+    },
+    "%@ is saved. Add clients and projects next.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is saved. Add clients and projects next."
+          }
+        }
+      }
+    },
+    "You can start from the dashboard and fill details later.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can start from the dashboard and fill details later."
+          }
+        }
+      }
+    },
+    "Add your business profile in Settings": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add your business profile in Settings"
+          }
+        }
+      }
+    },
+    "Create your first client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create your first client"
+          }
+        }
+      }
+    },
+    "Open a project with a starter bucket": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a project with a starter bucket"
+          }
+        }
+      }
+    },
+    "Open a project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a project"
+          }
+        }
+      }
+    },
+    "Review invoice details before finalizing": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review invoice details before finalizing"
+          }
+        }
+      }
+    },
+    "Open a project for %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a project for %@"
+          }
+        }
+      }
+    },
+    "this client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "this client"
+          }
+        }
+      }
+    },
+    "Use buckets for billable work": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use buckets for billable work"
+          }
+        }
+      }
+    },
+    "Log time in the first bucket": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log time in the first bucket"
+          }
+        }
+      }
+    },
+    "Mark work ready when it is invoiceable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark work ready when it is invoiceable"
+          }
+        }
+      }
+    },
+    "Finalize invoices after details are complete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalize invoices after details are complete"
+          }
+        }
+      }
+    },
+    "Your business": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your business"
+          }
+        }
+      }
+    },
+    "FROM": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FROM"
+          }
+        }
+      }
+    },
+    "TERMS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERMS"
+          }
+        }
+      }
+    },
+    "Net %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Net %lld"
+          }
+        }
+      }
+    },
+    "%@ %lld/h": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %lld/h"
+          }
+        }
+      }
+    },
+    "line items appear after time is logged...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "line items appear after time is logged..."
+          }
+        }
+      }
+    },
+    "0 clients": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 clients"
+          }
+        }
+      }
+    },
+    "1 client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 client"
+          }
+        }
+      }
+    },
+    "billing details later": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "billing details later"
+          }
+        }
+      }
+    },
+    "The sample invoice could not be rendered.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The sample invoice could not be rendered."
+          }
+        }
+      }
+    },
+    "First project": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First project"
+          }
+        }
+      }
+    },
+    "1 bucket": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 bucket"
+          }
+        }
+      }
+    },
+    "Active": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        }
+      }
+    },
+    "Invoiced": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invoiced"
+          }
+        }
+      }
+    },
+    "0.0 h · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0.0 h · %@"
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "BUSINESS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BUSINESS"
+          }
+        }
+      }
+    },
+    "CLIENT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CLIENT"
+          }
+        }
+      }
+    },
+    "PROJECT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PROJECT"
+          }
+        }
+      }
+    },
+    "FIRST BUCKET": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FIRST BUCKET"
+          }
+        }
+      }
+    },
+    "Your first client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your first client"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        }
+      }
+    },
     "next field": {
       "localizations": {
         "en": {
