@@ -29,8 +29,36 @@
 - **Tax Export**: a focused yearly handoff package of tax-relevant paid expenses, summaries, and evidence.
 - **Activity**: a local audit-style event shown in the app for notable workspace changes.
 
+## Product Design Language
+
+- **Brand Color**: Billbi's canonical purple/lavender used for branded interactive UI such as buttons, focused inputs, selected chips, toolbar actions, and app tint.
+  _Avoid_: Accent color, primary color
+- The Swift design token for **Brand Color** should be `BillbiColor.brand`, with derived tokens `brandMuted` and `brandBorder` for subtle fills and outlines.
+- Single-series branded charts should use `BillbiColor.brand`; chart fills may use stronger local opacity from `brand` instead of introducing a separate purple shade.
+- The darker brand-family shade used for selected rows in the primary sidebar should be `BillbiColor.primarySidebarSelection`; do not use it for general buttons, chips, charts, or focused inputs.
+- Focused input outlines should use `BillbiColor.brandBorder` and the shared width token `inputFocusBorderWidth`; move non-color dimensions out of `BillbiColor` if a broader stroke/input token namespace emerges.
+- The asset-catalog `AccentColor` should match **Brand Color** in light and dark appearances so system accent surfaces do not introduce a third purple.
+- Color-token refactors should include a dark-mode visual audit of representative buttons, focused inputs, selected chips, charts, and primary sidebar selection using local macOS screenshots where practical.
+
 ## Flagged Ambiguities
 
+- "Pika" was an early product name that may appear in design prototypes; the shipped product and app-facing copy should say **Billbi**.
+- Onboarding is a skippable first-run setup helper for collecting business, client, project, and bucket information. It should not block entering the app because freelancers may not have every business detail ready yet. Once completed or skipped, onboarding is marked done permanently for that workspace and should not automatically run again.
+- Skipping onboarding should not block workspace exploration, but invoice finalization should block until the specific sender and invoice-required business details are complete.
+- For Swiss-style invoices, Billbi should distinguish invoice-required sender details from conditionally required VAT details. Supplier name and address, recipient name and address, service date or period, service description, price, and invoice tax treatment are invoice-critical. A Swiss VAT number is required only when the business is VAT-registered; exempt freelancers should not be forced to enter one before invoicing.
+- For German-style invoices, Billbi should distinguish ordinary invoices, small-amount invoices, and Kleinunternehmer invoices. Ordinary German invoices require the supplier's tax number or VAT ID, while Kleinunternehmer invoices must clearly state the small-business tax exemption and must not show VAT as if it were charged.
+- Billbi should avoid turning first-run onboarding into a country-specific tax setup. Near-term onboarding should collect minimal global invoicing defaults, while future country or project-specific tax configuration can tighten invoice validation for each jurisdiction.
+- Tax identifiers entered during onboarding are optional setup metadata in the near term. A missing tax identifier should not block onboarding completion; stricter tax validation belongs to later country or project-specific invoice configuration.
+- The near-term onboarding "ground setup" should aim to collect business name, invoice email, business address, currency, default hourly rate, and default payment terms. Legal or person name, tax ID or VAT number, phone, website, and payment details are useful but optional.
+- Optional onboarding steps for first client, project, and bucket should create real workspace records when the user completes them. Skipping optional steps should not create placeholder clients, projects, or buckets.
+- Onboarding should create a first bucket when the user chooses to create a first project, so the project is immediately usable for tracking and invoicing. Skipping project setup should not create a placeholder project or bucket.
+- A Project requires a Client. In onboarding, project setup depends on first creating a client, and project creation should create the initial bucket for that project.
+- Onboarding should present the setup chain as separate screens: business setup, first client, and first project with its initial bucket. The separation teaches the Client -> Project -> Bucket model without combining the forms into one large step.
+- Onboarding should allow skipping from any screen. If the user skips after completing earlier steps, Billbi should keep the real records or profile changes already saved and mark onboarding done.
+- Each completed onboarding step should save immediately to real workspace state. Onboarding should not depend on a final all-or-nothing commit.
+- The onboarding welcome screen is visual step 1. It introduces the setup flow but does not itself create workspace data.
+- Choosing "Skip setup" from any onboarding screen should mark onboarding done and enter the main app immediately. The final ready screen is shown only when the user reaches the end of the setup flow.
+- Onboarding should avoid separate per-step "skip for now" controls. The flow uses Back, a primary Continue action, and the global Skip setup action. Optional later setup can be skipped only by leaving onboarding through Skip setup.
 - "cost" exists in invoiceable bucket language as a fixed cost that can be billed to a client; use **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
 - "tax document" was considered for generic tax paperwork, but Billbi's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
 - "receipt" and "invoice PDF" both refer to **Expense Evidence** when they prove an outgoing business cost; do not model them as separate top-level records.

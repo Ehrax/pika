@@ -36,26 +36,26 @@ struct ClientDetailBillingSection: View {
             VStack(spacing: 0) {
                 ClientEditableFieldRow(label: "Name") {
                     TextField("Name", text: $draft.name)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.billbiInput)
                 }
                 ClientDivider()
                 ClientEditableFieldRow(label: "Email") {
                     TextField("Billing email", text: $draft.email)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.billbiInput)
                 }
                 ClientDivider()
                 ClientEditableFieldRow(label: "Billing address", alignment: .top) {
                     VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
                         TextField("Street and number", text: $billingAddress.street)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                         HStack(spacing: BillbiSpacing.sm) {
                             TextField("Postal code", text: $billingAddress.postalCode)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                                 .frame(maxWidth: 120)
                             TextField("City", text: $billingAddress.city)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                             TextField("Country", text: $billingAddress.country)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                                 .frame(maxWidth: 180)
                         }
                     }

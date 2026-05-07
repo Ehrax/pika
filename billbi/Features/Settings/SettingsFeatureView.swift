@@ -10,6 +10,7 @@ struct SettingsFeatureView: View {
     @State private var address = BillingAddressComponents()
     @State private var paymentDetails = PaymentDetailsComponents()
     @State private var saveFailure: SettingsSaveFailure?
+    @FocusState private var focusedField: SettingsField?
 
     init(profile: BusinessProfileProjection, workspaceStore: WorkspaceStore? = nil) {
         self.profile = profile
@@ -150,46 +151,46 @@ struct SettingsFeatureView: View {
         settingsSection(title: "Business profile") {
             SettingsEditableFieldRow(label: "Business name") {
                 TextField("Business name", text: $draft.businessName)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "Person name") {
                 TextField("Person name", text: $draft.personName)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "Email") {
                 TextField("Email", text: $draft.email)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "Phone") {
                 TextField("Phone", text: $draft.phone)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "Address", alignment: .top) {
                 VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
                     TextField("Street and number", text: $address.street)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.billbiInput)
                         .controlSize(.small)
 
                     HStack(spacing: BillbiSpacing.sm) {
                         TextField("Postal code", text: $address.postalCode)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                             .controlSize(.small)
                             .frame(maxWidth: 120)
 
                         TextField("City", text: $address.city)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                             .controlSize(.small)
 
                         TextField("Country", text: $address.country)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                             .controlSize(.small)
                             .frame(maxWidth: 180)
                     }
@@ -202,7 +203,7 @@ struct SettingsFeatureView: View {
         settingsSection(title: "Invoice numbering") {
             SettingsEditableFieldRow(label: "Prefix") {
                 TextField("Prefix", text: $draft.invoicePrefix)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
@@ -236,13 +237,13 @@ struct SettingsFeatureView: View {
         settingsSection(title: "Tax identity") {
             SettingsEditableFieldRow(label: "Tax identifier") {
                 TextField("Tax identifier", text: $draft.taxIdentifier)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "Wirtschafts-IdNr") {
                 TextField("Wirtschafts-IdNr", text: $draft.economicIdentifier)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
         }
@@ -261,8 +262,12 @@ struct SettingsFeatureView: View {
                     .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
-                            .stroke(BillbiColor.border, lineWidth: 1)
+                            .stroke(
+                                focusedField == .taxNote ? BillbiColor.actionAccentBorder : BillbiColor.border,
+                                lineWidth: focusedField == .taxNote ? BillbiColor.focusedInputBorderWidth : 1
+                            )
                     }
+                    .focused($focusedField, equals: .taxNote)
                     .accessibilityLabel("Tax / VAT note")
             }
         }
@@ -272,13 +277,13 @@ struct SettingsFeatureView: View {
         settingsSection(title: "Payment details") {
             SettingsEditableFieldRow(label: "IBAN") {
                 TextField("IBAN", text: $paymentDetails.iban)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
             SettingsDivider()
             SettingsEditableFieldRow(label: "BIC") {
                 TextField("BIC", text: $paymentDetails.bic)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.billbiInput)
                     .controlSize(.small)
             }
         }
@@ -364,6 +369,10 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
             "creditcard"
         }
     }
+}
+
+private enum SettingsField: Hashable {
+    case taxNote
 }
 
 private struct SettingsCategoryColumn: View {

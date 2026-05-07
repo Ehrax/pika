@@ -244,7 +244,7 @@ private struct BucketEntryRow: View {
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
-                    .stroke(BillbiColor.actionAccent.opacity(0.34), lineWidth: 1)
+                    .stroke(BillbiColor.actionAccentBorder, lineWidth: 1)
             }
         }
     }

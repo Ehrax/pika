@@ -45,7 +45,10 @@ struct InlineEntryEditor: View {
                     .background(BillbiColor.surface)
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm)
-                            .stroke(focusedField == .time ? BillbiColor.accent : BillbiColor.borderStrong, lineWidth: 1)
+                            .stroke(
+                                focusedField == .time ? BillbiColor.actionAccentBorder : BillbiColor.borderStrong,
+                                lineWidth: focusedField == .time ? BillbiColor.focusedInputBorderWidth : 1
+                            )
                     }
                     .focused($focusedField, equals: .time)
                     .onSubmit {
@@ -60,7 +63,10 @@ struct InlineEntryEditor: View {
                     .background(BillbiColor.surface)
                     .overlay {
                         RoundedRectangle(cornerRadius: BillbiRadius.sm)
-                            .stroke(focusedField == .description ? BillbiColor.accent : BillbiColor.borderStrong, lineWidth: 1)
+                            .stroke(
+                                focusedField == .description ? BillbiColor.actionAccentBorder : BillbiColor.borderStrong,
+                                lineWidth: focusedField == .description ? BillbiColor.focusedInputBorderWidth : 1
+                            )
                     }
                     .focused($focusedField, equals: .description)
                     .onSubmit {

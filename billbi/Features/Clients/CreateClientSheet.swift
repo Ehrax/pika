@@ -26,32 +26,32 @@ struct CreateClientSheet: View {
                     BillbiInputSheetSection(title: "Client") {
                         BillbiInputSheetFieldRow(label: "Name") {
                             TextField("Name", text: $name)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Billing email") {
                             TextField("Billing email", text: $email)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Street and number") {
                             TextField("Street and number", text: $billingAddress.street)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Postal code") {
                             TextField("Postal code", text: $billingAddress.postalCode)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "City") {
                             TextField("City", text: $billingAddress.city)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Country") {
                             TextField("Country", text: $billingAddress.country)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                     }
 

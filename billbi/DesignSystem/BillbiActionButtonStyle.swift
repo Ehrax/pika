@@ -66,7 +66,7 @@ struct BillbiActionButtonStyle: ButtonStyle {
     private var border: Color {
         switch tone {
         case .primary:
-            BillbiColor.actionAccent.opacity(0.34)
+            BillbiColor.actionAccentBorder
         case .neutral:
             BillbiColor.textPrimary.opacity(0.16)
         case .destructive:

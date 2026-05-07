@@ -38,7 +38,7 @@ struct CreateBucketSheet: View {
                 BillbiInputSheetSection(title: "Bucket") {
                     BillbiInputSheetFieldRow(label: "Bucket name") {
                         TextField("Bucket name", text: $name)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Hourly rate") {

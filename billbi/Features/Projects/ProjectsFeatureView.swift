@@ -320,7 +320,7 @@ private struct CreateProjectSheet: View {
                     BillbiInputSheetSection(title: "Project") {
                         BillbiInputSheetFieldRow(label: "Project name") {
                             TextField("Project name", text: $name)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Client") {
@@ -345,7 +345,7 @@ private struct CreateProjectSheet: View {
                     BillbiInputSheetSection(title: "Starter bucket") {
                         BillbiInputSheetFieldRow(label: "Bucket name") {
                             TextField("Bucket name", text: $firstBucketName)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Hourly rate") {

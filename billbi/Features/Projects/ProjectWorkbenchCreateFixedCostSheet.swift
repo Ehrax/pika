@@ -33,7 +33,7 @@ struct CreateFixedCostSheet: View {
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Description") {
                         TextField("Description", text: $description)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Amount") {

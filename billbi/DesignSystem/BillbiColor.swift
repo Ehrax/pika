@@ -28,6 +28,8 @@ enum BillbiColor {
     static let accentMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
     static let actionAccent = Color.billbiAdaptive(light: 0x7B61FF, dark: 0xB2A7FF)
     static let actionAccentMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.10, dark: 0xB2A7FF, darkOpacity: 0.14)
+    static let actionAccentBorder = actionAccent.opacity(0.34)
+    static let focusedInputBorderWidth = 1.5
     static let sidebarSelection = Color.billbiAdaptive(light: 0x5423B9, dark: 0x5423B9)
     static let projectDotPalette = [
         Color.billbiAdaptive(light: 0xFF5C7A, dark: 0xFF6F8D),

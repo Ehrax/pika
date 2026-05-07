@@ -33,7 +33,7 @@ struct ProjectEditorSheet: View {
                 BillbiInputSheetSection(title: "Project") {
                     BillbiInputSheetFieldRow(label: "Project name") {
                         TextField("Project name", text: $name)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.billbiInput)
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Client") {
