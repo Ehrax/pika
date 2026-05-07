@@ -553,8 +553,6 @@ struct OnboardingView: View {
                     .foregroundStyle(BillbiColor.textSecondary)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(BillbiColor.textSecondary)
         }
         .padding(BillbiSpacing.md)
         .background(panelBackground, in: RoundedRectangle(cornerRadius: BillbiRadius.lg))
