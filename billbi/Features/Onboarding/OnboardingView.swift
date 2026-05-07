@@ -276,45 +276,13 @@ struct OnboardingView: View {
         }
     }
 
+    @ViewBuilder
     private var readyStep: some View {
-        VStack {
-            Spacer(minLength: BillbiSpacing.xl)
-            VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
-                StatusBadge(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace).isEmpty ? .neutral : .success, title: summaryBadge)
-
-                Text(readyTitle)
-                    .font(BillbiTypography.display)
-                    .foregroundStyle(BillbiColor.textPrimary)
-                Text(readySubtitle)
-                    .font(BillbiTypography.body)
-                    .foregroundStyle(BillbiColor.textSecondary)
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: BillbiSpacing.md) {
-                    ForEach(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace), id: \.self) { card in
-                        summaryCard(card)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-
-                tips
-
-                HStack {
-                    Spacer(minLength: BillbiSpacing.xl)
-
-                    Button("Open Application") {
-                        finish()
-                    }
-                    .buttonStyle(.billbiAction(.primary, size: .large))
-                    .accessibilityIdentifier("Continue")
-                }
-                .padding(.top, BillbiSpacing.sm)
-            }
-            .frame(maxWidth: OnboardingReadyLayout.contentMaximumWidth, alignment: .leading)
-
-            Spacer(minLength: BillbiSpacing.xl)
-        }
-        .padding(BillbiSpacing.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        OnboardingReadyView(
+            workspace: workspaceStore.workspace,
+            summary: OnboardingFlowModel.readySummary(for: workspaceStore.workspace),
+            onOpenApplication: { finish() }
+        )
     }
 
     private var stepNavigationButtons: some View {
@@ -361,23 +329,27 @@ struct OnboardingView: View {
 
     private func continueTapped() {
         do {
-            switch flow.step {
-            case .welcome:
+            switch flow.continueAction(
+                workspace: workspaceStore.workspace,
+                businessDraft: businessDraft,
+                clientDraft: clientDraft,
+                projectDraft: projectDraft
+            ) {
+            case .advanceOnly:
                 break
-            case .business:
-                try workspaceStore.saveOnboardingBusiness(businessDraft)
-            case .client:
-                if let client = try workspaceStore.saveOnboardingClient(clientDraft, occurredAt: currentDate) {
+            case .saveBusiness(let draft):
+                try workspaceStore.saveOnboardingBusiness(draft)
+            case .saveClient(let draft):
+                if let client = try workspaceStore.saveOnboardingClient(draft, occurredAt: currentDate) {
                     savedClientID = client.id
                     projectDraft.clientID = client.id
                 }
-            case .project:
-                if projectDraft.clientID == nil {
-                    projectDraft.clientID = savedClientID ?? workspaceStore.workspace.clients.first?.id
-                }
-                _ = try workspaceStore.saveOnboardingProject(projectDraft, occurredAt: currentDate)
-            case .ready:
-                finish()
+            case .saveProject(let draft):
+                projectDraft.clientID = draft.clientID
+                _ = try workspaceStore.saveOnboardingProject(draft, occurredAt: currentDate)
+            case .complete(let primaryCTA):
+                try workspaceStore.completeOnboarding()
+                onComplete(primaryCTA)
                 return
             }
             errorMessage = nil
@@ -400,7 +372,7 @@ struct OnboardingView: View {
     private func finish(forceDashboard: Bool = false) {
         do {
             try workspaceStore.completeOnboarding()
-            onComplete(forceDashboard ? .dashboard : OnboardingFlowModel.primaryCTA(for: workspaceStore.workspace))
+            onComplete(forceDashboard ? .dashboard : OnboardingFlowModel.readySummary(for: workspaceStore.workspace).primaryCTA)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -460,58 +432,6 @@ struct OnboardingView: View {
                 businessDraft.paymentDetails = components.rawValue
             }
         )
-    }
-
-    private var summaryBadge: String {
-        OnboardingFlowModel.summaryCards(for: workspaceStore.workspace).isEmpty ? "SETUP SKIPPED" : "READY"
-    }
-
-    private var readyTitle: String {
-        workspaceStore.workspace.businessProfile.personName.nilIfTrimmedEmpty.map { "You're ready, \($0)." } ?? "You're ready."
-    }
-
-    private var readySubtitle: String {
-        let cards = OnboardingFlowModel.summaryCards(for: workspaceStore.workspace)
-        if cards.contains(.project), let project = workspaceStore.workspace.activeProjects.first {
-            return "\(project.name) is ready with \(project.buckets.first?.name ?? "General")."
-        }
-        if cards.contains(.client), let client = workspaceStore.workspace.clients.first {
-            return "\(client.name) is saved. Add a project when you're ready."
-        }
-        if cards.contains(.business) {
-            return "\(workspaceStore.workspace.businessProfile.businessName) is saved. Add clients and projects next."
-        }
-        return "You can start from the dashboard and fill details later."
-    }
-
-    private var tips: some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
-            Text("NEXT")
-                .font(BillbiTypography.micro)
-                .foregroundStyle(BillbiColor.textSecondary)
-            ForEach(readyTips, id: \.self) { tip in
-                Label(tip, systemImage: "circle")
-                    .font(BillbiTypography.small)
-                    .foregroundStyle(BillbiColor.textSecondary)
-            }
-        }
-        .padding(BillbiSpacing.md)
-        .frame(maxWidth: 760, alignment: .leading)
-        .background(panelBackground, in: RoundedRectangle(cornerRadius: BillbiRadius.lg))
-    }
-
-    private var readyTips: [String] {
-        let cards = OnboardingFlowModel.summaryCards(for: workspaceStore.workspace)
-        if !cards.contains(.business) {
-            return ["Add your business profile in Settings", "Create your first client", "Open a project with a starter bucket"]
-        }
-        if !cards.contains(.client) {
-            return ["Create your first client", "Open a project", "Review invoice details before finalizing"]
-        }
-        if !cards.contains(.project) {
-            return ["Open a project for \(workspaceStore.workspace.clients.first?.name ?? "this client")", "Use buckets for billable work", "Review invoice details before finalizing"]
-        }
-        return ["Log time in the first bucket", "Mark work ready when it is invoiceable", "Finalize invoices after details are complete"]
     }
 
     private func splitStep<Content: View, Preview: View>(
@@ -877,38 +797,6 @@ struct OnboardingView: View {
         .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.pill))
     }
 
-    private func summaryCard(_ card: OnboardingSummaryCard) -> some View {
-        let workspace = workspaceStore.workspace
-        let title: String
-        let detail: String
-        switch card {
-        case .business:
-            title = "BUSINESS"
-            detail = workspace.businessProfile.businessName
-        case .client:
-            title = "CLIENT"
-            detail = workspace.clients.first?.name ?? ""
-        case .project:
-            title = "PROJECT"
-            detail = workspace.activeProjects.first?.name ?? ""
-        case .bucket:
-            title = "FIRST BUCKET"
-            detail = workspace.activeProjects.first?.buckets.first?.name ?? ""
-        }
-
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(BillbiTypography.micro)
-                .foregroundStyle(BillbiColor.textSecondary)
-            Text(detail)
-                .font(BillbiTypography.subheading)
-                .foregroundStyle(BillbiColor.textPrimary)
-        }
-        .padding(BillbiSpacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(panelBackground, in: RoundedRectangle(cornerRadius: BillbiRadius.lg))
-    }
-
     private var panelBackground: some ShapeStyle {
         BillbiColor.surface
     }
@@ -1004,10 +892,6 @@ struct OnboardingView: View {
     private static let sampleLineItemAID = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
     private static let sampleLineItemBID = UUID(uuidString: "66666666-6666-6666-6666-666666666666")!
     private static let sampleLineItemCID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
-}
-
-private enum OnboardingReadyLayout {
-    static let contentMaximumWidth: CGFloat = 640
 }
 
 private enum OnboardingFormLayout {

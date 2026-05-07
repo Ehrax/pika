@@ -22,6 +22,29 @@ enum OnboardingPrimaryCTA: Equatable {
     case project(projectID: WorkspaceProject.ID, bucketID: WorkspaceBucket.ID)
 }
 
+enum OnboardingReadyBadgeState: Equatable {
+    case success
+    case neutral
+}
+
+struct OnboardingReadySummary: Equatable {
+    var cards: [OnboardingSummaryCard]
+    var badgeState: OnboardingReadyBadgeState
+    var badgeTitle: String
+    var title: String
+    var subtitle: String
+    var tips: [String]
+    var primaryCTA: OnboardingPrimaryCTA
+}
+
+enum OnboardingContinueAction: Equatable {
+    case advanceOnly
+    case saveBusiness(OnboardingBusinessDraft)
+    case saveClient(OnboardingClientDraft)
+    case saveProject(OnboardingProjectDraft)
+    case complete(OnboardingPrimaryCTA)
+}
+
 struct OnboardingBusinessDraft: Equatable {
     var businessName: String = ""
     var personName: String = ""
@@ -146,7 +169,61 @@ struct OnboardingFlowModel: Equatable {
         step = previousStep
     }
 
+    func continueAction(
+        workspace: WorkspaceSnapshot,
+        businessDraft: OnboardingBusinessDraft,
+        clientDraft: OnboardingClientDraft,
+        projectDraft: OnboardingProjectDraft
+    ) -> OnboardingContinueAction {
+        switch step {
+        case .welcome:
+            return .advanceOnly
+        case .business:
+            return businessDraft.businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? .advanceOnly
+                : .saveBusiness(businessDraft)
+        case .client:
+            return clientDraft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? .advanceOnly
+                : .saveClient(clientDraft)
+        case .project:
+            let projectName = projectDraft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !projectName.isEmpty,
+                  let clientID = projectDraft.clientID ?? workspace.clients.first?.id
+            else {
+                return .advanceOnly
+            }
+            var draft = projectDraft
+            draft.clientID = clientID
+            return .saveProject(draft)
+        case .ready:
+            return .complete(Self.readySummary(for: workspace).primaryCTA)
+        }
+    }
+
     static func summaryCards(for workspace: WorkspaceSnapshot) -> [OnboardingSummaryCard] {
+        readySummary(for: workspace).cards
+    }
+
+    static func primaryCTA(for workspace: WorkspaceSnapshot) -> OnboardingPrimaryCTA {
+        readySummary(for: workspace).primaryCTA
+    }
+
+    static func readySummary(for workspace: WorkspaceSnapshot) -> OnboardingReadySummary {
+        let cards = readySummaryCards(for: workspace)
+        let projectHandoff = readyProjectHandoff(for: workspace)
+        return OnboardingReadySummary(
+            cards: cards,
+            badgeState: cards.isEmpty ? .neutral : .success,
+            badgeTitle: cards.isEmpty ? "SETUP SKIPPED" : "READY",
+            title: readyTitle(for: workspace),
+            subtitle: readySubtitle(for: workspace, cards: cards),
+            tips: readyTips(for: workspace, cards: cards),
+            primaryCTA: projectHandoff.map { .project(projectID: $0.projectID, bucketID: $0.bucketID) } ?? .dashboard
+        )
+    }
+
+    private static func readySummaryCards(for workspace: WorkspaceSnapshot) -> [OnboardingSummaryCard] {
         var cards: [OnboardingSummaryCard] = []
         if !workspace.businessProfile.businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             cards.append(.business)
@@ -165,7 +242,47 @@ struct OnboardingFlowModel: Equatable {
         return cards
     }
 
-    static func primaryCTA(for workspace: WorkspaceSnapshot) -> OnboardingPrimaryCTA {
-        .dashboard
+    private static func readyTitle(for workspace: WorkspaceSnapshot) -> String {
+        let personName = workspace.businessProfile.personName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return personName.isEmpty ? "You're ready." : "You're ready, \(personName)."
+    }
+
+    private static func readySubtitle(for workspace: WorkspaceSnapshot, cards: [OnboardingSummaryCard]) -> String {
+        if cards.contains(.project),
+           let project = workspace.activeProjects.first
+        {
+            return "\(project.name) is ready with \(project.buckets.first?.name ?? "General")."
+        }
+        if cards.contains(.client),
+           let client = workspace.clients.first
+        {
+            return "\(client.name) is saved. Add a project when you're ready."
+        }
+        if cards.contains(.business) {
+            return "\(workspace.businessProfile.businessName) is saved. Add clients and projects next."
+        }
+        return "You can start from the dashboard and fill details later."
+    }
+
+    private static func readyTips(for workspace: WorkspaceSnapshot, cards: [OnboardingSummaryCard]) -> [String] {
+        if !cards.contains(.business) {
+            return ["Add your business profile in Settings", "Create your first client", "Open a project with a starter bucket"]
+        }
+        if !cards.contains(.client) {
+            return ["Create your first client", "Open a project", "Review invoice details before finalizing"]
+        }
+        if !cards.contains(.project) {
+            return ["Open a project for \(workspace.clients.first?.name ?? "this client")", "Use buckets for billable work", "Review invoice details before finalizing"]
+        }
+        return ["Log time in the first bucket", "Mark work ready when it is invoiceable", "Finalize invoices after details are complete"]
+    }
+
+    private static func readyProjectHandoff(for workspace: WorkspaceSnapshot) -> (projectID: WorkspaceProject.ID, bucketID: WorkspaceBucket.ID)? {
+        guard let project = workspace.activeProjects.first(where: { !$0.buckets.isEmpty }),
+              let bucket = project.buckets.first
+        else {
+            return nil
+        }
+        return (project.id, bucket.id)
     }
 }
