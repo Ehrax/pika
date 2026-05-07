@@ -61,4 +61,3 @@ The onboarding product behaviour should stay the same:
 **Execution notes:**
 
 Use the companion PRD, `docs/prd/onboarding-architecture-deepening.md`, for the recommended red-green-refactor slice order. Work one vertical slice at a time: write one behaviour test, watch it fail for the expected reason, implement the smallest green change, then refactor while green.
-

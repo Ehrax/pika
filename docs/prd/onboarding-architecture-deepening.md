@@ -203,4 +203,3 @@ Add screenshot or manual notes only for visual polish changes. The main protecti
 - Should normal Client creation now allow name-only Clients, or is that onboarding-specific leniency?
 - Should normal Project creation now default a blank first Bucket to `General`, or is that onboarding-specific leniency?
 - Should the ready summary choose the first active Project by existing projection order, or should it prefer the Project created during the current onboarding run?
-
