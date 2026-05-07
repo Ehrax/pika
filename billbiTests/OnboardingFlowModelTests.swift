@@ -42,7 +42,7 @@ struct OnboardingFlowModelTests {
         #expect(OnboardingFlowModel.primaryCTA(for: workspace) == .dashboard)
     }
 
-    @Test func readyCTAOpensProjectWorkbenchWhenProjectAndBucketExist() throws {
+    @Test func readyCTAOpensDashboardWhenProjectAndBucketExist() throws {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000000045")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000000045")!
         let workspace = WorkspaceSnapshot(
@@ -75,6 +75,6 @@ struct OnboardingFlowModelTests {
         )
 
         #expect(OnboardingFlowModel.summaryCards(for: workspace) == [.business, .client, .project, .bucket])
-        #expect(OnboardingFlowModel.primaryCTA(for: workspace) == .project(projectID: projectID, bucketID: bucketID))
+        #expect(OnboardingFlowModel.primaryCTA(for: workspace) == .dashboard)
     }
 }

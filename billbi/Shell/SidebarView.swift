@@ -1,9 +1,5 @@
 import SwiftUI
 
-#if os(macOS)
-import AppKit
-#endif
-
 struct SidebarView: View {
     let workspace: WorkspaceSnapshot
     @Binding var selection: BillbiShellDestination
@@ -15,10 +11,6 @@ struct SidebarView: View {
     var body: some View {
         #if os(macOS)
         List(selection: $selection) {
-            sidebarAppIcon
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-
             Section("Workspace") {
                 primarySidebarButton(for: .dashboard) {
                     Label("Dashboard", systemImage: "gauge")
@@ -94,21 +86,6 @@ struct SidebarView: View {
         .navigationTitle("Billbi")
         #endif
     }
-
-    #if os(macOS)
-    private var sidebarAppIcon: some View {
-        HStack {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 34, height: 34)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .accessibilityLabel("Billbi")
-
-            Spacer(minLength: 0)
-        }
-    }
-    #endif
 
     private var projectsFolderRow: some View {
         HStack(spacing: BillbiSpacing.xs) {

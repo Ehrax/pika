@@ -1524,6 +1524,51 @@ struct WorkspaceStoreMutationTests {
         #expect(store.workspace.activity.isEmpty)
     }
 
+    @Test func inMemoryWorkspaceStoreAllowsNameOnlyClientAfterSkippedOnboarding() throws {
+        var workspace = WorkspaceSnapshot.empty
+        workspace.onboardingCompleted = true
+        let store = WorkspaceStore(seed: workspace)
+
+        let client = try store.createClient(WorkspaceClientDraft(
+            name: "Bikepark Thunersee",
+            email: "",
+            billingAddress: "",
+            defaultTermsDays: 14
+        ))
+
+        #expect(client.name == "Bikepark Thunersee")
+        #expect(client.email == "")
+        #expect(client.billingAddress == "")
+        #expect(store.workspace.clients.map(\.id) == [client.id])
+    }
+
+    @Test func inMemoryWorkspaceStoreDefaultsBlankFirstBucketWhenCreatingProjectAfterSkippedOnboarding() throws {
+        var workspace = WorkspaceSnapshot.empty
+        workspace.onboardingCompleted = true
+        workspace.clients = [
+            WorkspaceClient(
+                id: UUID(uuidString: "10000000-0000-0000-0000-000000000901")!,
+                name: "Bikepark Thunersee",
+                email: "",
+                billingAddress: "",
+                defaultTermsDays: 14
+            ),
+        ]
+        let store = WorkspaceStore(seed: workspace)
+        let client = try #require(store.workspace.clients.first)
+
+        let project = try store.createProject(WorkspaceProjectDraft(
+            name: "Launch Site",
+            clientID: client.id,
+            currencyCode: "EUR",
+            firstBucketName: " ",
+            hourlyRateMinorUnits: 8_000
+        ))
+
+        #expect(project.name == "Launch Site")
+        #expect(project.buckets.map(\.name) == ["General"])
+    }
+
     @Test func persistentWorkspaceStoreUpdatesBusinessProfileAndInvoiceDefaults() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {

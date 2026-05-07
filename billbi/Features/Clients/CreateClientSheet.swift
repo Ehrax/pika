@@ -104,8 +104,6 @@ struct CreateClientSheet: View {
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !billingAddress.singleString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && defaultTermsDaysValue > 0
     }
 }

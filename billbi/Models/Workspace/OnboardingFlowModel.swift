@@ -166,11 +166,6 @@ struct OnboardingFlowModel: Equatable {
     }
 
     static func primaryCTA(for workspace: WorkspaceSnapshot) -> OnboardingPrimaryCTA {
-        guard let project = workspace.activeProjects.first,
-              let bucket = project.buckets.first
-        else {
-            return .dashboard
-        }
-        return .project(projectID: project.id, bucketID: bucket.id)
+        .dashboard
     }
 }

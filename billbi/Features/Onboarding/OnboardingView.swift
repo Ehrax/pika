@@ -246,9 +246,8 @@ struct OnboardingView: View {
     }
 
     private var readyStep: some View {
-        HStack {
+        VStack {
             Spacer(minLength: BillbiSpacing.xl)
-
             VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                 StatusBadge(OnboardingFlowModel.summaryCards(for: workspaceStore.workspace).isEmpty ? .neutral : .success, title: summaryBadge)
 
@@ -279,7 +278,7 @@ struct OnboardingView: View {
                 }
                 .padding(.top, BillbiSpacing.sm)
             }
-            .frame(maxWidth: OnboardingReadyLayout.contentMaximumWidth, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: OnboardingReadyLayout.contentMaximumWidth, alignment: .leading)
 
             Spacer(minLength: BillbiSpacing.xl)
         }
