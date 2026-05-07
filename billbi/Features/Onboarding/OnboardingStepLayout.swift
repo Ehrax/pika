@@ -78,21 +78,21 @@ struct OnboardingWelcomeView<Preview: View>: View {
 }
 
 struct OnboardingStepForm<Content: View, Preview: View>: View {
-    let eyebrow: String
-    let title: String
-    let subtitle: String
-    let previewEyebrow: String
-    let previewTitle: String
+    let eyebrow: LocalizedStringKey
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    let previewEyebrow: LocalizedStringKey
+    let previewTitle: LocalizedStringKey
     let errorMessage: String?
     let content: Content
     let preview: Preview
 
     init(
-        eyebrow: String,
-        title: String,
-        subtitle: String,
-        previewEyebrow: String,
-        previewTitle: String,
+        eyebrow: LocalizedStringKey,
+        title: LocalizedStringKey,
+        subtitle: LocalizedStringKey,
+        previewEyebrow: LocalizedStringKey,
+        previewTitle: LocalizedStringKey,
         errorMessage: String?,
         @ViewBuilder content: () -> Content,
         @ViewBuilder preview: () -> Preview
@@ -139,13 +139,13 @@ struct OnboardingStepForm<Content: View, Preview: View>: View {
 }
 
 struct OnboardingPreviewPanel<Content: View>: View {
-    let eyebrow: String
-    let title: String
+    let eyebrow: LocalizedStringKey
+    let title: LocalizedStringKey
     let content: Content
 
     init(
-        eyebrow: String,
-        title: String,
+        eyebrow: LocalizedStringKey,
+        title: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) {
         self.eyebrow = eyebrow
@@ -173,10 +173,10 @@ struct OnboardingPreviewPanel<Content: View>: View {
 
 struct OnboardingSetupRow: View {
     let number: String
-    let title: String
-    let detail: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
 
-    init(_ number: String, title: String, detail: String) {
+    init(_ number: String, title: LocalizedStringKey, detail: LocalizedStringKey) {
         self.number = number
         self.title = title
         self.detail = detail
@@ -203,12 +203,12 @@ struct OnboardingSetupRow: View {
 }
 
 struct OnboardingLabeledTextField: View {
-    let title: String
-    let prompt: String
+    let title: LocalizedStringKey
+    let prompt: LocalizedStringKey
     @Binding var text: String
     let onSubmit: () -> Void
 
-    init(_ title: String, text: Binding<String>, prompt: String = "", onSubmit: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, text: Binding<String>, prompt: LocalizedStringKey = "", onSubmit: @escaping () -> Void) {
         self.title = title
         self.prompt = prompt
         _text = text
@@ -225,7 +225,7 @@ struct OnboardingLabeledTextField: View {
 }
 
 struct OnboardingLabeledNumberField: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var value: Int
     let onSubmit: () -> Void
 
@@ -242,12 +242,12 @@ struct OnboardingLabeledNumberField: View {
 }
 
 struct OnboardingLabeledIntegerField: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var value: Int
     let suffix: String?
     let onSubmit: () -> Void
 
-    init(_ title: String, value: Binding<Int>, suffix: String? = nil, onSubmit: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, value: Binding<Int>, suffix: String? = nil, onSubmit: @escaping () -> Void) {
         self.title = title
         _value = value
         self.suffix = suffix
@@ -275,10 +275,10 @@ struct OnboardingLabeledIntegerField: View {
 }
 
 struct OnboardingFieldRow<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: Content
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
@@ -298,10 +298,10 @@ struct OnboardingFieldRow<Content: View>: View {
 }
 
 struct OnboardingFormSection<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: Content
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }

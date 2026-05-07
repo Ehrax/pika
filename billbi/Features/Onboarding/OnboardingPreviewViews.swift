@@ -7,7 +7,7 @@ struct OnboardingBusinessInvoiceHeaderPreview: View {
         VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading) {
-                    Text(businessDraft.businessName.nilIfTrimmedEmpty ?? "Your business")
+                    Text(businessDraft.businessName.nilIfTrimmedEmpty ?? String(localized: "Your business"))
                         .font(BillbiTypography.heading)
                     Text(businessDraft.personName)
                         .font(BillbiTypography.small)
@@ -23,15 +23,15 @@ struct OnboardingBusinessInvoiceHeaderPreview: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading) {
                     Text("FROM").font(BillbiTypography.micro).foregroundStyle(Color.gray)
-                    Text(businessDraft.businessName.nilIfTrimmedEmpty ?? "Your business")
+                    Text(businessDraft.businessName.nilIfTrimmedEmpty ?? String(localized: "Your business"))
                     Text(businessDraft.address)
                     Text(businessDraft.taxIdentifier)
                 }
                 Spacer()
                 VStack(alignment: .leading) {
                     Text("TERMS").font(BillbiTypography.micro).foregroundStyle(Color.gray)
-                    Text("Net \(businessDraft.defaultTermsDays)")
-                    Text("\(businessDraft.currencyCode) \(businessDraft.defaultHourlyRateMinorUnits / 100)/h")
+                    Text(String(localized: "Net \(businessDraft.defaultTermsDays)"))
+                    Text(String(localized: "\(businessDraft.currencyCode) \(businessDraft.defaultHourlyRateMinorUnits / 100)/h"))
                 }
             }
             Text("line items appear after time is logged...")
@@ -57,7 +57,7 @@ struct OnboardingClientListPreview: View {
             HStack {
                 Text("Clients").font(BillbiTypography.heading)
                 Spacer()
-                Text(clientDraft.name.nilIfTrimmedEmpty == nil ? "0 clients" : "1 client")
+                Text(clientDraft.name.nilIfTrimmedEmpty == nil ? String(localized: "0 clients") : String(localized: "1 client"))
                     .font(BillbiTypography.small)
                     .foregroundStyle(BillbiColor.textSecondary)
             }
@@ -75,8 +75,8 @@ struct OnboardingClientListPreview: View {
     private var previewClient: WorkspaceClient {
         WorkspaceClient(
             id: PreviewFixture.sampleClientID,
-            name: clientDraft.name.nilIfTrimmedEmpty ?? "Your first client",
-            email: clientDraft.email.nilIfTrimmedEmpty ?? "billing details later",
+            name: clientDraft.name.nilIfTrimmedEmpty ?? String(localized: "Your first client"),
+            email: clientDraft.email.nilIfTrimmedEmpty ?? String(localized: "billing details later"),
             billingAddress: clientDraft.billingAddress,
             defaultTermsDays: workspace.businessProfile.defaultTermsDays,
             isArchived: false
@@ -201,7 +201,7 @@ struct OnboardingProjectPreview: View {
         VStack(alignment: .leading, spacing: BillbiSpacing.md) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(projectDraft.name.nilIfTrimmedEmpty ?? "First project")
+                    Text(projectDraft.name.nilIfTrimmedEmpty ?? String(localized: "First project"))
                         .font(BillbiTypography.subheading)
                         .foregroundStyle(BillbiColor.textPrimary)
                     Text(selectedClientName)
@@ -214,13 +214,13 @@ struct OnboardingProjectPreview: View {
 
                 Spacer()
 
-                StatusBadge(.success, title: "Active")
+                StatusBadge(.success, title: String(localized: "Active"))
             }
 
             HStack(spacing: BillbiSpacing.sm) {
-                projectCountPill(value: 1, label: "Open")
-                projectCountPill(value: 0, label: "Ready", tone: .success)
-                projectCountPill(value: 0, label: "Invoiced", tone: .warning)
+                projectCountPill(value: 1, label: String(localized: "Open"))
+                projectCountPill(value: 0, label: String(localized: "Ready"), tone: .success)
+                projectCountPill(value: 0, label: String(localized: "Invoiced"), tone: .warning)
             }
 
             Divider()
@@ -259,11 +259,11 @@ struct OnboardingProjectPreview: View {
                 .frame(width: 14)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(projectDraft.firstBucketName.nilIfTrimmedEmpty ?? "General")
+                Text(projectDraft.firstBucketName.nilIfTrimmedEmpty ?? String(localized: "General"))
                     .font(BillbiTypography.body)
                     .foregroundStyle(BillbiColor.textPrimary)
                     .lineLimit(1)
-                Text("0.0 h · \(projectPreviewTotalAmount)")
+                Text(String(localized: "0.0 h · \(projectPreviewTotalAmount)"))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(BillbiColor.textMuted)
                     .lineLimit(1)
@@ -271,7 +271,7 @@ struct OnboardingProjectPreview: View {
 
             Spacer(minLength: BillbiSpacing.sm)
 
-            StatusBadge(.neutral, title: "Open")
+            StatusBadge(.neutral, title: String(localized: "Open"))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, BillbiSpacing.sm)

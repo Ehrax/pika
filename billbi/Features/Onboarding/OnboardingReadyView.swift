@@ -67,16 +67,16 @@ struct OnboardingReadyView: View {
         let detail: String
         switch card {
         case .business:
-            title = "BUSINESS"
+            title = String(localized: "BUSINESS")
             detail = workspace.businessProfile.businessName
         case .client:
-            title = "CLIENT"
+            title = String(localized: "CLIENT")
             detail = workspace.clients.first?.name ?? ""
         case .project:
-            title = "PROJECT"
+            title = String(localized: "PROJECT")
             detail = workspace.activeProjects.first?.name ?? ""
         case .bucket:
-            title = "FIRST BUCKET"
+            title = String(localized: "FIRST BUCKET")
             detail = workspace.activeProjects.first?.buckets.first?.name ?? ""
         }
 

@@ -215,7 +215,7 @@ struct OnboardingFlowModel: Equatable {
         return OnboardingReadySummary(
             cards: cards,
             badgeState: cards.isEmpty ? .neutral : .success,
-            badgeTitle: cards.isEmpty ? "SETUP SKIPPED" : "READY",
+            badgeTitle: cards.isEmpty ? String(localized: "SETUP SKIPPED") : String(localized: "READY"),
             title: readyTitle(for: workspace),
             subtitle: readySubtitle(for: workspace, cards: cards),
             tips: readyTips(for: workspace, cards: cards),
@@ -244,37 +244,53 @@ struct OnboardingFlowModel: Equatable {
 
     private static func readyTitle(for workspace: WorkspaceSnapshot) -> String {
         let personName = workspace.businessProfile.personName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return personName.isEmpty ? "You're ready." : "You're ready, \(personName)."
+        return personName.isEmpty ? String(localized: "You're ready.") : String(localized: "You're ready, \(personName).")
     }
 
     private static func readySubtitle(for workspace: WorkspaceSnapshot, cards: [OnboardingSummaryCard]) -> String {
         if cards.contains(.project),
            let project = workspace.activeProjects.first
         {
-            return "\(project.name) is ready with \(project.buckets.first?.name ?? "General")."
+            return String(localized: "\(project.name) is ready with \(project.buckets.first?.name ?? String(localized: "General")).")
         }
         if cards.contains(.client),
            let client = workspace.clients.first
         {
-            return "\(client.name) is saved. Add a project when you're ready."
+            return String(localized: "\(client.name) is saved. Add a project when you're ready.")
         }
         if cards.contains(.business) {
-            return "\(workspace.businessProfile.businessName) is saved. Add clients and projects next."
+            return String(localized: "\(workspace.businessProfile.businessName) is saved. Add clients and projects next.")
         }
-        return "You can start from the dashboard and fill details later."
+        return String(localized: "You can start from the dashboard and fill details later.")
     }
 
     private static func readyTips(for workspace: WorkspaceSnapshot, cards: [OnboardingSummaryCard]) -> [String] {
         if !cards.contains(.business) {
-            return ["Add your business profile in Settings", "Create your first client", "Open a project with a starter bucket"]
+            return [
+                String(localized: "Add your business profile in Settings"),
+                String(localized: "Create your first client"),
+                String(localized: "Open a project with a starter bucket"),
+            ]
         }
         if !cards.contains(.client) {
-            return ["Create your first client", "Open a project", "Review invoice details before finalizing"]
+            return [
+                String(localized: "Create your first client"),
+                String(localized: "Open a project"),
+                String(localized: "Review invoice details before finalizing"),
+            ]
         }
         if !cards.contains(.project) {
-            return ["Open a project for \(workspace.clients.first?.name ?? "this client")", "Use buckets for billable work", "Review invoice details before finalizing"]
+            return [
+                String(localized: "Open a project for \(workspace.clients.first?.name ?? String(localized: "this client"))"),
+                String(localized: "Use buckets for billable work"),
+                String(localized: "Review invoice details before finalizing"),
+            ]
         }
-        return ["Log time in the first bucket", "Mark work ready when it is invoiceable", "Finalize invoices after details are complete"]
+        return [
+            String(localized: "Log time in the first bucket"),
+            String(localized: "Mark work ready when it is invoiceable"),
+            String(localized: "Finalize invoices after details are complete"),
+        ]
     }
 
     private static func readyProjectHandoff(for workspace: WorkspaceSnapshot) -> (projectID: WorkspaceProject.ID, bucketID: WorkspaceBucket.ID)? {

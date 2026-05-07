@@ -306,7 +306,7 @@ struct OnboardingView: View {
             ?? clientDraft.name
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .nilIfEmpty
-            ?? "First client"
+            ?? String(localized: "First client")
     }
 
     private var paymentAccountNameBinding: Binding<String> {
@@ -347,11 +347,11 @@ struct OnboardingView: View {
     }
 
     private func splitStep<Content: View, Preview: View>(
-        eyebrow: String,
-        title: String,
-        subtitle: String,
-        previewEyebrow: String,
-        previewTitle: String,
+        eyebrow: LocalizedStringKey,
+        title: LocalizedStringKey,
+        subtitle: LocalizedStringKey,
+        previewEyebrow: LocalizedStringKey,
+        previewTitle: LocalizedStringKey,
         @ViewBuilder content: () -> Content,
         @ViewBuilder preview: () -> Preview
     ) -> some View {
@@ -369,19 +369,19 @@ struct OnboardingView: View {
         }
     }
 
-    private func labeledTextField(_ title: String, text: Binding<String>, prompt: String = "") -> some View {
+    private func labeledTextField(_ title: LocalizedStringKey, text: Binding<String>, prompt: LocalizedStringKey = "") -> some View {
         OnboardingLabeledTextField(title, text: text, prompt: prompt, onSubmit: continueTapped)
     }
 
-    private func labeledNumberField(_ title: String, value: Binding<Int>) -> some View {
+    private func labeledNumberField(_ title: LocalizedStringKey, value: Binding<Int>) -> some View {
         OnboardingLabeledNumberField(title: title, value: value, onSubmit: continueTapped)
     }
 
-    private func labeledIntegerField(_ title: String, value: Binding<Int>, suffix: String? = nil) -> some View {
+    private func labeledIntegerField(_ title: LocalizedStringKey, value: Binding<Int>, suffix: String? = nil) -> some View {
         OnboardingLabeledIntegerField(title, value: value, suffix: suffix, onSubmit: continueTapped)
     }
 
-    private func onboardingFormSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func onboardingFormSection<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         OnboardingFormSection(title, content: content)
     }
 
