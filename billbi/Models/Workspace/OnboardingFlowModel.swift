@@ -211,7 +211,6 @@ struct OnboardingFlowModel: Equatable {
 
     static func readySummary(for workspace: WorkspaceSnapshot) -> OnboardingReadySummary {
         let cards = readySummaryCards(for: workspace)
-        let projectHandoff = readyProjectHandoff(for: workspace)
         return OnboardingReadySummary(
             cards: cards,
             badgeState: cards.isEmpty ? .neutral : .success,
@@ -219,7 +218,7 @@ struct OnboardingFlowModel: Equatable {
             title: readyTitle(for: workspace),
             subtitle: readySubtitle(for: workspace, cards: cards),
             tips: readyTips(for: workspace, cards: cards),
-            primaryCTA: projectHandoff.map { .project(projectID: $0.projectID, bucketID: $0.bucketID) } ?? .dashboard
+            primaryCTA: .dashboard
         )
     }
 
