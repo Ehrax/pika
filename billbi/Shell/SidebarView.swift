@@ -133,14 +133,11 @@ struct SidebarView: View {
         for destination: BillbiShellDestination,
         @ViewBuilder label: () -> LabelContent
     ) -> some View {
-        Button {
-            selection = destination
-        } label: {
+        NavigationLink(value: destination) {
             label()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
         .padding(.horizontal, SidebarProjectRowLayout.contentHorizontalPadding)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
