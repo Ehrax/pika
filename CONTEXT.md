@@ -30,6 +30,8 @@
 - **Actual Profit**: paid invoice revenue minus paid expenses for a selected period.
 - **Workspace Archive**: a full backup or transfer package for restoring a Billbi workspace.
 - **Tax Export**: a focused yearly handoff package of tax-relevant paid expenses, summaries, and evidence.
+- **Tax/Legal Field**: a label/value detail that can be printed on invoices for tax identifiers, registration numbers, exemption references, or other legal invoice details.
+- **Payment Method**: a typed way the freelancer accepts payment, such as SEPA bank transfer, international bank transfer, PayPal, Wise, payment link, or other.
 - **Activity**: a local audit-style event shown in the app for notable workspace changes.
 
 ## Product Design Language
@@ -52,6 +54,36 @@
 - For German-style invoices, Billbi should distinguish ordinary invoices, small-amount invoices, and Kleinunternehmer invoices. Ordinary German invoices require the supplier's tax number or VAT ID, while Kleinunternehmer invoices must clearly state the small-business tax exemption and must not show VAT as if it were charged.
 - Billbi should avoid turning first-run onboarding into a country-specific tax setup. Near-term onboarding should collect minimal global invoicing defaults, while future country or project-specific tax configuration can tighten invoice validation for each jurisdiction.
 - Tax identifiers entered during onboarding are optional setup metadata in the near term. A missing tax identifier should not block onboarding completion; stricter tax validation belongs to later country or project-specific invoice configuration.
+- Onboarding may offer country-based **Tax/Legal Field** suggestions only after business country/region is selected, but they must be optional and skippable. Missing or skipped **Tax/Legal Fields** must not block onboarding.
+- Business country/region should be stored as an ISO 3166-1 alpha-2 country code and rendered with localized display names, not stored as free text.
+- **Tax/Legal Fields** describe what should be printed on an invoice, not how tax should be calculated. Billbi should stay simple invoice software rather than becoming a tax calculation or compliance engine.
+- **Tax/Legal Fields** are invoice data, not template-only text. Templates should render these fields through invoice slots such as sender details, recipient details, or footer, while longer legal sentences remain ordinary invoice notes or template copy until a saved note-snippet concept is designed.
+- Each **Tax/Legal Field** has its own invoice placement, defaulting to sender details for workspace/business fields and recipient details for client fields. Users may change placement to sender details, recipient details, footer, or hidden.
+- **Tax/Legal Fields** are non-blocking display data in v1. Billbi may trim empty values and avoid printing incomplete fields, but should not validate tax identifier formats or block invoice finalization because a tax/legal field is missing.
+- Billbi may offer a tiny curated preset system that suggests common **Tax/Legal Fields** from the selected business country/region. Presets create normal editable fields and must be presented as optional suggestions, not legal requirements.
+- **Tax/Legal Field** presets should live in their own product-configuration file rather than being scattered through feature views.
+- The first **Tax/Legal Field** preset catalog should be deliberately small and auditable, covering Germany, Austria, Switzerland, United Kingdom, United States, Australia, Canada, Netherlands, France, Spain, and Italy.
+- Each country in the **Tax/Legal Field** preset catalog should carry source metadata so future maintainers can review where the suggested labels came from.
+- Client detail should expose **Tax/Legal Fields** as a normal Tax & Legal section, not as a collapsed advanced-only area. Client fields default to recipient details placement.
+- Invoice placement is a default rendering hint for Billbi's bundled templates, not a hard constraint on future custom templates.
+- Invoice-specific structured **Tax/Legal Fields** are deferred. One-off legal or tax text for a single invoice should use the ordinary invoice note until repeated use proves a structured invoice-field editor is needed.
+- A **Payment Method** owns its invoice placement as a whole; individual payment fields should not be placed independently because payment instructions and payment QR codes need to stay together.
+- Billbi v1 should support footer or hidden placement for **Payment Methods**.
+- Billbi v1 **Payment Method** types are SEPA bank transfer, international bank transfer, PayPal, Wise, payment link, and other.
+- SEPA bank transfer is the only v1 **Payment Method** that generates a payment QR code. The QR code should render only when the invoice currency is EUR and the method has an IBAN.
+- A **Workspace** may store many **Payment Methods**, with one workspace default.
+- A **Client** may choose one preferred **Payment Method** from the workspace's methods.
+- A v1 **Invoice** renders exactly one **Payment Method**, resolving from an explicit invoice selection, then the **Client** preferred method, then the workspace default.
+- The **Client** preferred **Payment Method** should be editable in the client Billing details section and shown read-only in Invoice defaults alongside payment terms.
+- Invoice creation may override the resolved **Payment Method** through a compact selector, but should not expose the full payment method editor.
+- A finalized **Invoice** snapshots the selected **Payment Method**, including its printable fields and payment QR source data, so later payment setting changes do not mutate historical invoices.
+- Live **Payment Methods** are reusable defaults for future invoices only. Deleting a live **Payment Method** must not mutate finalized invoices because those invoices own their snapshotted payment details.
+- If a deleted **Payment Method** was a **Client** preference, the preference is cleared and future invoices fall back to the workspace default. If the workspace default is deleted, the user must choose another valid default before future invoices can be finalized.
+- Invoice finalization blocks when the selected **Payment Method** cannot produce valid printable payment instructions.
+- Typed **Payment Methods** may validate known field formats such as IBAN, BIC/SWIFT, email, and URL. Missing optional-but-useful fields should warn rather than block.
+- Migrating legacy business profile payment details should create the workspace default **Payment Method**. If the legacy text contains an IBAN, create a SEPA bank transfer method using parsed IBAN/BIC and the business name as account holder when needed; otherwise create an Other method with the legacy text as printable instructions.
+- Migrating legacy business profile tax identifiers should create business **Tax/Legal Fields** from the old tax identifier and economic identifier values.
+- Workspace archive support for **Tax/Legal Fields** and **Payment Methods** should be additive to the existing archive format, with legacy import paths that continue to accept the old business profile tax identifier, economic identifier, and payment details fields.
 - The near-term onboarding "ground setup" should aim to collect business name, invoice email, business address, currency, default hourly rate, and default payment terms. Legal or person name, tax ID or VAT number, phone, website, and payment details are useful but optional.
 - Optional onboarding steps for first client, project, and bucket should create real workspace records when the user completes them. Skipping optional steps should not create placeholder clients, projects, or buckets.
 - Onboarding should create a first bucket when the user chooses to create a first project, so the project is immediately usable for tracking and invoicing. Skipping project setup should not create a placeholder project or bucket.
@@ -155,6 +187,9 @@
 
 ## Relationships
 
+- A **Workspace** has zero or more sender **Tax/Legal Fields** available for future invoices.
+- A **Client** may have zero or more recipient **Tax/Legal Fields** available for invoices addressed to that client.
+- A finalized **Invoice** snapshots the **Tax/Legal Fields** that were rendered for that invoice so later profile or client changes do not mutate historical invoices.
 - An **Expense** may have zero, one, or many **Expense Evidence** attachments.
 - **Evidence Kind** helps review and export attached files, but does not block expense review.
 - **Expense Evidence** files are copied into Billbi-managed storage when imported.

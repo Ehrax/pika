@@ -1,0 +1,3 @@
+# Use flexible tax/legal fields and typed payment methods
+
+Billbi will model tax/legal invoice details as editable label/value fields that templates can place, while modeling payment as typed methods because payment behavior needs validation, default resolution, and SEPA QR generation. Tax/legal fields stay non-blocking display data so Billbi remains simple invoice software rather than a tax compliance engine; payment methods may block invoice finalization when incomplete because clients need valid payment instructions. Finalized invoices snapshot the rendered tax/legal fields and selected payment method so later profile, client, or payment-setting changes do not mutate historical invoices.
