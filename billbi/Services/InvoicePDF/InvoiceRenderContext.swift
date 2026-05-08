@@ -18,6 +18,7 @@ struct InvoiceRenderContext: Equatable {
     var businessPhone: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
     var clientName: String
     var billingAddress: String
     var invoiceNumber: String
@@ -57,6 +58,9 @@ struct InvoiceRenderContext: Equatable {
         businessPhone = profile.phone
         taxIdentifier = profile.taxIdentifier
         economicIdentifier = profile.economicIdentifier
+        senderTaxLegalFields = profile.senderTaxLegalFields
+            .filter { $0.placement == .senderDetails && $0.isRenderable }
+            .sorted { $0.sortOrder < $1.sortOrder }
         clientName = row.clientName
         billingAddress = row.billingAddress
         invoiceNumber = row.number

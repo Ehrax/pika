@@ -26,6 +26,8 @@ private extension InvoiceRenderContext {
             "businessPhone": businessPhone,
             "taxIdentifier": taxIdentifier,
             "economicIdentifier": economicIdentifier,
+            "senderTaxLegalFields": senderTaxLegalFields.map(\.mustacheValues),
+            "hasSenderTaxLegalFields": !senderTaxLegalFields.isEmpty,
             "clientName": clientName,
             "billingAddress": lineBreaks(billingAddress),
             "invoiceNumber": invoiceNumber,
@@ -53,6 +55,15 @@ private extension InvoiceRenderContext {
         value
             .htmlEscaped
             .replacingOccurrences(of: "\n", with: "<br>")
+    }
+}
+
+private extension WorkspaceTaxLegalField {
+    var mustacheValues: [String: Any] {
+        [
+            "label": label.htmlEscaped,
+            "value": value.htmlEscaped,
+        ]
     }
 }
 

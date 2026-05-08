@@ -14,6 +14,7 @@ struct BusinessProfileProjection: Codable, Equatable {
     var paymentDetails: String
     var taxNote: String
     var defaultTermsDays: Int
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
 
     private enum CodingKeys: String, CodingKey {
         case businessName
@@ -29,6 +30,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         case paymentDetails
         case taxNote
         case defaultTermsDays
+        case senderTaxLegalFields
     }
 
     init(
@@ -44,7 +46,8 @@ struct BusinessProfileProjection: Codable, Equatable {
         currencyCode: String,
         paymentDetails: String,
         taxNote: String,
-        defaultTermsDays: Int
+        defaultTermsDays: Int,
+        senderTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.businessName = businessName
         self.personName = personName
@@ -59,6 +62,9 @@ struct BusinessProfileProjection: Codable, Equatable {
         self.paymentDetails = paymentDetails
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
+        self.senderTaxLegalFields = senderTaxLegalFields.isEmpty
+            ? .migratedSenderFields(taxIdentifier: taxIdentifier, economicIdentifier: economicIdentifier)
+            : senderTaxLegalFields
     }
 
     init(from decoder: Decoder) throws {
@@ -76,6 +82,10 @@ struct BusinessProfileProjection: Codable, Equatable {
         paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
         taxNote = try container.decode(String.self, forKey: .taxNote)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        let decodedSenderFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .senderTaxLegalFields) ?? []
+        senderTaxLegalFields = decodedSenderFields.isEmpty
+            ? .migratedSenderFields(taxIdentifier: taxIdentifier, economicIdentifier: economicIdentifier)
+            : decodedSenderFields
     }
 }
 
