@@ -27,12 +27,6 @@ struct OnboardingBusinessInvoiceHeaderPreview: View {
                     Text(businessDraft.address)
                     Text(businessDraft.taxIdentifier)
                 }
-                Spacer()
-                VStack(alignment: .leading) {
-                    Text("TERMS").font(BillbiTypography.micro).foregroundStyle(Color.gray)
-                    Text(String(localized: "Net \(businessDraft.defaultTermsDays)"))
-                    Text(String(localized: "\(businessDraft.currencyCode) \(businessDraft.defaultHourlyRateMinorUnits / 100)/h"))
-                }
             }
             Text("line items appear after time is logged...")
                 .foregroundStyle(Color.gray)

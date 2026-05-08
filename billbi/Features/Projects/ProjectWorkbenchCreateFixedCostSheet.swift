@@ -28,7 +28,11 @@ struct CreateFixedCostSheet: View {
                     BillbiInputSheetFieldRow(label: "Date") {
                         DatePicker("", selection: $draftDate, displayedComponents: .date)
                             .labelsHidden()
+                        #if os(macOS)
                             .datePickerStyle(.field)
+                        #else
+                            .datePickerStyle(.compact)
+                        #endif
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Description") {

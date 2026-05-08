@@ -35,7 +35,7 @@
   _Avoid_: Accent color, primary color
 - The Swift design token for **Brand Color** should be `BillbiColor.brand`, with derived tokens `brandMuted` and `brandBorder` for subtle fills and outlines.
 - Single-series branded charts should use `BillbiColor.brand`; chart fills may use stronger local opacity from `brand` instead of introducing a separate purple shade.
-- The darker brand-family shade used for selected rows in the primary sidebar should be `BillbiColor.primarySidebarSelection`; do not use it for general buttons, chips, charts, or focused inputs.
+- The brand-family fill used for selected rows in the primary sidebar should be `BillbiColor.primarySidebarSelection`; do not use it for general buttons, chips, charts, or focused inputs.
 - Focused input outlines should use `BillbiColor.brandBorder` and the shared width token `inputFocusBorderWidth`; move non-color dimensions out of `BillbiColor` if a broader stroke/input token namespace emerges.
 - The asset-catalog `AccentColor` should match **Brand Color** in light and dark appearances so system accent surfaces do not introduce a third purple.
 - Color-token refactors should include a dark-mode visual audit of representative buttons, focused inputs, selected chips, charts, and primary sidebar selection using local macOS screenshots where practical.

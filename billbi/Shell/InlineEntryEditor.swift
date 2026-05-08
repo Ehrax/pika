@@ -99,9 +99,6 @@ struct InlineEntryEditor: View {
 
             helperLine
         }
-        .onAppear {
-            focusedField = .time
-        }
         .sheet(isPresented: $showsDatePicker) {
             EntryDatePickerSheet(
                 date: entryDate,
@@ -171,7 +168,7 @@ struct InlineEntryEditor: View {
         timeInput = "10:00-12:00"
         description = ""
         isBillable = true
-        focusedField = .time
+        focusedField = nil
     }
 
     private func saveDraft() {

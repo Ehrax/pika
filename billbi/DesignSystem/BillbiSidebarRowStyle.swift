@@ -5,7 +5,7 @@ private struct BillbiSecondarySidebarRowModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(isSelected ? BillbiColor.surfaceAlt2 : Color.clear)
+            .background(isSelected ? BillbiColor.brandMuted : Color.clear)
             .overlay(alignment: .leading) {
                 if isSelected {
                     Capsule()

@@ -56,29 +56,29 @@ struct SidebarView: View {
         #else
         List {
             Section("Workspace") {
-                sidebarButton(for: .dashboard) {
+                primarySidebarButton(for: .dashboard) {
                     Label("Dashboard", systemImage: "gauge")
                 }
-                sidebarButton(for: .projects) {
+                primarySidebarButton(for: .projects) {
                     Label("Projects", systemImage: "folder")
                 }
                 ForEach(Array(workspace.activeProjects.enumerated()), id: \.element.id) { index, project in
-                    sidebarButton(for: .project(project.id)) {
+                    NavigationLink(value: BillbiShellDestination.project(project.id)) {
                         projectRow(
                             project,
-                            appearance: SidebarProjectRowAppearance(isSelected: selection == .project(project.id)),
+                            appearance: SidebarProjectRowAppearance(isSelected: false),
                             projectDotColor: SidebarProjectDotPalette.color(forProjectAt: index)
                         )
                         .padding(.leading, 22)
                     }
                 }
-                sidebarButton(for: .invoices) {
+                primarySidebarButton(for: .invoices) {
                     Label("Invoices", systemImage: "doc.text")
                 }
-                sidebarButton(for: .clients) {
+                primarySidebarButton(for: .clients) {
                     Label("Clients", systemImage: "person.2")
                 }
-                sidebarButton(for: .settings) {
+                primarySidebarButton(for: .settings) {
                     Label("Settings", systemImage: "gearshape")
                 }
             }
@@ -160,20 +160,4 @@ struct SidebarView: View {
         .contentShape(Rectangle())
     }
 
-    #if !os(macOS)
-    private func sidebarButton<LabelContent: View>(
-        for destination: BillbiShellDestination,
-        @ViewBuilder label: () -> LabelContent
-    ) -> some View {
-        Button {
-            selection = destination
-        } label: {
-            label()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(selection == destination ? BillbiColor.primarySidebarSelection : BillbiColor.textPrimary)
-    }
-    #endif
 }

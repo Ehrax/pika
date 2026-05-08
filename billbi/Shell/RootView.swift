@@ -31,6 +31,9 @@ struct RootView: View {
                     destinationView(for: selection, workspace: workspace)
                 }
                 .navigationSplitViewStyle(.balanced)
+                .navigationDestination(for: BillbiShellDestination.self) { destination in
+                    destinationView(for: destination, workspace: workspace)
+                }
                 .onChange(of: selection) { _, newSelection in
                     AppTelemetry.shellSelectionChanged(newSelection.telemetryName)
                 }
