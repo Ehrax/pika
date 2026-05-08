@@ -96,6 +96,7 @@ enum SwiftDataWorkspaceSeedImporter {
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
             economicIdentifier: profile.economicIdentifier,
+            senderTaxLegalFieldsData: SenderTaxLegalFieldCoding.encode(profile.senderTaxLegalFields),
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,

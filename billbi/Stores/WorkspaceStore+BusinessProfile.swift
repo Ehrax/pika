@@ -13,6 +13,7 @@ extension WorkspaceStore {
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let senderTaxLegalFields = draft.senderTaxLegalFields
         guard !businessName.isEmpty,
               !email.isEmpty,
               !address.isEmpty,
@@ -38,7 +39,8 @@ extension WorkspaceStore {
             currencyCode: currencyCode,
             paymentDetails: paymentDetails,
             taxNote: taxNote,
-            defaultTermsDays: draft.defaultTermsDays
+            defaultTermsDays: draft.defaultTermsDays,
+            senderTaxLegalFields: senderTaxLegalFields
         )
 
         if isUsingNormalizedWorkspacePersistence() {

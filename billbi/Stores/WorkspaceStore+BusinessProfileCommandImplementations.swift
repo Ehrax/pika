@@ -24,6 +24,7 @@ extension WorkspaceStore {
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
             economicIdentifier: profile.economicIdentifier,
+            senderTaxLegalFieldsData: SenderTaxLegalFieldCoding.encode(profile.senderTaxLegalFields),
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
@@ -50,6 +51,7 @@ extension WorkspaceStore {
         record.address = profile.address
         record.taxIdentifier = profile.taxIdentifier
         record.economicIdentifier = profile.economicIdentifier
+        record.senderTaxLegalFieldsData = SenderTaxLegalFieldCoding.encode(profile.senderTaxLegalFields)
         record.invoicePrefix = profile.invoicePrefix
         record.nextInvoiceNumber = profile.nextInvoiceNumber
         record.currencyCode = profile.currencyCode

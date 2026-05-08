@@ -1704,6 +1704,88 @@ struct WorkspaceStoreMutationTests {
         #expect(store.workspace.businessProfile == originalProfile)
     }
 
+    @Test func workspaceStoreMutatesSenderTaxLegalFields() throws {
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [],
+            projects: [],
+            activity: []
+        ))
+
+        try store.createSenderTaxLegalField(label: "VAT ID", value: "DE123")
+        let created = try #require(store.workspace.businessProfile.senderTaxLegalFields.last)
+        #expect(created.label == "VAT ID")
+        #expect(created.value == "DE123")
+        #expect(created.placement == .senderDetails)
+        #expect(created.isVisible)
+
+        try store.updateSenderTaxLegalField(
+            id: created.id,
+            label: "VAT Number",
+            value: "DE999",
+            placement: .footer,
+            isVisible: false
+        )
+
+        let updated = try #require(
+            store.workspace.businessProfile.senderTaxLegalFields.first(where: { $0.id == created.id })
+        )
+        #expect(updated.label == "VAT Number")
+        #expect(updated.value == "DE999")
+        #expect(updated.placement == .footer)
+        #expect(!updated.isVisible)
+
+        let ids = store.workspace.businessProfile.senderTaxLegalFields.map(\.id).reversed()
+        try store.reorderSenderTaxLegalFields(Array(ids))
+        #expect(store.workspace.businessProfile.senderTaxLegalFields.map(\.id) == Array(ids))
+        #expect(store.workspace.businessProfile.senderTaxLegalFields.map(\.sortOrder) == Array(0..<ids.count))
+
+        try store.setSenderTaxLegalFieldVisibility(id: created.id, isVisible: true)
+        let visibilityUpdated = try #require(
+            store.workspace.businessProfile.senderTaxLegalFields.first(where: { $0.id == created.id })
+        )
+        #expect(visibilityUpdated.isVisible)
+
+        try store.deleteSenderTaxLegalField(id: created.id)
+        #expect(store.workspace.businessProfile.senderTaxLegalFields.contains(where: { $0.id == created.id }) == false)
+    }
+
+    @Test func persistentWorkspaceStorePersistsSenderTaxLegalFields() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let store = WorkspaceStore(
+            seed: WorkspaceSnapshot(
+                businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+                clients: [],
+                projects: [],
+                activity: []
+            ),
+            modelContext: modelContext
+        )
+
+        try store.createSenderTaxLegalField(label: "VAT ID", value: "DE123", placement: .footer)
+        let created = try #require(store.workspace.businessProfile.senderTaxLegalFields.last)
+        try store.updateSenderTaxLegalField(
+            id: created.id,
+            label: "VAT Number",
+            value: "DE999",
+            placement: .senderDetails,
+            isVisible: true
+        )
+
+        let reloaded = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedField = try #require(
+            reloaded.workspace.businessProfile.senderTaxLegalFields.first(where: { $0.id == created.id })
+        )
+        #expect(reloadedField.label == "VAT Number")
+        #expect(reloadedField.value == "DE999")
+        #expect(reloadedField.placement == .senderDetails)
+        #expect(reloadedField.isVisible)
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
         let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
         let project = try #require(store.workspace.project(named: "Launch sprint"))

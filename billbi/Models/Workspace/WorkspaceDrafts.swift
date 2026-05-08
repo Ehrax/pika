@@ -102,6 +102,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     var paymentDetails: String
     var taxNote: String
     var defaultTermsDays: Int
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
 
     init(
         businessName: String,
@@ -116,7 +117,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         currencyCode: String,
         paymentDetails: String,
         taxNote: String,
-        defaultTermsDays: Int
+        defaultTermsDays: Int,
+        senderTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.businessName = businessName
         self.personName = personName
@@ -131,6 +133,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.paymentDetails = paymentDetails
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
+        self.senderTaxLegalFields = senderTaxLegalFields
     }
 
     init(profile: BusinessProfileProjection) {
@@ -147,7 +150,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
             currencyCode: profile.currencyCode,
             paymentDetails: profile.paymentDetails,
             taxNote: profile.taxNote,
-            defaultTermsDays: profile.defaultTermsDays
+            defaultTermsDays: profile.defaultTermsDays,
+            senderTaxLegalFields: profile.senderTaxLegalFields
         )
     }
 }
