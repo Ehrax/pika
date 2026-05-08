@@ -111,4 +111,5 @@ struct CreateProjectSheet: View {
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && hourlyRate > 0
     }
+
 }

@@ -95,4 +95,5 @@ struct ProjectEditorSheet: View {
             && clientID != nil
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
 }
