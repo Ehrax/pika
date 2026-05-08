@@ -32,18 +32,22 @@
 - Do not introduce hardcoded user-facing strings in Swift code.
 - Billbi uses `billbi/Localizable.xcstrings` as the app string catalog; add new UI copy there and use SwiftUI localization APIs such as `LocalizedStringKey`, `Text("...")`, `Button("...")`, or `String(localized:)` for non-view strings. Keep internal identifiers, log event names, test names, and non-user-facing diagnostics as plain strings when appropriate.
 
-## macOS Dev Loop
+## macOS Toolchain
 
-- Use macOS app skills and build/run/debug tooling, including XcodeBuildMCP when useful, for launch failures, screenshots, runtime logs, UI-state investigation, SwiftUI refactors, AppKit/window work, packaging/signing, and telemetry.
+- Use `$build-macos-apps` for macOS build, run, debug, SwiftUI, AppKit/window, telemetry, signing, packaging, and test triage work.
 - Do not hand-roll unsigned dev launches with raw `xcodebuild` and `open` unless debugging the launch script itself. Use `./script/build_and_run.sh` so agents build the `Billbi Dev` scheme with local DerivedData and the correct derived app bundle.
 - Prefer verified launches while developing: `./script/build_and_run.sh --verify --empty --local`, `./script/build_and_run.sh --verify --seeded --local`, or `./script/build_and_run.sh --verify --bikepark --local`.
 - Seed flags map to deterministic workspace modes: `--empty`, `--seeded` / `--sample` / `--demo`, and `--bikepark` / `--bikepark-thunersee`. Pass `--local` for normal development so seed runs do not hit CloudKit.
 - If a launch fails, rerun the exact script command with `--verify`, then inspect script output, the derived app under `.build/DerivedData/Run/Build/Products/Debug Dev/`, and recent `billbi-dev` process/log output.
 
+## iOS Toolchain
+
+- Use `$build-ios-apps` when touched behavior should work cross-platform, or when a change touches iOS, App Intents, simulator behavior, SwiftUI iOS patterns, iOS performance, or iOS memory debugging.
+- Use `./script/test_ios.sh` for iOS checks. Set `IOS_DESTINATION` when the default simulator selection is not right for the machine.
+
 ## Testing
 
 - Run the focused macOS unit-test gate with `./script/test.sh`; it runs `billbiTests` only, with coverage enabled, against `Billbi Dev` / `Debug Dev` on `platform=macOS` and `CODE_SIGNING_ALLOWED=NO`.
-- Use iOS skills and `./script/test_ios.sh` only when touched behavior should work cross-platform, or when a change explicitly touches iOS, App Intents, or simulator behavior. Set `IOS_DESTINATION` when the default simulator selection is not right for the machine.
 - Run `./script/coverage.sh` when changes touch meaningful production logic or coverage risk matters.
 - Keep UI tests and launch checks focused on real product flows; the default unit-test loop intentionally excludes noisy scaffold UI tests.
 
