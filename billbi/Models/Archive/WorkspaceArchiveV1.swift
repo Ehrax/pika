@@ -124,8 +124,86 @@ struct WorkspaceArchiveV1Workspace: Codable, Equatable {
         var nextInvoiceNumber: Int
         var currencyCode: String
         var paymentDetails: String
+        var senderTaxLegalFields: [WorkspaceTaxLegalField] = []
+        var paymentMethods: [WorkspacePaymentMethod] = []
+        var defaultPaymentMethodID: UUID? = nil
         var taxNote: String
         var defaultTermsDays: Int
+
+        private enum CodingKeys: String, CodingKey {
+            case businessName
+            case personName
+            case email
+            case phone
+            case address
+            case taxIdentifier
+            case economicIdentifier
+            case invoicePrefix
+            case nextInvoiceNumber
+            case currencyCode
+            case paymentDetails
+            case senderTaxLegalFields
+            case paymentMethods
+            case defaultPaymentMethodID
+            case taxNote
+            case defaultTermsDays
+        }
+
+        init(
+            businessName: String,
+            personName: String,
+            email: String,
+            phone: String,
+            address: String,
+            taxIdentifier: String,
+            economicIdentifier: String,
+            invoicePrefix: String,
+            nextInvoiceNumber: Int,
+            currencyCode: String,
+            paymentDetails: String,
+            senderTaxLegalFields: [WorkspaceTaxLegalField] = [],
+            paymentMethods: [WorkspacePaymentMethod] = [],
+            defaultPaymentMethodID: UUID? = nil,
+            taxNote: String,
+            defaultTermsDays: Int
+        ) {
+            self.businessName = businessName
+            self.personName = personName
+            self.email = email
+            self.phone = phone
+            self.address = address
+            self.taxIdentifier = taxIdentifier
+            self.economicIdentifier = economicIdentifier
+            self.invoicePrefix = invoicePrefix
+            self.nextInvoiceNumber = nextInvoiceNumber
+            self.currencyCode = currencyCode
+            self.paymentDetails = paymentDetails
+            self.senderTaxLegalFields = senderTaxLegalFields
+            self.paymentMethods = paymentMethods
+            self.defaultPaymentMethodID = defaultPaymentMethodID
+            self.taxNote = taxNote
+            self.defaultTermsDays = defaultTermsDays
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            businessName = try container.decode(String.self, forKey: .businessName)
+            personName = try container.decode(String.self, forKey: .personName)
+            email = try container.decode(String.self, forKey: .email)
+            phone = try container.decode(String.self, forKey: .phone)
+            address = try container.decode(String.self, forKey: .address)
+            taxIdentifier = try container.decode(String.self, forKey: .taxIdentifier)
+            economicIdentifier = try container.decode(String.self, forKey: .economicIdentifier)
+            invoicePrefix = try container.decode(String.self, forKey: .invoicePrefix)
+            nextInvoiceNumber = try container.decode(Int.self, forKey: .nextInvoiceNumber)
+            currencyCode = try container.decode(String.self, forKey: .currencyCode)
+            paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
+            senderTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .senderTaxLegalFields) ?? []
+            paymentMethods = try container.decodeIfPresent([WorkspacePaymentMethod].self, forKey: .paymentMethods) ?? []
+            defaultPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .defaultPaymentMethodID)
+            taxNote = try container.decode(String.self, forKey: .taxNote)
+            defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        }
     }
 
     struct Client: Codable, Equatable {
@@ -134,7 +212,52 @@ struct WorkspaceArchiveV1Workspace: Codable, Equatable {
         var email: String
         var billingAddress: String
         var defaultTermsDays: Int
+        var preferredPaymentMethodID: UUID? = nil
         var isArchived: Bool
+        var recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case email
+            case billingAddress
+            case defaultTermsDays
+            case preferredPaymentMethodID
+            case isArchived
+            case recipientTaxLegalFields
+        }
+
+        init(
+            id: UUID,
+            name: String,
+            email: String,
+            billingAddress: String,
+            defaultTermsDays: Int,
+            preferredPaymentMethodID: UUID? = nil,
+            isArchived: Bool,
+            recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
+        ) {
+            self.id = id
+            self.name = name
+            self.email = email
+            self.billingAddress = billingAddress
+            self.defaultTermsDays = defaultTermsDays
+            self.preferredPaymentMethodID = preferredPaymentMethodID
+            self.isArchived = isArchived
+            self.recipientTaxLegalFields = recipientTaxLegalFields
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            name = try container.decode(String.self, forKey: .name)
+            email = try container.decode(String.self, forKey: .email)
+            billingAddress = try container.decode(String.self, forKey: .billingAddress)
+            defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+            preferredPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .preferredPaymentMethodID)
+            isArchived = try container.decode(Bool.self, forKey: .isArchived)
+            recipientTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .recipientTaxLegalFields) ?? []
+        }
     }
 
     struct Project: Codable, Equatable {
@@ -260,13 +383,98 @@ struct WorkspaceArchiveV1Workspace: Codable, Equatable {
         var taxIdentifier: String
         var economicIdentifier: String
         var paymentDetails: String
+        var senderTaxLegalFields: [WorkspaceTaxLegalField] = []
+        var selectedPaymentMethod: WorkspacePaymentMethod? = nil
         var taxNote: String
+
+        private enum CodingKeys: String, CodingKey {
+            case businessName
+            case personName
+            case email
+            case phone
+            case address
+            case taxIdentifier
+            case economicIdentifier
+            case paymentDetails
+            case senderTaxLegalFields
+            case selectedPaymentMethod
+            case taxNote
+        }
+
+        init(
+            businessName: String,
+            personName: String,
+            email: String,
+            phone: String,
+            address: String,
+            taxIdentifier: String,
+            economicIdentifier: String,
+            paymentDetails: String,
+            senderTaxLegalFields: [WorkspaceTaxLegalField] = [],
+            selectedPaymentMethod: WorkspacePaymentMethod? = nil,
+            taxNote: String
+        ) {
+            self.businessName = businessName
+            self.personName = personName
+            self.email = email
+            self.phone = phone
+            self.address = address
+            self.taxIdentifier = taxIdentifier
+            self.economicIdentifier = economicIdentifier
+            self.paymentDetails = paymentDetails
+            self.senderTaxLegalFields = senderTaxLegalFields
+            self.selectedPaymentMethod = selectedPaymentMethod
+            self.taxNote = taxNote
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            businessName = try container.decode(String.self, forKey: .businessName)
+            personName = try container.decode(String.self, forKey: .personName)
+            email = try container.decode(String.self, forKey: .email)
+            phone = try container.decode(String.self, forKey: .phone)
+            address = try container.decode(String.self, forKey: .address)
+            taxIdentifier = try container.decode(String.self, forKey: .taxIdentifier)
+            economicIdentifier = try container.decode(String.self, forKey: .economicIdentifier)
+            paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
+            senderTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .senderTaxLegalFields) ?? []
+            selectedPaymentMethod = try container.decodeIfPresent(WorkspacePaymentMethod.self, forKey: .selectedPaymentMethod)
+            taxNote = try container.decode(String.self, forKey: .taxNote)
+        }
     }
 
     struct ClientSnapshot: Codable, Equatable {
         var name: String
         var email: String
         var billingAddress: String
+        var recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
+
+        private enum CodingKeys: String, CodingKey {
+            case name
+            case email
+            case billingAddress
+            case recipientTaxLegalFields
+        }
+
+        init(
+            name: String,
+            email: String,
+            billingAddress: String,
+            recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
+        ) {
+            self.name = name
+            self.email = email
+            self.billingAddress = billingAddress
+            self.recipientTaxLegalFields = recipientTaxLegalFields
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decode(String.self, forKey: .name)
+            email = try container.decode(String.self, forKey: .email)
+            billingAddress = try container.decode(String.self, forKey: .billingAddress)
+            recipientTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .recipientTaxLegalFields) ?? []
+        }
     }
 
     struct InvoiceLineItem: Codable, Equatable {
@@ -437,6 +645,9 @@ enum WorkspaceArchiveCodec {
                     "nextInvoiceNumber",
                     "currencyCode",
                     "paymentDetails",
+                    "senderTaxLegalFields",
+                    "paymentMethods",
+                    "defaultPaymentMethodID",
                     "taxNote",
                     "defaultTermsDays",
                 ]
@@ -446,7 +657,16 @@ enum WorkspaceArchiveCodec {
         try validateArrayObjects(
             workspace["clients"],
             path: "workspace.clients",
-            allowedKeys: ["id", "name", "email", "billingAddress", "defaultTermsDays", "isArchived"]
+            allowedKeys: [
+                "id",
+                "name",
+                "email",
+                "billingAddress",
+                "defaultTermsDays",
+                "preferredPaymentMethodID",
+                "isArchived",
+                "recipientTaxLegalFields",
+            ]
         )
         try validateArrayObjects(
             workspace["projects"],
@@ -543,6 +763,8 @@ enum WorkspaceArchiveCodec {
                         "taxIdentifier",
                         "economicIdentifier",
                         "paymentDetails",
+                        "senderTaxLegalFields",
+                        "selectedPaymentMethod",
                         "taxNote",
                     ]
                 )
@@ -552,7 +774,7 @@ enum WorkspaceArchiveCodec {
                 try ensureAllowedKeys(
                     in: clientSnapshot,
                     path: "\(path).clientSnapshot",
-                    allowedKeys: ["name", "email", "billingAddress"]
+                    allowedKeys: ["name", "email", "billingAddress", "recipientTaxLegalFields"]
                 )
             }
         }

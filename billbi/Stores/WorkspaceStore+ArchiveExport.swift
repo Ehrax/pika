@@ -48,6 +48,9 @@ extension WorkspaceStore {
                     nextInvoiceNumber: profileRecord.nextInvoiceNumber,
                     currencyCode: profileRecord.currencyCode,
                     paymentDetails: profileRecord.paymentDetails,
+                    senderTaxLegalFields: SenderTaxLegalFieldCoding.decode(profileRecord.senderTaxLegalFieldsData),
+                    paymentMethods: PaymentMethodCoding.decode(profileRecord.paymentMethodsData),
+                    defaultPaymentMethodID: UUID(uuidString: profileRecord.defaultPaymentMethodIDString),
                     taxNote: profileRecord.taxNote,
                     defaultTermsDays: profileRecord.defaultTermsDays
                 ),
@@ -58,7 +61,10 @@ extension WorkspaceStore {
                         email: record.email,
                         billingAddress: record.billingAddress,
                         defaultTermsDays: record.defaultTermsDays,
+                        preferredPaymentMethodID: UUID(uuidString: record.preferredPaymentMethodIDString),
                         isArchived: record.isArchived
+                        ,
+                        recipientTaxLegalFields: SenderTaxLegalFieldCoding.decode(record.recipientTaxLegalFieldsData)
                     )
                 },
                 projects: sortedForArchive(projectRecords).map { record in
@@ -122,12 +128,15 @@ extension WorkspaceStore {
                             taxIdentifier: record.businessTaxIdentifier,
                             economicIdentifier: record.businessEconomicIdentifier,
                             paymentDetails: record.businessPaymentDetails,
+                            senderTaxLegalFields: SenderTaxLegalFieldCoding.decode(record.businessSenderTaxLegalFieldsData),
+                            selectedPaymentMethod: PaymentMethodCoding.decodeOptional(record.selectedPaymentMethodData),
                             taxNote: record.businessTaxNote
                         ),
                         clientSnapshot: WorkspaceArchiveV1Workspace.ClientSnapshot(
                             name: record.clientName,
                             email: record.clientEmail,
-                            billingAddress: record.clientBillingAddress
+                            billingAddress: record.clientBillingAddress,
+                            recipientTaxLegalFields: SenderTaxLegalFieldCoding.decode(record.clientRecipientTaxLegalFieldsData)
                         ),
                         template: record.template.rawValue,
                         issueDate: Self.archiveDateString(from: record.issueDate),
@@ -243,12 +252,15 @@ extension WorkspaceStore {
                         taxIdentifier: business.taxIdentifier,
                         economicIdentifier: business.economicIdentifier,
                         paymentDetails: business.paymentDetails,
+                        senderTaxLegalFields: business.senderTaxLegalFields,
+                        selectedPaymentMethod: invoice.selectedPaymentMethodSnapshot,
                         taxNote: business.taxNote
                     ),
                     clientSnapshot: WorkspaceArchiveV1Workspace.ClientSnapshot(
                         name: client?.name ?? invoice.clientName,
                         email: client?.email ?? "",
-                        billingAddress: client?.billingAddress ?? ""
+                        billingAddress: client?.billingAddress ?? "",
+                        recipientTaxLegalFields: invoice.clientSnapshot?.recipientTaxLegalFields ?? client?.recipientTaxLegalFields ?? []
                     ),
                     template: invoice.template.rawValue,
                     issueDate: Self.archiveDateString(from: invoice.issueDate),
@@ -296,6 +308,9 @@ extension WorkspaceStore {
                     nextInvoiceNumber: snapshot.businessProfile.nextInvoiceNumber,
                     currencyCode: snapshot.businessProfile.currencyCode,
                     paymentDetails: snapshot.businessProfile.paymentDetails,
+                    senderTaxLegalFields: snapshot.businessProfile.senderTaxLegalFields,
+                    paymentMethods: snapshot.businessProfile.paymentMethods,
+                    defaultPaymentMethodID: snapshot.businessProfile.defaultPaymentMethodID,
                     taxNote: snapshot.businessProfile.taxNote,
                     defaultTermsDays: snapshot.businessProfile.defaultTermsDays
                 ),
@@ -306,7 +321,9 @@ extension WorkspaceStore {
                         email: client.email,
                         billingAddress: client.billingAddress,
                         defaultTermsDays: client.defaultTermsDays,
-                        isArchived: client.isArchived
+                        preferredPaymentMethodID: client.preferredPaymentMethodID,
+                        isArchived: client.isArchived,
+                        recipientTaxLegalFields: client.recipientTaxLegalFields
                     )
                 },
                 projects: projects,

@@ -306,12 +306,16 @@ enum SwiftDataWorkspaceProjectionLoader {
             address: invoiceRecord.businessAddress,
             taxIdentifier: invoiceRecord.businessTaxIdentifier,
             economicIdentifier: invoiceRecord.businessEconomicIdentifier,
+            countryCode: fallbackProfile.countryCode,
             invoicePrefix: fallbackProfile.invoicePrefix,
             nextInvoiceNumber: fallbackProfile.nextInvoiceNumber,
             currencyCode: invoiceRecord.currencyCode.isEmpty ? fallbackProfile.currencyCode : invoiceRecord.currencyCode,
             paymentDetails: invoiceRecord.businessPaymentDetails,
+            paymentMethods: [],
+            defaultPaymentMethodID: nil,
             taxNote: invoiceRecord.businessTaxNote,
-            defaultTermsDays: fallbackProfile.defaultTermsDays
+            defaultTermsDays: fallbackProfile.defaultTermsDays,
+            senderTaxLegalFields: SenderTaxLegalFieldCoding.decode(invoiceRecord.businessSenderTaxLegalFieldsData)
         )
     }
 
@@ -335,7 +339,8 @@ enum SwiftDataWorkspaceProjectionLoader {
             billingAddress: invoiceRecord.clientBillingAddress.isEmpty ? fallbackClient?.billingAddress ?? "" : invoiceRecord.clientBillingAddress,
             defaultTermsDays: fallbackClient?.defaultTermsDays ?? fallbackTermsDays,
             preferredPaymentMethodID: fallbackClient?.preferredPaymentMethodID,
-            isArchived: fallbackClient?.isArchived ?? false
+            isArchived: fallbackClient?.isArchived ?? false,
+            recipientTaxLegalFields: SenderTaxLegalFieldCoding.decode(invoiceRecord.clientRecipientTaxLegalFieldsData)
         )
     }
 
