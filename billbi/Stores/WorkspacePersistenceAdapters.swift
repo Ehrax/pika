@@ -178,6 +178,7 @@ struct SwiftDataWorkspacePersistenceAdapter: WorkspacePersistenceAdapter {
             businessTaxIdentifier: invoice.businessSnapshot?.taxIdentifier ?? "",
             businessEconomicIdentifier: invoice.businessSnapshot?.economicIdentifier ?? "",
             businessPaymentDetails: invoice.businessSnapshot?.paymentDetails ?? "",
+            selectedPaymentMethodData: PaymentMethodCoding.encodeOptional(invoice.selectedPaymentMethodSnapshot),
             businessTaxNote: invoice.businessSnapshot?.taxNote ?? "",
             clientName: invoice.clientSnapshot?.name ?? invoice.clientName,
             clientEmail: invoice.clientSnapshot?.email ?? "",

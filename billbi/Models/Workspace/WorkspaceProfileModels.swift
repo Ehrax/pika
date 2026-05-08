@@ -115,6 +115,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
     var email: String
     var billingAddress: String
     var defaultTermsDays: Int
+    var preferredPaymentMethodID: UUID?
     var isArchived: Bool
     var recipientTaxLegalFields: [WorkspaceTaxLegalField]
 
@@ -124,6 +125,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         email: String,
         billingAddress: String,
         defaultTermsDays: Int,
+        preferredPaymentMethodID: UUID? = nil,
         isArchived: Bool = false,
         recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
@@ -132,6 +134,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         self.email = email
         self.billingAddress = billingAddress
         self.defaultTermsDays = defaultTermsDays
+        self.preferredPaymentMethodID = preferredPaymentMethodID
         self.isArchived = isArchived
         self.recipientTaxLegalFields = recipientTaxLegalFields
     }
@@ -142,6 +145,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         case email
         case billingAddress
         case defaultTermsDays
+        case preferredPaymentMethodID
         case isArchived
         case recipientTaxLegalFields
     }
@@ -153,6 +157,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         email = try container.decode(String.self, forKey: .email)
         billingAddress = try container.decode(String.self, forKey: .billingAddress)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        preferredPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .preferredPaymentMethodID)
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         recipientTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .recipientTaxLegalFields) ?? []
     }

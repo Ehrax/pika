@@ -26,6 +26,7 @@ struct ClientDetailHeader: View {
 struct ClientDetailBillingSection: View {
     @Binding var draft: WorkspaceClientDraft
     @Binding var billingAddress: BillingAddressComponents
+    let availablePaymentMethods: [WorkspacePaymentMethod]
     let hasChanges: Bool
     let saveFailure: ClientSaveFailure?
 
@@ -70,6 +71,19 @@ struct ClientDetailBillingSection: View {
                             .font(BillbiTypography.body.monospacedDigit())
                     }
                 }
+                if !availablePaymentMethods.isEmpty {
+                    ClientDivider()
+                    ClientEditableFieldRow(label: "Preferred payment") {
+                        Picker("Preferred payment", selection: $draft.preferredPaymentMethodID) {
+                            Text("Workspace default").tag(Optional<UUID>.none)
+                            ForEach(availablePaymentMethods) { method in
+                                Text(method.title).tag(Optional(method.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
 
                 if let saveFailure {
                     ClientDivider()
@@ -87,6 +101,7 @@ struct ClientDetailBillingSection: View {
 
 struct ClientDetailInvoiceDefaultsSection: View {
     let client: WorkspaceClient
+    let resolvedPaymentMethodTitle: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
@@ -98,6 +113,8 @@ struct ClientDetailInvoiceDefaultsSection: View {
                 ClientFieldRow(label: "Billing email", value: client.email)
                 ClientDivider()
                 ClientFieldRow(label: "Payment terms", value: "\(client.defaultTermsDays) days")
+                ClientDivider()
+                ClientFieldRow(label: "Payment method", value: resolvedPaymentMethodTitle)
             }
             .billbiSurface()
         }

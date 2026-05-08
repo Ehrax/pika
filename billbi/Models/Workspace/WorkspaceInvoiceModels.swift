@@ -19,6 +19,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
     var totalMinorUnits: Int
     var lineItems: [WorkspaceInvoiceLineItemSnapshot] = []
     var currencyCode: String = ""
+    var selectedPaymentMethodSnapshot: WorkspacePaymentMethod? = nil
     var note: String? = nil
 
     private enum CodingKeys: String, CodingKey {
@@ -40,6 +41,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         case totalMinorUnits
         case lineItems
         case currencyCode
+        case selectedPaymentMethodSnapshot
         case note
     }
 
@@ -62,6 +64,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         totalMinorUnits: Int,
         lineItems: [WorkspaceInvoiceLineItemSnapshot] = [],
         currencyCode: String = "",
+        selectedPaymentMethodSnapshot: WorkspacePaymentMethod? = nil,
         note: String? = nil
     ) {
         self.id = id
@@ -82,6 +85,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         self.totalMinorUnits = totalMinorUnits
         self.lineItems = lineItems
         self.currencyCode = currencyCode
+        self.selectedPaymentMethodSnapshot = selectedPaymentMethodSnapshot
         self.note = note
     }
 
@@ -105,6 +109,7 @@ struct WorkspaceInvoice: Codable, Equatable, Identifiable {
         totalMinorUnits = try container.decode(Int.self, forKey: .totalMinorUnits)
         lineItems = try container.decodeIfPresent([WorkspaceInvoiceLineItemSnapshot].self, forKey: .lineItems) ?? []
         currencyCode = try container.decodeIfPresent(String.self, forKey: .currencyCode) ?? ""
+        selectedPaymentMethodSnapshot = try container.decodeIfPresent(WorkspacePaymentMethod.self, forKey: .selectedPaymentMethodSnapshot)
         note = try container.decodeIfPresent(String.self, forKey: .note)
     }
 

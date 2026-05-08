@@ -20,6 +20,7 @@ enum WorkspaceStoreError: Error, Equatable {
     case entryNotFound
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
     case duplicateInvoiceNumber
+    case invalidPaymentMethodSelection
     case clientHasLinkedProjects
     case clientNotArchived
     case projectNotArchived
@@ -62,6 +63,8 @@ extension WorkspaceStoreError: LocalizedError {
             "Invoice cannot move from \(from.rawValue) to \(to.rawValue)."
         case .duplicateInvoiceNumber:
             "That invoice number already exists."
+        case .invalidPaymentMethodSelection:
+            "The selected payment method is incomplete."
         case .clientHasLinkedProjects:
             "This client still has linked projects."
         case .clientNotArchived:

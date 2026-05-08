@@ -144,6 +144,7 @@ struct WorkspaceStoreMutationTests {
             .template,
             .issueDate,
             .dueDate,
+            .selectedPaymentMethodID,
         ])
 
         #expect(InvoiceFinalizationField.readOnlyFields == [

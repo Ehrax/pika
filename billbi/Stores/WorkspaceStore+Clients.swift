@@ -24,6 +24,7 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
+            preferredPaymentMethodID: draft.preferredPaymentMethodID,
             isArchived: false,
             recipientTaxLegalFields: []
         )
@@ -75,6 +76,7 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
+            preferredPaymentMethodID: draft.preferredPaymentMethodID,
             isArchived: workspace.clients[clientIndex].isArchived,
             recipientTaxLegalFields: workspace.clients[clientIndex].recipientTaxLegalFields
         )

@@ -107,6 +107,7 @@ extension WorkspaceStore {
             email: draft.email,
             billingAddress: draft.billingAddress,
             defaultTermsDays: max(draft.defaultTermsDays, 1),
+            preferredPaymentMethodID: nil,
             isArchived: false
         )
         workspace.clients.append(client)
@@ -126,6 +127,7 @@ extension WorkspaceStore {
             email: draft.email,
             billingAddress: draft.billingAddress,
             defaultTermsDays: max(draft.defaultTermsDays, 1),
+            preferredPaymentMethodIDString: "",
             isArchived: false,
             createdAt: now,
             updatedAt: now

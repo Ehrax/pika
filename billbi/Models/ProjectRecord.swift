@@ -79,6 +79,7 @@ final class ClientRecord {
     var email: String = ""
     var billingAddress: String = ""
     var defaultTermsDays: Int = 14
+    var preferredPaymentMethodIDString: String = ""
     var recipientTaxLegalFieldsData: String = ""
     var isArchived: Bool = false
     var createdAt: Date = Date()
@@ -90,6 +91,7 @@ final class ClientRecord {
         email: String = "",
         billingAddress: String = "",
         defaultTermsDays: Int = 14,
+        preferredPaymentMethodIDString: String = "",
         recipientTaxLegalFieldsData: String = "",
         isArchived: Bool = false,
         createdAt: Date = .now,
@@ -100,6 +102,7 @@ final class ClientRecord {
         self.email = email
         self.billingAddress = billingAddress
         self.defaultTermsDays = defaultTermsDays
+        self.preferredPaymentMethodIDString = preferredPaymentMethodIDString
         self.recipientTaxLegalFieldsData = recipientTaxLegalFieldsData
         self.isArchived = isArchived
         self.createdAt = createdAt
@@ -303,6 +306,7 @@ final class InvoiceRecord {
     var businessTaxIdentifier: String = ""
     var businessEconomicIdentifier: String = ""
     var businessPaymentDetails: String = ""
+    var selectedPaymentMethodData: String = ""
     var businessTaxNote: String = ""
     var clientName: String = ""
     var clientEmail: String = ""
@@ -345,6 +349,7 @@ final class InvoiceRecord {
         businessTaxIdentifier: String = "",
         businessEconomicIdentifier: String = "",
         businessPaymentDetails: String = "",
+        selectedPaymentMethodData: String = "",
         businessTaxNote: String = "",
         clientName: String = "",
         clientEmail: String = "",
@@ -376,6 +381,7 @@ final class InvoiceRecord {
         self.businessTaxIdentifier = businessTaxIdentifier
         self.businessEconomicIdentifier = businessEconomicIdentifier
         self.businessPaymentDetails = businessPaymentDetails
+        self.selectedPaymentMethodData = selectedPaymentMethodData
         self.businessTaxNote = businessTaxNote
         self.clientName = clientName
         self.clientEmail = clientEmail

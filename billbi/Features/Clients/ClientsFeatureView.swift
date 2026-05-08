@@ -211,7 +211,8 @@ extension WorkspaceClientDraft {
             name: client.name,
             email: client.email,
             billingAddress: client.billingAddress,
-            defaultTermsDays: client.defaultTermsDays
+            defaultTermsDays: client.defaultTermsDays,
+            preferredPaymentMethodID: client.preferredPaymentMethodID
         )
     }
 }

@@ -149,6 +149,166 @@ struct WorkspaceInvoicingWorkflowTests {
         #expect(result.invoice.businessSnapshot?.senderTaxLegalFields.map(\.label) == ["VAT ID", "Hidden"])
     }
 
+    @Test func workflowResolvesInvoicePaymentMethodFromOverrideThenClientPreference() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000001697")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001697")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000001697")!
+        let preferredMethodID = UUID(uuidString: "3D410482-8EE9-4D6E-A8F5-6D7AF7458A20")!
+        let overrideMethodID = UUID(uuidString: "3D410482-8EE9-4D6E-A8F5-6D7AF7458A21")!
+        var profile = WorkspaceFixtures.demoWorkspace.businessProfile
+        profile.paymentMethods = [
+            WorkspacePaymentMethod(
+                id: preferredMethodID,
+                title: "Preferred",
+                type: .other,
+                instructions: "Preferred instructions"
+            ),
+            WorkspacePaymentMethod(
+                id: overrideMethodID,
+                title: "Override",
+                type: .other,
+                instructions: "Override instructions"
+            ),
+        ]
+        profile.defaultPaymentMethodID = preferredMethodID
+
+        let workspace = WorkspaceSnapshot(
+            businessProfile: profile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Workflow Client",
+                    email: "billing@workflow.example",
+                    billingAddress: "1 Workflow Way",
+                    defaultTermsDays: 21,
+                    preferredPaymentMethodID: preferredMethodID
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Workflow Project",
+                    clientName: "Workflow Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Workflow",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        let preferredResult = try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Workflow Client",
+                recipientEmail: "billing@workflow.example",
+                recipientBillingAddress: "1 Workflow Way",
+                invoiceNumber: "EHX-2026-697A",
+                template: .kleinunternehmerClassic,
+                issueDate: Date.billbiDate(year: 2026, month: 5, day: 2),
+                dueDate: Date.billbiDate(year: 2026, month: 5, day: 16),
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            )
+        )
+        #expect(preferredResult.invoice.selectedPaymentMethodSnapshot?.id == preferredMethodID)
+
+        let overrideResult = try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Workflow Client",
+                recipientEmail: "billing@workflow.example",
+                recipientBillingAddress: "1 Workflow Way",
+                invoiceNumber: "EHX-2026-697B",
+                template: .kleinunternehmerClassic,
+                issueDate: Date.billbiDate(year: 2026, month: 5, day: 2),
+                dueDate: Date.billbiDate(year: 2026, month: 5, day: 16),
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: "",
+                selectedPaymentMethodID: overrideMethodID
+            )
+        )
+        #expect(overrideResult.invoice.selectedPaymentMethodSnapshot?.id == overrideMethodID)
+    }
+
+    @Test func workflowRejectsInvalidSelectedPaymentMethod() {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001696")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000001696")!
+        var profile = WorkspaceFixtures.demoWorkspace.businessProfile
+        profile.paymentMethods = [
+            WorkspacePaymentMethod(
+                id: UUID(uuidString: "3D410482-8EE9-4D6E-A8F5-6D7AF7458A22")!,
+                title: "Broken",
+                type: .other,
+                instructions: ""
+            ),
+        ]
+        profile.defaultPaymentMethodID = profile.paymentMethods.first?.id
+
+        let workspace = WorkspaceSnapshot(
+            businessProfile: profile,
+            clients: [],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Workflow Project",
+                    clientName: "Workflow Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Workflow",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        #expect(throws: WorkspaceInvoicingWorkflowError.invalidPaymentMethodSelection) {
+            try WorkspaceInvoicingWorkflow().finalizeInvoice(
+                workspace: workspace,
+                projectID: projectID,
+                bucketID: bucketID,
+                draft: InvoiceFinalizationDraft(
+                    recipientName: "Workflow Client",
+                    recipientEmail: "billing@workflow.example",
+                    recipientBillingAddress: "1 Workflow Way",
+                    invoiceNumber: "EHX-2026-696",
+                    template: .kleinunternehmerClassic,
+                    issueDate: Date.billbiDate(year: 2026, month: 5, day: 2),
+                    dueDate: Date.billbiDate(year: 2026, month: 5, day: 16),
+                    servicePeriod: "May 2026",
+                    currencyCode: "EUR",
+                    taxNote: ""
+                )
+            )
+        }
+    }
+
     @Test func workflowSnapshotsRecipientTaxLegalFieldsFromClient() throws {
         let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000001698")!
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001698")!

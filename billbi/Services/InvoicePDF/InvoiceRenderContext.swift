@@ -84,7 +84,7 @@ struct InvoiceRenderContext: Equatable {
             )
         }
         totalLabel = row.totalLabel
-        let selectedPaymentMethod = profile.defaultPaymentMethod
+        let selectedPaymentMethod = row.invoice.selectedPaymentMethodSnapshot ?? profile.defaultPaymentMethod
         let selectedPaymentDetails = selectedPaymentMethod?.printableInstructions ?? profile.paymentDetails
         paymentDetails = selectedPaymentDetails
         let parsedPaymentDetails = ParsedPaymentDetails(rawValue: selectedPaymentDetails)

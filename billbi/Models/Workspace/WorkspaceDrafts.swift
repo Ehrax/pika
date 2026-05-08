@@ -11,6 +11,7 @@ struct InvoiceFinalizationDraft: Equatable {
     var servicePeriod: String
     var currencyCode: String
     var taxNote: String
+    var selectedPaymentMethodID: UUID? = nil
 }
 
 enum InvoiceFinalizationField: CaseIterable, Equatable {
@@ -24,10 +25,11 @@ enum InvoiceFinalizationField: CaseIterable, Equatable {
     case servicePeriod
     case currencyCode
     case taxNote
+    case selectedPaymentMethodID
 
     var isEditable: Bool {
         switch self {
-        case .template, .issueDate, .dueDate:
+        case .template, .issueDate, .dueDate, .selectedPaymentMethodID:
             true
         case .recipientName,
              .recipientEmail,
@@ -92,6 +94,7 @@ struct WorkspaceClientDraft: Equatable {
     var email: String
     var billingAddress: String
     var defaultTermsDays: Int
+    var preferredPaymentMethodID: UUID?
 }
 
 struct WorkspaceBusinessProfileDraft: Equatable {

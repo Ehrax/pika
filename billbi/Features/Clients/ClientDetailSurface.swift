@@ -31,11 +31,16 @@ struct ClientDetailSurface: View {
                 ClientDetailBillingSection(
                     draft: $draft,
                     billingAddress: $billingAddress,
+                    availablePaymentMethods: workspaceStore.workspace.businessProfile.paymentMethods
+                        .sorted(by: { $0.sortOrder < $1.sortOrder }),
                     hasChanges: hasChanges,
                     saveFailure: saveFailure
                 )
 
-                ClientDetailInvoiceDefaultsSection(client: client)
+                ClientDetailInvoiceDefaultsSection(
+                    client: client,
+                    resolvedPaymentMethodTitle: resolvedPaymentMethodTitle
+                )
             }
             .padding(.horizontal, BillbiSpacing.xl + BillbiSpacing.md)
             .padding(.vertical, BillbiSpacing.lg)
@@ -156,6 +161,15 @@ struct ClientDetailSurface: View {
 
     private var canDeleteClient: Bool {
         client.isArchived && projectCount == 0
+    }
+
+    private var resolvedPaymentMethodTitle: String {
+        workspaceStore.workspace.businessProfile
+            .resolvedPaymentMethod(
+                invoiceOverrideID: nil,
+                clientPreferredID: client.preferredPaymentMethodID
+            )?
+            .title ?? String(localized: "Workspace default")
     }
 
     private func saveChanges() {

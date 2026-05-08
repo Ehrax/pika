@@ -158,6 +158,7 @@ struct InvoiceDraftPresentation: Identifiable {
     let projectID: WorkspaceProject.ID
     let bucketID: WorkspaceBucket.ID
     let draft: InvoiceFinalizationDraft
+    let availablePaymentMethods: [WorkspacePaymentMethod]
     let totalLabel: String
     let lineItems: [WorkspaceBucketLineItemProjection]
 }

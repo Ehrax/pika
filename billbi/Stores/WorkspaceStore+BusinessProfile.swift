@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 extension WorkspaceStore {
     func updateBusinessProfile(_ draft: WorkspaceBusinessProfileDraft) throws {
@@ -51,12 +52,35 @@ extension WorkspaceStore {
 
         if isUsingNormalizedWorkspacePersistence() {
             try updateBusinessProfileInNormalizedRecords(with: profile)
+            try clearOrphanedClientPaymentMethodReferences(validMethodIDs: Set(profile.paymentMethods.map(\.id)))
             try saveAndReloadNormalizedWorkspacePreservingActivity()
         } else {
             workspace.businessProfile = profile
+            clearOrphanedClientPaymentMethodReferencesInSnapshot(validMethodIDs: Set(profile.paymentMethods.map(\.id)))
         }
 
         AppTelemetry.settingsSaved()
         try persistWorkspace()
+    }
+
+    private func clearOrphanedClientPaymentMethodReferencesInSnapshot(validMethodIDs: Set<UUID>) {
+        for index in workspace.clients.indices {
+            if let preferredID = workspace.clients[index].preferredPaymentMethodID,
+               !validMethodIDs.contains(preferredID) {
+                workspace.clients[index].preferredPaymentMethodID = nil
+            }
+        }
+    }
+
+    private func clearOrphanedClientPaymentMethodReferences(validMethodIDs: Set<UUID>) throws {
+        let clientRecords = try normalizedRecordStore.fetch(FetchDescriptor<ClientRecord>())
+        for record in clientRecords {
+            guard let preferredID = UUID(uuidString: record.preferredPaymentMethodIDString),
+                  !validMethodIDs.contains(preferredID) else {
+                continue
+            }
+            record.preferredPaymentMethodIDString = ""
+            record.updatedAt = Date.now
+        }
     }
 }
