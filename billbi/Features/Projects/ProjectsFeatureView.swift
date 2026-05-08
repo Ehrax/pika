@@ -159,7 +159,7 @@ struct ProjectsFeatureView: View {
 
     private func projectGrid(_ projects: [WorkspaceProject]) -> some View {
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 280), spacing: BillbiSpacing.md)],
+            columns: [GridItem(.adaptive(minimum: 360), spacing: BillbiSpacing.md)],
             spacing: BillbiSpacing.md
         ) {
             ForEach(projects) { project in

@@ -175,7 +175,7 @@ struct BillbiSecondarySidebarColumn<Actions: View, Controls: View, Content: View
 
     private var header: some View {
         HStack(alignment: .top, spacing: BillbiSpacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(BillbiTypography.heading)
                     .foregroundStyle(BillbiColor.textPrimary)
@@ -183,7 +183,7 @@ struct BillbiSecondarySidebarColumn<Actions: View, Controls: View, Content: View
 
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(BillbiTypography.body.weight(.medium))
+                        .font(BillbiTypography.body)
                         .foregroundStyle(BillbiColor.textSecondary)
                         .lineLimit(1)
                 }
