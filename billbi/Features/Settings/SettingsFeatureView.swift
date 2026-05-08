@@ -10,7 +10,6 @@ struct SettingsFeatureView: View {
     @State private var address = BillingAddressComponents()
     @State private var paymentDetails = PaymentDetailsComponents()
     @State private var saveFailure: SettingsSaveFailure?
-    @FocusState private var focusedField: SettingsField?
 
     init(profile: BusinessProfileProjection, workspaceStore: WorkspaceStore? = nil) {
         self.profile = profile
@@ -98,7 +97,6 @@ struct SettingsFeatureView: View {
                     SettingsInvoiceDefaultsSection(draft: $draft)
                 case .tax:
                     SettingsTaxIdentitySection(draft: $draft)
-                    SettingsTaxNoteSection(taxNote: $draft.taxNote, focusedField: $focusedField)
                 case .payment:
                     SettingsPaymentDetailsSection(paymentDetails: $paymentDetails)
                 }
@@ -154,7 +152,7 @@ struct SettingsFeatureView: View {
             saveFailure = nil
         } catch WorkspaceStoreError.invalidBusinessProfile {
             saveFailure = SettingsSaveFailure(
-                message: String(localized: "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required.")
+                message: String(localized: "Business name, email, address, invoice prefix, payment details, payment terms, and next number are required.")
             )
         } catch {
             saveFailure = SettingsSaveFailure(message: String(localized: "Settings could not be saved."))

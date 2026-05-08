@@ -19,6 +19,30 @@ struct OnboardingFlowModelTests {
         #expect(flow.step == .ready)
     }
 
+    @Test func emptyWorkspaceBusinessDraftLeavesPreviewDefaultsAsPlaceholders() {
+        let draft = OnboardingBusinessDraft(profile: WorkspaceSnapshot.empty.businessProfile)
+
+        #expect(draft.invoicePrefix == "")
+        #expect(draft.defaultTermsDays == 0)
+    }
+
+    @Test func savedBusinessProfileDraftKeepsConfiguredInvoiceDefaults() {
+        let draft = OnboardingBusinessDraft(profile: BusinessProfileProjection(
+            businessName: "North Coast Studio",
+            email: "",
+            address: "",
+            invoicePrefix: "NCS",
+            nextInvoiceNumber: 1,
+            currencyCode: "EUR",
+            paymentDetails: "",
+            taxNote: "",
+            defaultTermsDays: 21
+        ))
+
+        #expect(draft.invoicePrefix == "NCS")
+        #expect(draft.defaultTermsDays == 21)
+    }
+
     @Test func readySummaryOnlyIncludesExistingSetupData() {
         let workspace = WorkspaceSnapshot(
             onboardingCompleted: false,
@@ -237,11 +261,41 @@ struct OnboardingFlowModelTests {
             workspace: workspaceWithClient,
             businessDraft: businessDraft,
             clientDraft: clientDraft,
-            projectDraft: emptyProjectDraft
+            projectDraft: OnboardingProjectDraft(
+                name: "Launch site",
+                clientID: client.id,
+                currencyCode: "",
+                firstBucketName: "Strategy",
+                hourlyRateMinorUnits: 8_000
+            )
+        ) == .advanceOnly)
+        #expect(flow.continueAction(
+            workspace: workspaceWithClient,
+            businessDraft: businessDraft,
+            clientDraft: clientDraft,
+            projectDraft: OnboardingProjectDraft(
+                name: "Launch site",
+                clientID: client.id,
+                currencyCode: "EUR",
+                firstBucketName: "Strategy",
+                hourlyRateMinorUnits: 0
+            )
+        ) == .advanceOnly)
+        #expect(flow.continueAction(
+            workspace: workspaceWithClient,
+            businessDraft: businessDraft,
+            clientDraft: clientDraft,
+            projectDraft: OnboardingProjectDraft(
+                name: "Launch site",
+                clientID: client.id,
+                currencyCode: "EUR",
+                firstBucketName: "",
+                hourlyRateMinorUnits: 8_000
+            )
         ) == .saveProject(OnboardingProjectDraft(
             name: "Launch site",
             clientID: client.id,
-            currencyCode: "",
+            currencyCode: "EUR",
             firstBucketName: "",
             hourlyRateMinorUnits: 8_000
         )))

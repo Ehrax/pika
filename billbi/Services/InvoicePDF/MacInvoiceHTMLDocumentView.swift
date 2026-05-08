@@ -48,13 +48,26 @@ final class InvoiceHTMLPreviewState: ObservableObject {
             throw InvoicePDFService.Error.renderingFailed
         }
 
+        let previewPageZoom = webView.pageZoom
+        webView.pageZoom = InvoicePDFPageGeometry.exportPageZoom
         return try await withCheckedThrowingContinuation { continuation in
             let configuration = WKPDFConfiguration()
+            configuration.rect = InvoicePDFPageGeometry.a4Rect
             webView.createPDF(configuration: configuration) { result in
+                webView.pageZoom = previewPageZoom
                 continuation.resume(with: result)
             }
         }
     }
+}
+
+private enum InvoicePDFPageGeometry {
+    static let a4Size = CGSize(width: 595.28, height: 841.89)
+    static let a4Rect = CGRect(origin: .zero, size: a4Size)
+    static let exportPageZoom = pdfPointsPerInch / cssPixelsPerInch
+
+    private static let pdfPointsPerInch = 72.0
+    private static let cssPixelsPerInch = 96.0
 }
 
 struct MacInvoiceHTMLDocumentView: NSViewRepresentable {

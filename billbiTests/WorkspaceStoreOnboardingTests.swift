@@ -16,22 +16,36 @@ struct WorkspaceStoreOnboardingTests {
 
     @Test func onboardingBusinessSaveAllowsBusinessNameOnly() throws {
         let store = WorkspaceStore(seed: .empty)
+        #expect(OnboardingBusinessDraft().defaultTermsDays == 0)
 
         try store.saveOnboardingBusiness(
             OnboardingBusinessDraft(
                 businessName: "North Coast Studio",
                 email: "",
                 address: "",
-                currencyCode: "CHF",
-                defaultTermsDays: 0
+                currencyCode: "CHF"
             )
         )
 
         #expect(store.workspace.businessProfile.businessName == "North Coast Studio")
         #expect(store.workspace.businessProfile.email == "")
         #expect(store.workspace.businessProfile.address == "")
+        #expect(store.workspace.businessProfile.invoicePrefix == "INV")
         #expect(store.workspace.businessProfile.currencyCode == "CHF")
         #expect(store.workspace.businessProfile.defaultTermsDays == 14)
+    }
+
+    @Test func onboardingBusinessSavePersistsConfiguredInvoicePrefix() throws {
+        let store = WorkspaceStore(seed: .empty)
+
+        try store.saveOnboardingBusiness(
+            OnboardingBusinessDraft(
+                businessName: "North Coast Studio",
+                invoicePrefix: "  ncs  "
+            )
+        )
+
+        #expect(store.workspace.businessProfile.invoicePrefix == "NCS")
     }
 
     @Test func onboardingClientAndProjectRespectThresholdsAndGeneralBucketDefault() throws {
@@ -59,11 +73,32 @@ struct WorkspaceStoreOnboardingTests {
         #expect(emptyProject == nil)
         #expect(store.workspace.projects.isEmpty)
 
-        let savedProject = try store.saveOnboardingProject(OnboardingProjectDraft(
+        let projectWithoutCurrency = try store.saveOnboardingProject(OnboardingProjectDraft(
             name: "Launch site",
             clientID: client.id,
             currencyCode: "",
-            firstBucketName: " "
+            firstBucketName: "General",
+            hourlyRateMinorUnits: 8_000
+        ))
+        #expect(projectWithoutCurrency == nil)
+        #expect(store.workspace.projects.isEmpty)
+
+        let projectWithoutRate = try store.saveOnboardingProject(OnboardingProjectDraft(
+            name: "Launch site",
+            clientID: client.id,
+            currencyCode: "EUR",
+            firstBucketName: "General",
+            hourlyRateMinorUnits: 0
+        ))
+        #expect(projectWithoutRate == nil)
+        #expect(store.workspace.projects.isEmpty)
+
+        let savedProject = try store.saveOnboardingProject(OnboardingProjectDraft(
+            name: "Launch site",
+            clientID: client.id,
+            currencyCode: "EUR",
+            firstBucketName: " ",
+            hourlyRateMinorUnits: 8_000
         ))
         let project = try #require(savedProject)
         #expect(project.name == "Launch site")

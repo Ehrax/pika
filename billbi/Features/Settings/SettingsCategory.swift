@@ -28,7 +28,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .invoicing:
             String(localized: "Numbering, currency, and payment terms.")
         case .tax:
-            String(localized: "Identifiers and VAT notes for invoice compliance.")
+            String(localized: "Identifiers for invoice compliance.")
         case .payment:
             String(localized: "Bank details printed in invoice footers.")
         }
@@ -46,10 +46,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             "creditcard"
         }
     }
-}
-
-enum SettingsField: Hashable {
-    case taxNote
 }
 
 struct SettingsSaveFailure: Identifiable {

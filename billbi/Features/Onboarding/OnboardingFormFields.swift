@@ -42,12 +42,14 @@ struct OnboardingLabeledNumberField: View {
 struct OnboardingLabeledIntegerField: View {
     let title: LocalizedStringKey
     @Binding var value: Int
+    let prompt: String?
     let suffix: String?
     let onSubmit: () -> Void
 
-    init(_ title: LocalizedStringKey, value: Binding<Int>, suffix: String? = nil, onSubmit: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, value: Binding<Int>, prompt: String? = nil, suffix: String? = nil, onSubmit: @escaping () -> Void) {
         self.title = title
         _value = value
+        self.prompt = prompt
         self.suffix = suffix
         self.onSubmit = onSubmit
     }
@@ -55,10 +57,7 @@ struct OnboardingLabeledIntegerField: View {
     var body: some View {
         OnboardingFieldRow(title) {
             HStack(spacing: BillbiSpacing.sm) {
-                TextField(title, value: Binding(
-                    get: { max(value, 0) },
-                    set: { value = max($0, 0) }
-                ), format: .number)
+                integerTextField
                 .textFieldStyle(.billbiInput)
                 .onSubmit { onSubmit() }
 
@@ -69,6 +68,27 @@ struct OnboardingLabeledIntegerField: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var integerTextField: some View {
+        if let prompt {
+            TextField(title, text: textBinding, prompt: Text(verbatim: prompt))
+        } else {
+            TextField(title, text: textBinding)
+        }
+    }
+
+    private var textBinding: Binding<String> {
+        Binding(
+            get: {
+                guard value > 0 else { return "" }
+                return String(value)
+            },
+            set: { newValue in
+                value = max(Int(newValue.filter(\.isNumber)) ?? 0, 0)
+            }
+        )
     }
 }
 

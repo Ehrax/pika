@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ProjectWorkbenchView: View {
+    @Environment(\.invoicePDFService) private var invoicePDFService
+
     let project: WorkspaceProject?
     let workspaceStore: WorkspaceStore
     let currentDate: Date
@@ -14,6 +16,9 @@ struct ProjectWorkbenchView: View {
     @State private var showsRemoveBucketConfirmation = false
     @State private var bucketPendingRemovalID: WorkspaceBucket.ID?
     @State private var showsEditBucket = false
+    #if os(macOS)
+    @StateObject private var invoicePreviewState = InvoiceHTMLPreviewState()
+    #endif
 
     private let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
 
@@ -48,6 +53,8 @@ struct ProjectWorkbenchView: View {
                     onUpdateEntryDate: updateEntryDate(projectID:bucketID:row:date:),
                     onMarkReady: markSelectedBucketReady,
                     onCreateInvoice: prepareInvoiceDraft(projectID:bucketID:totalLabel:lineItems:),
+                    canOpenInvoicePDF: canOpenSelectedInvoicePDF,
+                    onOpenInvoicePDF: openSelectedInvoicePDF,
                     onArchiveBucket: { bucketID in
                         selectedBucketID = bucketID
                         showsArchiveBucketConfirmation = true
@@ -88,6 +95,11 @@ struct ProjectWorkbenchView: View {
             addFixedCost: addFixedCost,
             finalizeInvoice: finalizeInvoice
         )
+        #if os(macOS)
+        .background {
+            selectedInvoicePDFRenderer
+        }
+        #endif
     }
 
     @ToolbarContentBuilder
@@ -197,6 +209,32 @@ struct ProjectWorkbenchView: View {
         guard project?.isArchived == false, let selectedBucket else { return false }
         return selectedBucket.status == .archived
     }
+
+    private var canOpenSelectedInvoicePDF: Bool {
+        #if os(macOS)
+        guard let row = selectedInvoiceRow else { return false }
+        return invoicePreviewState.requestedInvoiceID == row.id && invoicePreviewState.canExportSelectedDocument
+        #else
+        false
+        #endif
+    }
+
+    #if os(macOS)
+    @ViewBuilder
+    private var selectedInvoicePDFRenderer: some View {
+        if let row = selectedInvoiceRow, let rendered = renderedInvoiceHTMLIfAvailable(for: row) {
+            MacInvoiceHTMLDocumentView(
+                rendered: rendered,
+                invoiceID: row.id,
+                state: invoicePreviewState
+            )
+            .frame(width: 1, height: 1)
+            .opacity(0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+    #endif
 
     private func markSelectedBucketReady() {
         guard let project, let bucketID = project.normalizedBucketID(selectedBucketID) else { return }
@@ -406,6 +444,46 @@ struct ProjectWorkbenchView: View {
         } catch {
             reportWorkflowActionFailure("cancel_invoice", error)
         }
+    }
+
+    private func openSelectedInvoicePDF() {
+        #if os(macOS)
+        Task { @MainActor in
+            do {
+                guard let row = selectedInvoiceRow else { throw PDFActionError.noSelectedInvoice }
+                let renderedHTML = try renderInvoiceHTML(for: row)
+                let data = try await invoicePreviewState.pdfDataForSelectedDocument()
+                let renderedPDF = InvoicePDFService.RenderedInvoice(
+                    data: data,
+                    metadata: renderedHTML.metadata
+                )
+                try InvoicePDFActions.openRendered(renderedPDF)
+            } catch {
+                reportInvoicePDFActionFailure(error)
+            }
+        }
+        #endif
+    }
+
+    private func renderInvoiceHTML(
+        for row: WorkspaceInvoiceRowProjection
+    ) throws -> InvoicePDFService.RenderedInvoiceHTML {
+        try invoicePDFService.renderInvoiceHTML(
+            profile: row.businessProfile ?? workspaceStore.workspace.businessProfile,
+            row: row
+        )
+    }
+
+    private func renderedInvoiceHTMLIfAvailable(
+        for row: WorkspaceInvoiceRowProjection
+    ) -> InvoicePDFService.RenderedInvoiceHTML? {
+        try? renderInvoiceHTML(for: row)
+    }
+
+    private func reportInvoicePDFActionFailure(_ error: Error) {
+        let message = error.localizedDescription
+        actionFailure = WorkflowActionFailure(message: message)
+        AppTelemetry.invoicePDFActionFailed(action: "open", message: message)
     }
 
     private func reportWorkflowActionFailure(_ action: String, _ error: Error) {

@@ -15,6 +15,8 @@ struct ProjectWorkbenchContent: View {
     let onUpdateEntryDate: (WorkspaceProject.ID, WorkspaceBucket.ID, WorkspaceBucketEntryRowProjection, Date) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: (WorkspaceProject.ID, WorkspaceBucket.ID, String, [WorkspaceBucketLineItemProjection]) -> Void
+    let canOpenInvoicePDF: Bool
+    let onOpenInvoicePDF: () -> Void
     let onArchiveBucket: (WorkspaceBucket.ID) -> Void
     let onRemoveBucket: (WorkspaceBucket.ID) -> Void
 
@@ -106,7 +108,9 @@ struct ProjectWorkbenchContent: View {
                     projection.totalLabel,
                     projection.lineItems
                 )
-            }
+            },
+            canOpenInvoicePDF: canOpenInvoicePDF,
+            onOpenInvoicePDF: onOpenInvoicePDF
         )
     }
 }

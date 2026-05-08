@@ -44,6 +44,40 @@ enum InvoiceListFilter: String, CaseIterable, Equatable, Identifiable {
         }
     }
 
+    var tone: BillbiStatusTone? {
+        switch self {
+        case .all:
+            nil
+        case .finalized:
+            .warning
+        case .sent:
+            .info
+        case .paid:
+            .success
+        case .overdue:
+            .danger
+        case .cancelled:
+            .neutral
+        }
+    }
+
+    func count(in summary: InvoiceListSummary) -> Int {
+        switch self {
+        case .all:
+            summary.total
+        case .finalized:
+            summary.finalized
+        case .sent:
+            summary.sent
+        case .paid:
+            summary.paid
+        case .overdue:
+            summary.overdue
+        case .cancelled:
+            summary.cancelled
+        }
+    }
+
     func includes(_ row: WorkspaceInvoiceRowProjection) -> Bool {
         switch self {
         case .all:

@@ -33,23 +33,6 @@ struct DashboardFeatureView: View {
         }
         .background(BillbiColor.background)
         .navigationTitle("Dashboard")
-        .toolbar {
-            ToolbarItemGroup {
-                Button {
-                } label: {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .disabled(true)
-                .help("Search lands in a later task")
-
-                Button {
-                } label: {
-                    Label("New Invoice", systemImage: "plus")
-                }
-                .disabled(true)
-                .help("Invoice creation lands in a later task")
-            }
-        }
         .onAppear {
             AppTelemetry.dashboardLoaded(summary)
         }

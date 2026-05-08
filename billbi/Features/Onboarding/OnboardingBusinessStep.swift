@@ -25,9 +25,8 @@ struct OnboardingBusinessStep: View {
 
                 OnboardingFormSection("Invoice defaults") {
                     labeledTextField("Tax ID / VAT no.", text: $businessDraft.taxIdentifier)
-                    labeledCurrencyPicker
-                    labeledNumberField("Default hourly rate", value: $businessDraft.defaultHourlyRateMinorUnits)
-                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays)
+                    labeledTextField("Invoice prefix", text: $businessDraft.invoicePrefix, prompt: "PREVIEW")
+                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays, prompt: "14")
                 }
 
                 OnboardingFormSection("Bank account") {
@@ -82,23 +81,7 @@ struct OnboardingBusinessStep: View {
         OnboardingLabeledTextField(title, text: text, prompt: prompt, onSubmit: onSubmit)
     }
 
-    private func labeledNumberField(_ title: LocalizedStringKey, value: Binding<Int>) -> some View {
-        OnboardingLabeledNumberField(title: title, value: value, onSubmit: onSubmit)
-    }
-
-    private func labeledIntegerField(_ title: LocalizedStringKey, value: Binding<Int>) -> some View {
-        OnboardingLabeledIntegerField(title, value: value, onSubmit: onSubmit)
-    }
-
-    private var labeledCurrencyPicker: some View {
-        OnboardingFieldRow("Currency") {
-            Picker("Currency", selection: $businessDraft.currencyCode) {
-                Text("EUR").tag("EUR")
-                Text("CHF").tag("CHF")
-                Text("USD").tag("USD")
-                Text("GBP").tag("GBP")
-            }
-            .pickerStyle(.segmented)
-        }
+    private func labeledIntegerField(_ title: LocalizedStringKey, value: Binding<Int>, prompt: String? = nil) -> some View {
+        OnboardingLabeledIntegerField(title, value: value, prompt: prompt, onSubmit: onSubmit)
     }
 }

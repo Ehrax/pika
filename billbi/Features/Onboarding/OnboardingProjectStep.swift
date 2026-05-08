@@ -20,11 +20,12 @@ struct OnboardingProjectStep: View {
                 OnboardingFormSection("Project") {
                     selectedClientContext
                     labeledTextField("Project name", text: $projectDraft.name)
-                    labeledNumberField("Project rate", value: $projectDraft.hourlyRateMinorUnits)
                 }
 
                 OnboardingFormSection("First bucket") {
                     labeledTextField("Bucket name", text: $projectDraft.firstBucketName, prompt: "General")
+                    labeledCurrencyPicker
+                    labeledNumberField("Hourly rate", value: $projectDraft.hourlyRateMinorUnits)
                     Text("Leave it blank and Billbi will create a General bucket.")
                         .font(BillbiTypography.small)
                         .foregroundStyle(BillbiColor.textSecondary)
@@ -53,6 +54,18 @@ struct OnboardingProjectStep: View {
                 .font(BillbiTypography.body)
                 .foregroundStyle(BillbiColor.textPrimary)
                 .lineLimit(1)
+        }
+    }
+
+    private var labeledCurrencyPicker: some View {
+        OnboardingFieldRow("Currency") {
+            Picker("Currency", selection: $projectDraft.currencyCode) {
+                Text("EUR").tag("EUR")
+                Text("CHF").tag("CHF")
+                Text("USD").tag("USD")
+                Text("GBP").tag("GBP")
+            }
+            .pickerStyle(.segmented)
         }
     }
 }

@@ -46,7 +46,7 @@ enum InvoiceWorkflowPolicy {
         case .finalized:
             return .warning
         case .sent:
-            return .neutral
+            return .info
         case .paid:
             return .success
         case .cancelled:

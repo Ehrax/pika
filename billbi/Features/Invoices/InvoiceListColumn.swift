@@ -10,13 +10,12 @@ struct InvoiceListColumn: View {
     var body: some View {
         BillbiSecondarySidebarColumn(
             title: "Invoices",
-            subtitle: summary.displayText,
             sectionTitle: filter.sectionTitle,
             wrapsContentInScrollView: false
         ) {
             EmptyView()
         } controls: {
-            FlowingInvoiceFilters(filter: $filter)
+            FlowingInvoiceFilters(summary: summary, filter: $filter)
         } content: {
             VStack(spacing: 0) {
                 Divider()
@@ -60,6 +59,7 @@ struct InvoiceListColumn: View {
 }
 
 private struct FlowingInvoiceFilters: View {
+    let summary: InvoiceListSummary
     @Binding var filter: InvoiceListFilter
 
     var body: some View {
@@ -68,6 +68,8 @@ private struct FlowingInvoiceFilters: View {
                 ForEach(InvoiceListFilter.allCases) { option in
                     BillbiFilterChip(
                         title: option.displayTitle,
+                        count: option.count(in: summary),
+                        tone: option.tone,
                         isSelected: filter == option,
                         action: { filter = option }
                     )

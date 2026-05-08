@@ -35,7 +35,7 @@ struct OnboardingView: View {
         _projectDraft = State(initialValue: OnboardingProjectDraft(
             name: firstProject?.name ?? "",
             clientID: firstProject?.clientID ?? firstClient?.id,
-            currencyCode: firstProject?.currencyCode ?? workspace.businessProfile.currencyCode,
+            currencyCode: firstProject?.currencyCode ?? "EUR",
             firstBucketName: firstProject?.buckets.first?.name ?? "",
             hourlyRateMinorUnits: firstProject?.buckets.first?.hourlyRateMinorUnits ?? 8_000
         ))

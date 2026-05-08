@@ -31,11 +31,6 @@ struct CreateProjectSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                     BillbiInputSheetSection(title: "Project") {
-                        BillbiInputSheetFieldRow(label: "Project name") {
-                            TextField("Project name", text: $name)
-                                .textFieldStyle(.billbiInput)
-                        }
-                        BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Client") {
                             if clients.isEmpty {
                                 Text("Create a client first")
@@ -48,6 +43,11 @@ struct CreateProjectSheet: View {
                                 }
                                 .labelsHidden()
                             }
+                        }
+                        BillbiInputSheetDivider()
+                        BillbiInputSheetFieldRow(label: "Project name") {
+                            TextField("Project name", text: $name)
+                                .textFieldStyle(.billbiInput)
                         }
                         BillbiInputSheetDivider()
                         BillbiInputSheetFieldRow(label: "Currency") {

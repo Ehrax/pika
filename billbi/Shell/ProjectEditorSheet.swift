@@ -31,11 +31,6 @@ struct ProjectEditorSheet: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                 BillbiInputSheetSection(title: "Project") {
-                    BillbiInputSheetFieldRow(label: "Project name") {
-                        TextField("Project name", text: $name)
-                            .textFieldStyle(.billbiInput)
-                    }
-                    BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Client") {
                         Picker("Client", selection: $clientID) {
                             if let clientID, !clients.contains(where: { $0.id == clientID }) {
@@ -47,6 +42,11 @@ struct ProjectEditorSheet: View {
                             }
                         }
                         .labelsHidden()
+                    }
+                    BillbiInputSheetDivider()
+                    BillbiInputSheetFieldRow(label: "Project name") {
+                        TextField("Project name", text: $name)
+                            .textFieldStyle(.billbiInput)
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Currency") {

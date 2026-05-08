@@ -25,13 +25,7 @@ struct SettingsInvoiceDefaultsSection: View {
     @Binding var draft: WorkspaceBusinessProfileDraft
 
     var body: some View {
-        SettingsSection(title: "Defaults") {
-            SettingsEditableFieldRow(label: "Currency") {
-                CurrencyCodeField("Currency", text: $draft.currencyCode)
-                    .frame(maxWidth: 120, alignment: .leading)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
+        SettingsSection(title: "Payment terms") {
             SettingsEditableFieldRow(label: "Payment terms") {
                 Stepper(value: $draft.defaultTermsDays, in: 1...120) {
                     Text("\(draft.defaultTermsDays) days")

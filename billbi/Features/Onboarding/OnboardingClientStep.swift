@@ -9,7 +9,7 @@ struct OnboardingClientStep: View {
     var body: some View {
         OnboardingStepForm(
             eyebrow: "STEP 03 · FIRST CLIENT",
-            title: "Add the client you will bill first",
+            title: "Add your first client",
             subtitle: "A client name creates the record. Email, contact, and billing details can wait until invoice review.",
             previewEyebrow: "CLIENTS",
             previewTitle: "Where your client list will live",

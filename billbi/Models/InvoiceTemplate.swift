@@ -10,7 +10,7 @@ enum InvoiceTemplate: String, CaseIterable, Codable, Equatable, Identifiable {
     var displayName: String {
         switch self {
         case .kleinunternehmerClassic:
-            "Kleinunternehmer Classic"
+            String(localized: "Small Business")
         }
     }
 

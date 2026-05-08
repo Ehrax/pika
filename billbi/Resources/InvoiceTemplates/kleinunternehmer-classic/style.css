@@ -3,6 +3,11 @@
   --invoice-muted: #5f5f5f;
   --invoice-rule: #dedede;
   --invoice-paper: #ffffff;
+  --invoice-page-width: 210mm;
+  --invoice-page-height: 297mm;
+  --invoice-page-padding-top: 17mm;
+  --invoice-page-padding-x: 16mm;
+  --invoice-page-padding-bottom: 13mm;
 }
 
 @page {
@@ -14,10 +19,16 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   margin: 0;
-  min-height: 100%;
+  min-height: var(--invoice-page-height);
+  background: var(--invoice-paper);
+}
+
+body {
+  width: var(--invoice-page-width);
+  min-height: var(--invoice-page-height);
+  margin: 0;
   background: var(--invoice-paper);
   color: var(--invoice-ink);
   font: 12px -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
@@ -26,9 +37,9 @@ body {
 
 .invoice-page {
   position: relative;
-  width: 210mm;
-  min-height: 297mm;
-  padding: 17mm 12mm 13mm;
+  width: var(--invoice-page-width);
+  min-height: var(--invoice-page-height);
+  padding: var(--invoice-page-padding-top) var(--invoice-page-padding-x) var(--invoice-page-padding-bottom);
   background: var(--invoice-paper);
 }
 
@@ -233,8 +244,8 @@ body {
 
 .payment-qr {
   position: absolute;
-  right: 12mm;
-  bottom: 15mm;
+  right: var(--invoice-page-padding-x);
+  bottom: var(--invoice-page-padding-bottom);
   width: 32mm;
   margin: 0;
   text-align: center;

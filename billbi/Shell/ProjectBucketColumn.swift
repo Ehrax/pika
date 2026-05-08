@@ -102,7 +102,7 @@ struct ProjectBucketColumn: View {
 
 struct BillbiSecondarySidebarColumn<Actions: View, Controls: View, Content: View>: View {
     let title: String
-    let subtitle: String
+    let subtitle: String?
     let sectionTitle: String
     let actions: Actions
     let controls: Controls
@@ -112,7 +112,7 @@ struct BillbiSecondarySidebarColumn<Actions: View, Controls: View, Content: View
 
     init(
         title: String,
-        subtitle: String,
+        subtitle: String? = nil,
         sectionTitle: String,
         wrapsContentInScrollView: Bool = true,
         @ViewBuilder actions: () -> Actions,
@@ -181,10 +181,12 @@ struct BillbiSecondarySidebarColumn<Actions: View, Controls: View, Content: View
                     .foregroundStyle(BillbiColor.textPrimary)
                     .lineLimit(1)
 
-                Text(subtitle)
-                    .font(BillbiTypography.body.weight(.medium))
-                    .foregroundStyle(BillbiColor.textSecondary)
-                    .lineLimit(1)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(BillbiTypography.body.weight(.medium))
+                        .foregroundStyle(BillbiColor.textSecondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: BillbiSpacing.sm)

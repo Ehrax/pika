@@ -8,7 +8,6 @@ struct SettingsCategoryColumn: View {
     var body: some View {
         BillbiSecondarySidebarColumn(
             title: "Settings",
-            subtitle: hasChanges ? "Unsaved changes" : "Workspace preferences",
             sectionTitle: "Categories",
             wrapsContentInScrollView: false
         ) {

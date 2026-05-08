@@ -26,6 +26,7 @@ enum BillbiColor {
     static let brand = Color.billbiAdaptive(light: 0x7B61FF, dark: 0x9B8CFF)
     static let brandMuted = Color.billbiAdaptive(light: 0x7B61FF, lightOpacity: 0.12, dark: 0x9B8CFF, darkOpacity: 0.18)
     static let brandBorder = brand.opacity(0.34)
+    static let onTint = Color.billbiAdaptive(light: 0xFFFFFF, dark: 0x0A0A0B)
     static let inputFocusBorderWidth = 1.5
     static let primarySidebarSelection = brand
     static let projectDotPalette = [
@@ -48,6 +49,8 @@ enum BillbiColor {
 
     static let success = Color.billbiAdaptive(light: 0x2F8F5A, dark: 0x7AC79A)
     static let successMuted = Color.billbiAdaptive(light: 0x2F8F5A, lightOpacity: 0.08, dark: 0x7AC79A, darkOpacity: 0.12)
+    static let info = Color.billbiAdaptive(light: 0x5B5BD6, dark: 0xB6AEFF)
+    static let infoMuted = Color.billbiAdaptive(light: 0x5B5BD6, lightOpacity: 0.09, dark: 0xB6AEFF, darkOpacity: 0.14)
     static let warning = Color.billbiAdaptive(light: 0xB57A1F, dark: 0xE0B26B)
     static let warningMuted = Color.billbiAdaptive(light: 0xB57A1F, lightOpacity: 0.08, dark: 0xE0B26B, darkOpacity: 0.12)
     static let danger = Color.billbiAdaptive(light: 0xC24545, dark: 0xE07B7B)

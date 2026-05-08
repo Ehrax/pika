@@ -13,7 +13,6 @@ struct ClientListColumn: View {
     var body: some View {
         BillbiSecondarySidebarColumn(
             title: "Clients",
-            subtitle: "\(clients.count) billing profiles",
             sectionTitle: "All Clients",
             wrapsContentInScrollView: false
         ) {
