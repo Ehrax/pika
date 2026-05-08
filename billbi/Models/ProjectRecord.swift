@@ -11,6 +11,7 @@ final class BusinessProfileRecord {
     var address: String = ""
     var taxIdentifier: String = ""
     var economicIdentifier: String = ""
+    var countryCode: String = ""
     var senderTaxLegalFieldsData: String = ""
     var invoicePrefix: String = "INV"
     var nextInvoiceNumber: Int = 1
@@ -31,6 +32,7 @@ final class BusinessProfileRecord {
         address: String = "",
         taxIdentifier: String = "",
         economicIdentifier: String = "",
+        countryCode: String = "",
         senderTaxLegalFieldsData: String = "",
         invoicePrefix: String = "INV",
         nextInvoiceNumber: Int = 1,
@@ -50,6 +52,7 @@ final class BusinessProfileRecord {
         self.address = address
         self.taxIdentifier = taxIdentifier
         self.economicIdentifier = economicIdentifier
+        self.countryCode = countryCode
         self.senderTaxLegalFieldsData = senderTaxLegalFieldsData
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber

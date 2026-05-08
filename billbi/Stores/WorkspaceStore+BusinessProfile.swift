@@ -9,6 +9,7 @@ extension WorkspaceStore {
         let address = draft.address.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxIdentifier = draft.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let economicIdentifier = draft.economicIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let countryCode = draft.countryCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -34,6 +35,7 @@ extension WorkspaceStore {
             address: address,
             taxIdentifier: taxIdentifier,
             economicIdentifier: economicIdentifier,
+            countryCode: countryCode,
             invoicePrefix: invoicePrefix.uppercased(),
             nextInvoiceNumber: draft.nextInvoiceNumber,
             currencyCode: currencyCode,

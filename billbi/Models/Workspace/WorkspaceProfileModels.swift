@@ -8,6 +8,7 @@ struct BusinessProfileProjection: Codable, Equatable {
     var address: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var countryCode: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
@@ -24,6 +25,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         case address
         case taxIdentifier
         case economicIdentifier
+        case countryCode
         case invoicePrefix
         case nextInvoiceNumber
         case currencyCode
@@ -41,6 +43,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         address: String,
         taxIdentifier: String = "",
         economicIdentifier: String = "",
+        countryCode: String = "",
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
@@ -56,6 +59,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         self.address = address
         self.taxIdentifier = taxIdentifier
         self.economicIdentifier = economicIdentifier
+        self.countryCode = countryCode
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
@@ -76,6 +80,7 @@ struct BusinessProfileProjection: Codable, Equatable {
         address = try container.decode(String.self, forKey: .address)
         taxIdentifier = try container.decodeIfPresent(String.self, forKey: .taxIdentifier) ?? ""
         economicIdentifier = try container.decodeIfPresent(String.self, forKey: .economicIdentifier) ?? ""
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
         invoicePrefix = try container.decode(String.self, forKey: .invoicePrefix)
         nextInvoiceNumber = try container.decode(Int.self, forKey: .nextInvoiceNumber)
         currencyCode = try container.decode(String.self, forKey: .currencyCode)

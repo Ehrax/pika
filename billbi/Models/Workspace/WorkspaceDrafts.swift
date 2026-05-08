@@ -96,6 +96,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     var address: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var countryCode: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
@@ -112,6 +113,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         address: String,
         taxIdentifier: String,
         economicIdentifier: String = "",
+        countryCode: String = "",
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
@@ -127,6 +129,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.address = address
         self.taxIdentifier = taxIdentifier
         self.economicIdentifier = economicIdentifier
+        self.countryCode = countryCode
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
@@ -145,6 +148,7 @@ struct WorkspaceBusinessProfileDraft: Equatable {
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
             economicIdentifier: profile.economicIdentifier,
+            countryCode: profile.countryCode,
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,

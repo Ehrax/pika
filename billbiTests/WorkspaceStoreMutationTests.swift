@@ -1612,6 +1612,7 @@ struct WorkspaceStoreMutationTests {
             phone: "",
             address: "  9 Harbour Road  ",
             taxIdentifier: "  DE123456789  ",
+            countryCode: " us ",
             invoicePrefix: "  NCS  ",
             nextInvoiceNumber: 42,
             currencyCode: "  usd  ",
@@ -1636,6 +1637,7 @@ struct WorkspaceStoreMutationTests {
         #expect(store.workspace.businessProfile.paymentDetails == "ACH 123456")
         #expect(store.workspace.businessProfile.taxNote == "VAT not applicable.")
         #expect(store.workspace.businessProfile.taxIdentifier == "DE123456789")
+        #expect(store.workspace.businessProfile.countryCode == "US")
         #expect(store.workspace.businessProfile.defaultTermsDays == 21)
         #expect(draft.invoiceNumber == "NCS-2026-042")
         #expect(draft.template == .kleinunternehmerClassic)

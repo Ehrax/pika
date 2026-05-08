@@ -116,6 +116,7 @@ enum SwiftDataWorkspaceProjectionLoader {
             address: record.address,
             taxIdentifier: record.taxIdentifier,
             economicIdentifier: record.economicIdentifier,
+            countryCode: record.countryCode,
             invoicePrefix: record.invoicePrefix,
             nextInvoiceNumber: record.nextInvoiceNumber,
             currencyCode: record.currencyCode,
