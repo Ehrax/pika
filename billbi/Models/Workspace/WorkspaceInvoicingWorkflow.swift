@@ -117,7 +117,7 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
             throw WorkspaceInvoicingWorkflowError.invalidPaymentMethodSelection
         }
         if let selectedPaymentMethod,
-           selectedPaymentMethod.printableInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           !selectedPaymentMethod.isValidForInvoiceFinalization {
             throw WorkspaceInvoicingWorkflowError.invalidPaymentMethodSelection
         }
         let invoice = WorkspaceInvoice(

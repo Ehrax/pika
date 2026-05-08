@@ -17,13 +17,25 @@ extension WorkspaceStore {
         let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let senderTaxLegalFields = draft.senderTaxLegalFields
         let paymentMethods = draft.paymentMethods
-        let defaultPaymentMethodID = draft.defaultPaymentMethodID
+            .map(\.sanitized)
+            .enumerated()
+            .map { index, method in
+                var method = method
+                method.sortOrder = index
+                return method
+            }
+        let defaultPaymentMethodID = draft.defaultPaymentMethodID ?? paymentMethods.first?.id
+        let defaultPaymentMethod = paymentMethods.first { $0.id == defaultPaymentMethodID }
+        let hasValidPaymentInstructions = paymentMethods.isEmpty
+            ? !paymentDetails.isEmpty
+            : defaultPaymentMethod?.isValidForInvoiceFinalization == true
         guard !businessName.isEmpty,
               !email.isEmpty,
               !address.isEmpty,
               !invoicePrefix.isEmpty,
               !currencyCode.isEmpty,
-              !paymentDetails.isEmpty,
+              hasValidPaymentInstructions,
+              paymentMethods.allSatisfy(\.isValidForInvoiceFinalization),
               draft.nextInvoiceNumber > 0,
               draft.defaultTermsDays > 0
         else {
