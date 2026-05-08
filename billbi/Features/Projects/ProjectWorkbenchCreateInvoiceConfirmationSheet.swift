@@ -72,8 +72,6 @@ struct CreateInvoiceConfirmationSheet: View {
                         InvoiceFinalizationReviewRow("Service period", value: draft.servicePeriod)
                         BillbiInputSheetDivider()
                         InvoiceFinalizationReviewRow("Currency", value: draft.currencyCode)
-                        BillbiInputSheetDivider()
-                        InvoiceFinalizationReviewRow("Tax / VAT note", value: draft.taxNote)
                     }
 
                     BillbiInputSheetSection(title: "Totals") {

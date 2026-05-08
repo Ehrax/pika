@@ -10,7 +10,6 @@ struct SettingsFeatureView: View {
     @State private var address = BillingAddressComponents()
     @State private var paymentDetails = PaymentDetailsComponents()
     @State private var saveFailure: SettingsSaveFailure?
-    @FocusState private var focusedField: SettingsField?
 
     init(profile: BusinessProfileProjection, workspaceStore: WorkspaceStore? = nil) {
         self.profile = profile
@@ -92,15 +91,14 @@ struct SettingsFeatureView: View {
 
                 switch selectedCategory {
                 case .profile:
-                    businessProfileSection
+                    SettingsProfileSection(draft: $draft, address: $address)
                 case .invoicing:
-                    invoiceNumberingSection
-                    invoiceDefaultsSection
+                    SettingsInvoiceNumberingSection(draft: $draft)
+                    SettingsInvoiceDefaultsSection(draft: $draft)
                 case .tax:
-                    taxIdentitySection
-                    taxNoteSection
+                    SettingsTaxIdentitySection(draft: $draft)
                 case .payment:
-                    paymentDetailsSection
+                    SettingsPaymentDetailsSection(paymentDetails: $paymentDetails)
                 }
 
                 if let saveFailure {
@@ -135,166 +133,6 @@ struct SettingsFeatureView: View {
         }
     }
 
-    @ViewBuilder
-    private func settingsSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
-            SectionHeader(title: title)
-
-            VStack(spacing: 0) {
-                content()
-            }
-            .billbiSurface()
-        }
-    }
-
-    private var businessProfileSection: some View {
-        settingsSection(title: "Business profile") {
-            SettingsEditableFieldRow(label: "Business name") {
-                TextField("Business name", text: $draft.businessName)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Person name") {
-                TextField("Person name", text: $draft.personName)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Email") {
-                TextField("Email", text: $draft.email)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Phone") {
-                TextField("Phone", text: $draft.phone)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Address", alignment: .top) {
-                VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
-                    TextField("Street and number", text: $address.street)
-                        .textFieldStyle(.billbiInput)
-                        .controlSize(.small)
-
-                    HStack(spacing: BillbiSpacing.sm) {
-                        TextField("Postal code", text: $address.postalCode)
-                            .textFieldStyle(.billbiInput)
-                            .controlSize(.small)
-                            .frame(maxWidth: 120)
-
-                        TextField("City", text: $address.city)
-                            .textFieldStyle(.billbiInput)
-                            .controlSize(.small)
-
-                        TextField("Country", text: $address.country)
-                            .textFieldStyle(.billbiInput)
-                            .controlSize(.small)
-                            .frame(maxWidth: 180)
-                    }
-                }
-            }
-        }
-    }
-
-    private var invoiceNumberingSection: some View {
-        settingsSection(title: "Invoice numbering") {
-            SettingsEditableFieldRow(label: "Prefix") {
-                TextField("Prefix", text: $draft.invoicePrefix)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Next number") {
-                Stepper(value: $draft.nextInvoiceNumber, in: 1...999_999) {
-                    Text("\(draft.nextInvoiceNumber)")
-                        .font(BillbiTypography.body.monospacedDigit())
-                }
-            }
-        }
-    }
-
-    private var invoiceDefaultsSection: some View {
-        settingsSection(title: "Defaults") {
-            SettingsEditableFieldRow(label: "Currency") {
-                CurrencyCodeField("Currency", text: $draft.currencyCode)
-                    .frame(maxWidth: 120, alignment: .leading)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Payment terms") {
-                Stepper(value: $draft.defaultTermsDays, in: 1...120) {
-                    Text("\(draft.defaultTermsDays) days")
-                        .font(BillbiTypography.body.monospacedDigit())
-                }
-            }
-        }
-    }
-
-    private var taxIdentitySection: some View {
-        settingsSection(title: "Tax identity") {
-            SettingsEditableFieldRow(label: "Tax identifier") {
-                TextField("Tax identifier", text: $draft.taxIdentifier)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "Wirtschafts-IdNr") {
-                TextField("Wirtschafts-IdNr", text: $draft.economicIdentifier)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-        }
-    }
-
-    private var taxNoteSection: some View {
-        settingsSection(title: "Tax / VAT note") {
-            SettingsEditableFieldRow(label: "Default note", alignment: .top) {
-                TextEditor(text: $draft.taxNote)
-                    .font(BillbiTypography.body)
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 84)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .background(BillbiColor.inputSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: BillbiRadius.sm, style: .continuous)
-                            .stroke(
-                                focusedField == .taxNote ? BillbiColor.brandBorder : BillbiColor.border,
-                                lineWidth: focusedField == .taxNote ? BillbiColor.inputFocusBorderWidth : 1
-                            )
-                    }
-                    .focused($focusedField, equals: .taxNote)
-                    .accessibilityLabel("Tax / VAT note")
-            }
-        }
-    }
-
-    private var paymentDetailsSection: some View {
-        settingsSection(title: "Payment details") {
-            SettingsEditableFieldRow(label: "Account name") {
-                TextField("Account name", text: $paymentDetails.accountName)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "IBAN") {
-                TextField("IBAN", text: $paymentDetails.iban)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-            SettingsDivider()
-            SettingsEditableFieldRow(label: "BIC") {
-                TextField("BIC", text: $paymentDetails.bic)
-                    .textFieldStyle(.billbiInput)
-                    .controlSize(.small)
-            }
-        }
-    }
-
     private var workspaceStore: WorkspaceStore {
         injectedWorkspaceStore ?? environmentWorkspaceStore
     }
@@ -314,7 +152,7 @@ struct SettingsFeatureView: View {
             saveFailure = nil
         } catch WorkspaceStoreError.invalidBusinessProfile {
             saveFailure = SettingsSaveFailure(
-                message: String(localized: "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required.")
+                message: String(localized: "Business name, email, address, invoice prefix, payment details, payment terms, and next number are required.")
             )
         } catch {
             saveFailure = SettingsSaveFailure(message: String(localized: "Settings could not be saved."))
@@ -327,165 +165,4 @@ struct SettingsFeatureView: View {
         paymentDetails = PaymentDetailsComponents(rawValue: savedDraft.paymentDetails)
         saveFailure = nil
     }
-}
-
-private enum SettingsCategory: String, CaseIterable, Identifiable {
-    case profile
-    case invoicing
-    case tax
-    case payment
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .profile:
-            String(localized: "Profile")
-        case .invoicing:
-            String(localized: "Invoicing")
-        case .tax:
-            String(localized: "Tax")
-        case .payment:
-            String(localized: "Payment")
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .profile:
-            String(localized: "Used on every invoice header and PDF.")
-        case .invoicing:
-            String(localized: "Numbering, currency, and payment terms.")
-        case .tax:
-            String(localized: "Identifiers and VAT notes for invoice compliance.")
-        case .payment:
-            String(localized: "Bank details printed in invoice footers.")
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .profile:
-            "person.crop.square"
-        case .invoicing:
-            "doc.text"
-        case .tax:
-            "percent"
-        case .payment:
-            "creditcard"
-        }
-    }
-}
-
-private enum SettingsField: Hashable {
-    case taxNote
-}
-
-private struct SettingsCategoryColumn: View {
-    let selectedCategory: SettingsCategory
-    let hasChanges: Bool
-    let onSelect: (SettingsCategory) -> Void
-
-    var body: some View {
-        BillbiSecondarySidebarColumn(
-            title: "Settings",
-            subtitle: hasChanges ? "Unsaved changes" : "Workspace preferences",
-            sectionTitle: "Categories",
-            wrapsContentInScrollView: false
-        ) {
-            EmptyView()
-        } controls: {
-            EmptyView()
-        } content: {
-            VStack(spacing: 0) {
-                Divider()
-                categoryList
-                    .padding(.top, BillbiSpacing.md)
-            }
-        }
-    }
-
-    private var categoryList: some View {
-        List {
-            ForEach(SettingsCategory.allCases) { category in
-                Button {
-                    onSelect(category)
-                } label: {
-                    SettingsCategoryRow(category: category, isSelected: selectedCategory == category)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets(top: 1, leading: BillbiSpacing.sm, bottom: 1, trailing: BillbiSpacing.sm))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(BillbiColor.surface)
-    }
-}
-
-private struct SettingsCategoryRow: View {
-    let category: SettingsCategory
-    let isSelected: Bool
-
-    var body: some View {
-        HStack(spacing: BillbiSpacing.sm) {
-            Image(systemName: category.systemImage)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(BillbiColor.textMuted)
-                .frame(width: 16)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(category.title)
-                    .font(BillbiTypography.body.weight(isSelected ? .semibold : .medium))
-                    .foregroundStyle(BillbiColor.textPrimary)
-                    .lineLimit(1)
-
-                Text(category.detail)
-                    .font(BillbiTypography.small)
-                    .foregroundStyle(BillbiColor.textMuted)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: BillbiSpacing.sm)
-        }
-        .padding(.horizontal, BillbiSpacing.sm)
-        .padding(.vertical, 10)
-        .billbiSecondarySidebarRow(isSelected: isSelected)
-    }
-}
-
-private struct SettingsEditableFieldRow<Content: View>: View {
-    let label: String
-    var alignment: VerticalAlignment = .firstTextBaseline
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        HStack(alignment: alignment, spacing: BillbiSpacing.lg) {
-            Text(label)
-                .font(BillbiTypography.small)
-                .foregroundStyle(BillbiColor.textMuted)
-                .frame(width: 180, alignment: .leading)
-
-            content
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, BillbiSpacing.md)
-        .padding(.vertical, BillbiSpacing.sm)
-    }
-}
-
-private struct SettingsDivider: View {
-    var body: some View {
-        Divider()
-            .padding(.horizontal, BillbiSpacing.md)
-    }
-}
-
-private struct SettingsSaveFailure: Identifiable {
-    let id = UUID()
-    let message: String
 }

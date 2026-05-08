@@ -11,6 +11,8 @@ struct BucketDetailWorkbench: View {
     let onUpdateEntryDate: (WorkspaceBucketEntryRowProjection, Date) -> Void
     let onMarkReady: () -> Void
     let onCreateInvoice: () -> Void
+    let canOpenInvoicePDF: Bool
+    let onOpenInvoicePDF: () -> Void
 
     var body: some View {
         ScrollView {
@@ -31,7 +33,9 @@ struct BucketDetailWorkbench: View {
                 } else if let invoiceRow {
                     InvoiceBucketSummary(
                         projection: projection,
-                        invoiceRow: invoiceRow
+                        invoiceRow: invoiceRow,
+                        canOpenPDF: canOpenInvoicePDF,
+                        onOpenPDF: onOpenInvoicePDF
                     )
                 }
 
@@ -97,9 +101,11 @@ private struct DotSeparator: View {
 private struct InvoiceBucketSummary: View {
     let projection: WorkspaceBucketDetailProjection
     let invoiceRow: WorkspaceInvoiceRowProjection
+    let canOpenPDF: Bool
+    let onOpenPDF: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: BillbiSpacing.lg) {
+        HStack(alignment: .center, spacing: BillbiSpacing.lg) {
             VStack(alignment: .leading, spacing: BillbiSpacing.xs) {
                 HStack(spacing: BillbiSpacing.sm) {
                     Text("Invoice")
@@ -120,11 +126,40 @@ private struct InvoiceBucketSummary: View {
             }
 
             Spacer()
+
+            Button {
+                onOpenPDF()
+            } label: {
+                Label("Open PDF", systemImage: "doc.text.magnifyingglass")
+            }
+            .buttonStyle(InvoicePreviewIconButtonStyle())
+            .disabled(!canOpenPDF)
+            .help("Open the selected invoice PDF")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(BillbiSpacing.md)
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: BillbiRadius.md))
+    }
+}
+
+private struct InvoicePreviewIconButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .labelStyle(.iconOnly)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(BillbiColor.brand.opacity(isEnabled ? 1 : 0.38))
+            .frame(width: 36, height: 36)
+            .background(BillbiColor.brand.opacity(isEnabled ? 0.12 : 0.05))
+            .clipShape(Circle())
+            .overlay {
+                Circle()
+                    .stroke(BillbiColor.brand.opacity(isEnabled ? 0.32 : 0.12), lineWidth: 1)
+            }
+            .contentShape(Circle())
+            .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
 

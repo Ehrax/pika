@@ -54,10 +54,10 @@ struct OnboardingBusinessDraft: Equatable {
     var taxIdentifier: String = ""
     var website: String = ""
     var currencyCode: String = "EUR"
-    var defaultHourlyRateMinorUnits: Int = 8_000
+    var invoicePrefix: String = ""
     var paymentTerms: String = ""
     var paymentDetails: String = ""
-    var defaultTermsDays: Int = 14
+    var defaultTermsDays: Int = 0
 
     init(
         businessName: String = "",
@@ -68,10 +68,10 @@ struct OnboardingBusinessDraft: Equatable {
         taxIdentifier: String = "",
         website: String = "",
         currencyCode: String = "EUR",
-        defaultHourlyRateMinorUnits: Int = 8_000,
+        invoicePrefix: String = "",
         paymentTerms: String = "",
         paymentDetails: String = "",
-        defaultTermsDays: Int = 14
+        defaultTermsDays: Int = 0
     ) {
         self.businessName = businessName
         self.personName = personName
@@ -81,13 +81,14 @@ struct OnboardingBusinessDraft: Equatable {
         self.taxIdentifier = taxIdentifier
         self.website = website
         self.currencyCode = currencyCode
-        self.defaultHourlyRateMinorUnits = defaultHourlyRateMinorUnits
+        self.invoicePrefix = invoicePrefix
         self.paymentTerms = paymentTerms
         self.paymentDetails = paymentDetails
         self.defaultTermsDays = defaultTermsDays
     }
 
     init(profile: BusinessProfileProjection) {
+        let hasSavedBusinessProfile = !profile.businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         self.init(
             businessName: profile.businessName,
             personName: profile.personName,
@@ -96,8 +97,9 @@ struct OnboardingBusinessDraft: Equatable {
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
             currencyCode: profile.currencyCode,
+            invoicePrefix: hasSavedBusinessProfile ? profile.invoicePrefix : "",
             paymentDetails: profile.paymentDetails,
-            defaultTermsDays: profile.defaultTermsDays
+            defaultTermsDays: hasSavedBusinessProfile ? profile.defaultTermsDays : 0
         )
     }
 }
@@ -188,13 +190,17 @@ struct OnboardingFlowModel: Equatable {
                 : .saveClient(clientDraft)
         case .project:
             let projectName = projectDraft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let currencyCode = CurrencyTextFormatting.normalizedInput(projectDraft.currencyCode)
             guard !projectName.isEmpty,
-                  let clientID = projectDraft.clientID ?? workspace.clients.first?.id
+                  let clientID = projectDraft.clientID ?? workspace.clients.first?.id,
+                  !currencyCode.isEmpty,
+                  projectDraft.hourlyRateMinorUnits > 0
             else {
                 return .advanceOnly
             }
             var draft = projectDraft
             draft.clientID = clientID
+            draft.currencyCode = currencyCode
             return .saveProject(draft)
         case .ready:
             return .complete(Self.readySummary(for: workspace).primaryCTA)

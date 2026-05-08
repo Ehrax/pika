@@ -23,6 +23,7 @@ extension WorkspaceStore {
         guard !businessName.isEmpty else { return }
 
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
+        let invoicePrefix = draft.invoicePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
         let profile = BusinessProfileProjection(
             businessName: businessName,
             personName: draft.personName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -30,7 +31,9 @@ extension WorkspaceStore {
             phone: draft.phone.trimmingCharacters(in: .whitespacesAndNewlines),
             address: draft.address.trimmingCharacters(in: .whitespacesAndNewlines),
             taxIdentifier: draft.taxIdentifier.trimmingCharacters(in: .whitespacesAndNewlines),
-            invoicePrefix: workspace.businessProfile.invoicePrefix.isEmpty ? "INV" : workspace.businessProfile.invoicePrefix,
+            invoicePrefix: invoicePrefix.isEmpty
+                ? (workspace.businessProfile.invoicePrefix.isEmpty ? "INV" : workspace.businessProfile.invoicePrefix)
+                : invoicePrefix.uppercased(),
             nextInvoiceNumber: max(workspace.businessProfile.nextInvoiceNumber, 1),
             currencyCode: currencyCode.isEmpty ? workspace.businessProfile.currencyCode : currencyCode,
             paymentDetails: draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -72,13 +75,18 @@ extension WorkspaceStore {
 
         let currencyCode = CurrencyTextFormatting.normalizedInput(draft.currencyCode)
         let bucketName = draft.firstBucketName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !currencyCode.isEmpty,
+              draft.hourlyRateMinorUnits > 0
+        else {
+            return nil
+        }
         return try createOnboardingProject(
             WorkspaceProjectDraft(
                 name: projectName,
                 clientID: clientID,
-                currencyCode: currencyCode.isEmpty ? workspace.businessProfile.currencyCode : currencyCode,
+                currencyCode: currencyCode,
                 firstBucketName: bucketName.isEmpty ? "General" : bucketName,
-                hourlyRateMinorUnits: draft.hourlyRateMinorUnits > 0 ? draft.hourlyRateMinorUnits : 8_000
+                hourlyRateMinorUnits: draft.hourlyRateMinorUnits
             ),
             occurredAt: occurredAt
         )
@@ -122,7 +130,7 @@ extension WorkspaceStore {
             createdAt: now,
             updatedAt: now
         )
-        workspacePersistenceModelContext().insert(record)
+        normalizedRecordStore.insert(record)
         try saveAndReloadNormalizedWorkspacePreservingActivity()
         guard let client = workspace.clients.first(where: { $0.id == record.id }) else {
             throw WorkspaceStoreError.persistenceFailed

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import billbi
 #if os(macOS)
+import PDFKit
 import WebKit
 #endif
 
@@ -47,7 +48,7 @@ struct InvoicePDFServiceTests {
                 nextInvoiceNumber: 89,
                 currencyCode: "EUR",
                 paymentDetails: "IBAN DE32 1001 1001 2141 1444 52",
-                taxNote: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
+                taxNote: "Legacy profile VAT note that should not render.",
                 defaultTermsDays: 14
             ),
             clientSnapshot: WorkspaceClient(
@@ -89,7 +90,7 @@ struct InvoicePDFServiceTests {
 
         #expect(rendered.metadata.invoiceNumber == "EHX-2026-088")
         #expect(rendered.metadata.clientName == "Client & Co <Berlin>")
-        #expect(rendered.metadata.templateName == "Kleinunternehmer Classic")
+        #expect(rendered.metadata.templateName == "Small Business")
         #expect(rendered.metadata.currencyCode == "EUR")
         #expect(rendered.metadata.lineItemCount == 1)
         #expect(rendered.metadata.pageCount == 1)
@@ -100,6 +101,8 @@ struct InvoicePDFServiceTests {
         #expect(rendered.html.contains("Client &amp; Co &lt;Berlin&gt;"))
         #expect(rendered.html.contains("Design &amp; implementation &lt;phase&gt;"))
         #expect(rendered.html.contains("Thank you &amp; see &lt;you&gt; soon."))
+        #expect(rendered.html.contains("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet."))
+        #expect(!rendered.html.contains("Legacy profile VAT note that should not render."))
         #expect(rendered.html.contains("IBAN: <strong>DE32 1001 1001 2141 1444 52</strong>"))
         #expect(rendered.html.contains("Rechnungsempfänger"))
         #expect(rendered.html.contains("Pos. / Bezeichnung"))
@@ -259,6 +262,62 @@ struct InvoicePDFServiceTests {
 
         #expect(data.count > 1_000)
         #expect(String(decoding: data.prefix(4), as: UTF8.self) == "%PDF")
+    }
+
+    @MainActor
+    @Test func invoiceHTMLPreviewStateExportsA4PDFIndependentOfPreviewWidth() async throws {
+        let state = InvoiceHTMLPreviewState()
+        let invoiceID = UUID(uuidString: "40000000-0000-0000-0000-000000000104")!
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 1_000, height: 900))
+        let loader = WebViewLoadProbe()
+        webView.navigationDelegate = loader
+
+        state.attach(webView: webView)
+        state.prepareToLoad(invoiceID: invoiceID)
+        webView.loadHTMLString(
+            """
+            <!doctype html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                @page { size: A4; margin: 0; }
+                * { box-sizing: border-box; }
+                html, body { margin: 0; }
+                .invoice-page {
+                  position: relative;
+                  width: 210mm;
+                  min-height: 297mm;
+                  padding: 17mm 16mm 13mm;
+                }
+                .edge-marker {
+                  position: absolute;
+                  right: 0;
+                  bottom: 0;
+                }
+              </style>
+            </head>
+            <body>
+              <main class="invoice-page">
+                <h1>Invoice Smoke</h1>
+                <div class="edge-marker">Bottom Right Marker</div>
+              </main>
+            </body>
+            </html>
+            """,
+            baseURL: nil
+        )
+        try await loader.waitForLoad()
+        state.didFinishLoading(invoiceID: invoiceID)
+
+        let data = try await state.pdfDataForSelectedDocument()
+        let document = try #require(PDFDocument(data: data))
+        let page = try #require(document.page(at: 0))
+        let mediaBox = page.bounds(for: .mediaBox)
+
+        #expect(abs(mediaBox.width - 595.28) < 1)
+        #expect(abs(mediaBox.height - 841.89) < 1)
+        #expect(!document.findString("Bottom Right Marker", withOptions: []).isEmpty)
     }
     #endif
 

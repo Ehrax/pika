@@ -1,0 +1,3 @@
+# Use Bucket Billing Modes For Freelancer Pricing
+
+Buckets support three billing modes: hourly, fixed, and retainer. Hourly buckets may include fixed charges in the existing bucket table, so mixed billing is treated as bucket composition rather than a separate mode; fixed buckets are amount-only in v1; retainer buckets stay lightweight with a recurring amount, optional included hours, and optional overage rate but no rollover, automatic recurrence, or balance ledger. Existing buckets map to hourly mode, and existing fixed costs become fixed charges, preserving current workspace and archive behavior while making new freelance pricing patterns explicit.

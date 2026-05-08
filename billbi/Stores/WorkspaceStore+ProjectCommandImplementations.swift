@@ -77,23 +77,23 @@ extension WorkspaceStore {
             project: projectRecord
         )
 
-        workspacePersistenceModelContext().insert(projectRecord)
-        workspacePersistenceModelContext().insert(bucketRecord)
+        normalizedRecordStore.insert(projectRecord)
+        normalizedRecordStore.insert(bucketRecord)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-
-        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        return try commitNormalizedWorkspaceMutation {
+            guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return project
+        } activity: { project in
+            WorkspaceActivity(
+                message: "\(project.name) project created",
+                detail: project.clientName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { project in
+            AppTelemetry.projectCreated(projectName: project.name, clientName: project.clientName)
         }
-
-        appendActivity(
-            message: "\(project.name) project created",
-            detail: project.clientName,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.projectCreated(projectName: project.name, clientName: project.clientName)
-        try persistWorkspace()
-        return project
     }
 
     @discardableResult
@@ -121,19 +121,20 @@ extension WorkspaceStore {
         projectRecord.client = clientRecord
         projectRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        return try commitNormalizedWorkspaceMutation {
+            guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return project
+        } activity: { project in
+            WorkspaceActivity(
+                message: "\(project.name) project updated",
+                detail: project.clientName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { project in
+            AppTelemetry.projectUpdated(projectName: project.name, clientName: project.clientName)
         }
-
-        appendActivity(
-            message: "\(project.name) project updated",
-            detail: project.clientName,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.projectUpdated(projectName: project.name, clientName: project.clientName)
-        try persistWorkspace()
-        return project
     }
 
     func setProjectArchivedInNormalizedRecords(
@@ -148,24 +149,24 @@ extension WorkspaceStore {
         projectRecord.isArchived = isArchived
         projectRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
-            throw WorkspaceStoreError.persistenceFailed
+        try commitNormalizedWorkspaceMutation {
+            guard let project = workspace.projects.first(where: { $0.id == projectID }) else {
+                throw WorkspaceStoreError.persistenceFailed
+            }
+            return project
+        } activity: { project in
+            WorkspaceActivity(
+                message: "\(project.name) \(isArchived ? "archived" : "restored")",
+                detail: project.clientName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { project in
+            if isArchived {
+                AppTelemetry.projectArchived(projectName: project.name)
+            } else {
+                AppTelemetry.projectRestored(projectName: project.name)
+            }
         }
-
-        appendActivity(
-            message: "\(project.name) \(isArchived ? "archived" : "restored")",
-            detail: project.clientName,
-            occurredAt: occurredAt
-        )
-
-        if isArchived {
-            AppTelemetry.projectArchived(projectName: project.name)
-        } else {
-            AppTelemetry.projectRestored(projectName: project.name)
-        }
-
-        try persistWorkspace()
     }
 
     func removeProjectFromNormalizedRecords(
@@ -183,16 +184,19 @@ extension WorkspaceStore {
         let projectName = projectRecord.name
         let projectClientName = workspace.projects.first(where: { $0.id == projectID })?.clientName ?? ""
         try deleteProjectDependenciesFromNormalizedRecords(projectID: projectID)
-        workspacePersistenceModelContext().delete(projectRecord)
+        normalizedRecordStore.delete(projectRecord)
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        appendActivity(
-            message: "\(projectName) project removed",
-            detail: projectClientName,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.projectRemoved(projectName: projectName)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            projectName
+        } activity: { projectName in
+            WorkspaceActivity(
+                message: "\(projectName) project removed",
+                detail: projectClientName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { projectName in
+            AppTelemetry.projectRemoved(projectName: projectName)
+        }
     }
 
     private func deleteProjectDependenciesFromNormalizedRecords(
@@ -200,12 +204,12 @@ extension WorkspaceStore {
     ) throws {
         for bucketRecord in try bucketRecords(for: projectID) {
             try deleteBucketDependenciesFromNormalizedRecords(bucketRecord.id)
-            workspacePersistenceModelContext().delete(bucketRecord)
+            normalizedRecordStore.delete(bucketRecord)
         }
 
         for invoiceRecord in try invoiceRecords(for: projectID) {
             try deleteInvoiceDependenciesFromNormalizedRecords(invoiceRecord.id)
-            workspacePersistenceModelContext().delete(invoiceRecord)
+            normalizedRecordStore.delete(invoiceRecord)
         }
     }
 
@@ -213,11 +217,11 @@ extension WorkspaceStore {
         _ bucketID: WorkspaceBucket.ID
     ) throws {
         for timeEntry in try timeEntryRecords(for: bucketID) {
-            workspacePersistenceModelContext().delete(timeEntry)
+            normalizedRecordStore.delete(timeEntry)
         }
 
         for fixedCost in try fixedCostRecords(for: bucketID) {
-            workspacePersistenceModelContext().delete(fixedCost)
+            normalizedRecordStore.delete(fixedCost)
         }
     }
 
@@ -225,7 +229,7 @@ extension WorkspaceStore {
         _ invoiceID: WorkspaceInvoice.ID
     ) throws {
         for lineItem in try invoiceLineItemRecords(for: invoiceID) {
-            workspacePersistenceModelContext().delete(lineItem)
+            normalizedRecordStore.delete(lineItem)
         }
     }
 }

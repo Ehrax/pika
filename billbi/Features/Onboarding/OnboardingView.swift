@@ -35,7 +35,7 @@ struct OnboardingView: View {
         _projectDraft = State(initialValue: OnboardingProjectDraft(
             name: firstProject?.name ?? "",
             clientID: firstProject?.clientID ?? firstClient?.id,
-            currencyCode: firstProject?.currencyCode ?? workspace.businessProfile.currencyCode,
+            currencyCode: firstProject?.currencyCode ?? "EUR",
             firstBucketName: firstProject?.buckets.first?.name ?? "",
             hourlyRateMinorUnits: firstProject?.buckets.first?.hourlyRateMinorUnits ?? 8_000
         ))
@@ -113,101 +113,30 @@ struct OnboardingView: View {
     }
 
     private var businessStep: some View {
-        splitStep(
-            eyebrow: "STEP 02 · BUSINESS",
-            title: "Set your business identity",
-            subtitle: "A business name is enough for now. These details become the default sender on future invoices.",
-            previewEyebrow: "LIVE PREVIEW",
-            previewTitle: "How your invoice header will look"
-        ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
-                onboardingFormSection("Business profile") {
-                    labeledTextField("Business name", text: $businessDraft.businessName)
-                    labeledTextField("Legal name", text: $businessDraft.personName)
-                    labeledTextField("Address", text: $businessDraft.address)
-                    labeledTextField("Email on invoices", text: $businessDraft.email)
-                    labeledTextField("Phone", text: $businessDraft.phone)
-                }
-
-                onboardingFormSection("Invoice defaults") {
-                    labeledTextField("Tax ID / VAT no.", text: $businessDraft.taxIdentifier)
-                    labeledCurrencyPicker
-                    labeledNumberField("Default hourly rate", value: $businessDraft.defaultHourlyRateMinorUnits)
-                    labeledIntegerField("Payment terms", value: $businessDraft.defaultTermsDays)
-                }
-
-                onboardingFormSection("Bank account") {
-                    labeledTextField("Account name", text: paymentAccountNameBinding)
-                    labeledTextField("IBAN", text: paymentIBANBinding)
-                    labeledTextField("BIC", text: paymentBICBinding)
-                }
-            }
-        } preview: {
-            OnboardingBusinessInvoiceHeaderPreview(businessDraft: businessDraft)
-        }
+        OnboardingBusinessStep(
+            businessDraft: $businessDraft,
+            errorMessage: errorMessage,
+            onSubmit: continueTapped
+        )
     }
 
     private var clientStep: some View {
-        splitStep(
-            eyebrow: "STEP 03 · FIRST CLIENT",
-            title: "Add the client you will bill first",
-            subtitle: "A client name creates the record. Email, contact, and billing details can wait until invoice review.",
-            previewEyebrow: "CLIENTS",
-            previewTitle: "Where your client list will live"
-        ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
-                onboardingFormSection("Client profile") {
-                    labeledTextField("Client name", text: $clientDraft.name)
-                    labeledTextField("VAT no.", text: $clientDraft.vatNumber)
-                }
-
-                onboardingFormSection("Contact") {
-                    labeledTextField("Contact email", text: $clientDraft.email)
-                    labeledTextField("Contact person", text: $clientDraft.contactPerson)
-                    labeledTextField("Phone", text: $clientDraft.phone)
-                }
-
-                onboardingFormSection("Billing") {
-                    labeledTextField("Billing address", text: $clientDraft.billingAddress)
-                }
-            }
-        } preview: {
-            OnboardingClientListPreview(
-                clientDraft: clientDraft,
-                workspace: workspaceStore.workspace
-            )
-        }
+        OnboardingClientStep(
+            clientDraft: $clientDraft,
+            workspace: workspaceStore.workspace,
+            errorMessage: errorMessage,
+            onSubmit: continueTapped
+        )
     }
 
     private var projectStep: some View {
-        splitStep(
-            eyebrow: "STEP 04 · FIRST PROJECT",
-            title: "Create the first place for work",
-            subtitle: "Projects belong to clients. Buckets group the time or costs you will eventually invoice.",
-            previewEyebrow: "PREVIEW",
-            previewTitle: "What your project will look like"
-        ) {
-            VStack(alignment: .leading, spacing: BillbiSpacing.xl) {
-                onboardingFormSection("Project") {
-                    selectedClientContext
-                    labeledTextField("Project name", text: $projectDraft.name)
-                    labeledNumberField("Project rate", value: $projectDraft.hourlyRateMinorUnits)
-                }
-
-                onboardingFormSection("First bucket") {
-                    labeledTextField("Bucket name", text: $projectDraft.firstBucketName, prompt: "General")
-                    Text("Leave it blank and Billbi will create a General bucket.")
-                        .font(BillbiTypography.small)
-                        .foregroundStyle(BillbiColor.textSecondary)
-                }
-            }
-        } preview: {
-            OnboardingProjectPreview(
-                projectDraft: projectDraft,
-                selectedClientName: selectedClientName,
-                workspace: workspaceStore.workspace
-            )
-        }
+        OnboardingProjectStep(
+            projectDraft: $projectDraft,
+            selectedClientName: selectedClientName,
+            workspace: workspaceStore.workspace,
+            errorMessage: errorMessage,
+            onSubmit: continueTapped
+        )
     }
 
     @ViewBuilder
@@ -307,107 +236,6 @@ struct OnboardingView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .nilIfEmpty
             ?? String(localized: "First client")
-    }
-
-    private var paymentAccountNameBinding: Binding<String> {
-        paymentDetailsBinding(
-            get: \.accountName,
-            set: { components, value in components.accountName = value }
-        )
-    }
-
-    private var paymentIBANBinding: Binding<String> {
-        paymentDetailsBinding(
-            get: \.iban,
-            set: { components, value in components.iban = value }
-        )
-    }
-
-    private var paymentBICBinding: Binding<String> {
-        paymentDetailsBinding(
-            get: \.bic,
-            set: { components, value in components.bic = value }
-        )
-    }
-
-    private func paymentDetailsBinding(
-        get: @escaping (PaymentDetailsComponents) -> String,
-        set: @escaping (inout PaymentDetailsComponents, String) -> Void
-    ) -> Binding<String> {
-        Binding(
-            get: {
-                get(PaymentDetailsComponents(rawValue: businessDraft.paymentDetails))
-            },
-            set: { newValue in
-                var components = PaymentDetailsComponents(rawValue: businessDraft.paymentDetails)
-                set(&components, newValue)
-                businessDraft.paymentDetails = components.rawValue
-            }
-        )
-    }
-
-    private func splitStep<Content: View, Preview: View>(
-        eyebrow: LocalizedStringKey,
-        title: LocalizedStringKey,
-        subtitle: LocalizedStringKey,
-        previewEyebrow: LocalizedStringKey,
-        previewTitle: LocalizedStringKey,
-        @ViewBuilder content: () -> Content,
-        @ViewBuilder preview: () -> Preview
-    ) -> some View {
-        OnboardingStepForm(
-            eyebrow: eyebrow,
-            title: title,
-            subtitle: subtitle,
-            previewEyebrow: previewEyebrow,
-            previewTitle: previewTitle,
-            errorMessage: errorMessage
-        ) {
-            content()
-        } preview: {
-            preview()
-        }
-    }
-
-    private func labeledTextField(_ title: LocalizedStringKey, text: Binding<String>, prompt: LocalizedStringKey = "") -> some View {
-        OnboardingLabeledTextField(title, text: text, prompt: prompt, onSubmit: continueTapped)
-    }
-
-    private func labeledNumberField(_ title: LocalizedStringKey, value: Binding<Int>) -> some View {
-        OnboardingLabeledNumberField(title: title, value: value, onSubmit: continueTapped)
-    }
-
-    private func labeledIntegerField(_ title: LocalizedStringKey, value: Binding<Int>, suffix: String? = nil) -> some View {
-        OnboardingLabeledIntegerField(title, value: value, suffix: suffix, onSubmit: continueTapped)
-    }
-
-    private func onboardingFormSection<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
-        OnboardingFormSection(title, content: content)
-    }
-
-    private var selectedClientContext: some View {
-        OnboardingFieldRow("Client") {
-            Text(selectedClientName)
-                .font(BillbiTypography.body)
-                .foregroundStyle(BillbiColor.textPrimary)
-                .lineLimit(1)
-        }
-    }
-
-    private var labeledCurrencyPicker: some View {
-        OnboardingFieldRow("Currency") {
-            currencyPicker
-        }
-    }
-
-    private var currencyPicker: some View {
-        Picker("Currency", selection: $businessDraft.currencyCode) {
-            Text("EUR").tag("EUR")
-            Text("CHF").tag("CHF")
-            Text("USD").tag("USD")
-            Text("GBP").tag("GBP")
-        }
-        .pickerStyle(.segmented)
     }
 
 }

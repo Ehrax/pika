@@ -119,27 +119,27 @@ extension WorkspaceStore {
         invoiceRecord.status = newStatus
         invoiceRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let indices = try invoiceIndices(invoiceID)
-        let invoice = workspace.projects[indices.project].invoices[indices.invoice]
-        appendActivity(
-            message: "\(invoice.number) marked \(newStatus.rawValue)",
-            detail: invoice.clientName,
-            occurredAt: occurredAt
-        )
-
-        switch newStatus {
-        case .sent:
-            AppTelemetry.invoiceMarkedSent(invoiceNumber: invoice.number)
-        case .paid:
-            AppTelemetry.invoiceMarkedPaid(invoiceNumber: invoice.number)
-        case .cancelled:
-            AppTelemetry.invoiceCancelled(invoiceNumber: invoice.number)
-        case .finalized:
-            break
+        try commitNormalizedWorkspaceMutation {
+            let indices = try invoiceIndices(invoiceID)
+            return workspace.projects[indices.project].invoices[indices.invoice]
+        } activity: { invoice in
+            WorkspaceActivity(
+                message: "\(invoice.number) marked \(newStatus.rawValue)",
+                detail: invoice.clientName,
+                occurredAt: occurredAt
+            )
+        } telemetry: { invoice in
+            switch newStatus {
+            case .sent:
+                AppTelemetry.invoiceMarkedSent(invoiceNumber: invoice.number)
+            case .paid:
+                AppTelemetry.invoiceMarkedPaid(invoiceNumber: invoice.number)
+            case .cancelled:
+                AppTelemetry.invoiceCancelled(invoiceNumber: invoice.number)
+            case .finalized:
+                break
+            }
         }
-
-        try persistWorkspace()
     }
 
     private func invoiceRecord(_ id: WorkspaceInvoice.ID) throws -> InvoiceRecord? {
@@ -147,7 +147,7 @@ extension WorkspaceStore {
             predicate: #Predicate { $0.id == id }
         )
         descriptor.fetchLimit = 1
-        return try workspacePersistenceModelContext().fetch(descriptor).first
+        return try normalizedRecordStore.fetch(descriptor).first
     }
 
     func finalizeInvoiceWorkflowResult(

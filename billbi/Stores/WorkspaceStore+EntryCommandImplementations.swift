@@ -40,26 +40,28 @@ extension WorkspaceStore {
             updatedAt: now,
             bucket: bucketRecord
         )
-        workspacePersistenceModelContext().insert(record)
+        normalizedRecordStore.insert(record)
 
         if bucketRecord.status == .ready {
             bucketRecord.status = .open
         }
         bucketRecord.updatedAt = now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let bucketName = projectedBucketName(
-            projectID: projectID,
-            bucketID: bucketID,
-            fallback: bucketRecord.name
-        )
-        appendActivity(
-            message: "\(bucketName) entry added",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketTimeEntryAdded(bucketName: bucketName, projectName: project.name)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            projectedBucketName(
+                projectID: projectID,
+                bucketID: bucketID,
+                fallback: bucketRecord.name
+            )
+        } activity: { bucketName in
+            WorkspaceActivity(
+                message: "\(bucketName) entry added",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
+        } telemetry: { bucketName in
+            AppTelemetry.bucketTimeEntryAdded(bucketName: bucketName, projectName: project.name)
+        }
     }
 
     func addFixedCostToNormalizedRecords(
@@ -90,26 +92,28 @@ extension WorkspaceStore {
             updatedAt: now,
             bucket: bucketRecord
         )
-        workspacePersistenceModelContext().insert(record)
+        normalizedRecordStore.insert(record)
 
         if bucketRecord.status == .ready {
             bucketRecord.status = .open
         }
         bucketRecord.updatedAt = now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let bucketName = projectedBucketName(
-            projectID: projectID,
-            bucketID: bucketID,
-            fallback: bucketRecord.name
-        )
-        appendActivity(
-            message: "\(bucketName) cost added",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketFixedCostAdded(bucketName: bucketName, projectName: project.name)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            projectedBucketName(
+                projectID: projectID,
+                bucketID: bucketID,
+                fallback: bucketRecord.name
+            )
+        } activity: { bucketName in
+            WorkspaceActivity(
+                message: "\(bucketName) cost added",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
+        } telemetry: { bucketName in
+            AppTelemetry.bucketFixedCostAdded(bucketName: bucketName, projectName: project.name)
+        }
     }
 
     func deleteEntryFromNormalizedRecords(
@@ -142,19 +146,21 @@ extension WorkspaceStore {
         }
         bucketRecord.updatedAt = .now
 
-        try saveAndReloadNormalizedWorkspacePreservingActivity()
-        let bucketName = projectedBucketName(
-            projectID: projectID,
-            bucketID: bucketID,
-            fallback: bucketRecord.name
-        )
-        appendActivity(
-            message: "\(bucketName) entry deleted",
-            detail: project.name,
-            occurredAt: occurredAt
-        )
-        AppTelemetry.bucketEntryDeleted(bucketName: bucketName, projectName: project.name)
-        try persistWorkspace()
+        try commitNormalizedWorkspaceMutation {
+            projectedBucketName(
+                projectID: projectID,
+                bucketID: bucketID,
+                fallback: bucketRecord.name
+            )
+        } activity: { bucketName in
+            WorkspaceActivity(
+                message: "\(bucketName) entry deleted",
+                detail: project.name,
+                occurredAt: occurredAt
+            )
+        } telemetry: { bucketName in
+            AppTelemetry.bucketEntryDeleted(bucketName: bucketName, projectName: project.name)
+        }
     }
 
     func updateEntryDateInNormalizedRecords(
@@ -232,11 +238,11 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
+        guard let record = try normalizedRecordStore.fetch(descriptor).first else {
             return false
         }
 
-        workspacePersistenceModelContext().delete(record)
+        normalizedRecordStore.delete(record)
         return true
     }
 
@@ -246,11 +252,11 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
+        guard let record = try normalizedRecordStore.fetch(descriptor).first else {
             return false
         }
 
-        workspacePersistenceModelContext().delete(record)
+        normalizedRecordStore.delete(record)
         return true
     }
 
@@ -265,7 +271,7 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
+        guard let record = try normalizedRecordStore.fetch(descriptor).first else {
             return false
         }
 
@@ -285,7 +291,7 @@ extension WorkspaceStore {
         )
         descriptor.fetchLimit = 1
 
-        guard let record = try workspacePersistenceModelContext().fetch(descriptor).first else {
+        guard let record = try normalizedRecordStore.fetch(descriptor).first else {
             return false
         }
 

@@ -531,12 +531,12 @@
         }
       }
     },
-    "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required.": {
+    "Business name, email, address, invoice prefix, payment details, payment terms, and next number are required.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Business name, email, address, invoice prefix, currency, payment details, payment terms, and next number are required."
+            "value": "Business name, email, address, invoice prefix, payment details, payment terms, and next number are required."
           }
         }
       }
@@ -1287,6 +1287,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invalid terms value in %@: %lld."
+          }
+        }
+      }
+    },
+    "Info": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Info"
+          }
+        }
+      }
+    },
+    "Identifiers for invoice compliance.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identifiers for invoice compliance."
           }
         }
       }
@@ -2131,6 +2151,16 @@
         }
       }
     },
+    "Small Business": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Small Business"
+          }
+        }
+      }
+    },
     "Street and number": {
       "localizations": {
         "en": {
@@ -2641,6 +2671,16 @@
         }
       }
     },
+    "Invoice prefix": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invoice prefix"
+          }
+        }
+      }
+    },
     "Payment terms": {
       "localizations": {
         "en": {
@@ -2681,12 +2721,12 @@
         }
       }
     },
-    "Add the client you will bill first": {
+    "Add your first client": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add the client you will bill first"
+            "value": "Add your first client"
           }
         }
       }
@@ -2837,16 +2877,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "What your project will look like"
-          }
-        }
-      }
-    },
-    "Project rate": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Project rate"
           }
         }
       }
@@ -3171,6 +3201,36 @@
         }
       }
     },
+    "Later client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later client"
+          }
+        }
+      }
+    },
+    "Project client": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project client"
+          }
+        }
+      }
+    },
+    "Terms": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terms"
+          }
+        }
+      }
+    },
     "The sample invoice could not be rendered.": {
       "localizations": {
         "en": {
@@ -3237,6 +3297,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "0.0 h · %@"
+          }
+        }
+      }
+    },
+    "10h · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10h · %@"
           }
         }
       }

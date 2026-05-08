@@ -5,7 +5,10 @@
 - **Workspace**: the app-facing model of a freelancer's invoicing world. It includes the business profile, clients, projects, buckets, invoices, and activity visible to the app.
 - **Client**: a billable customer with contact, billing address, payment terms, and archive state.
 - **Project**: a body of work for a client. A project contains buckets and finalized invoices.
-- **Bucket**: a project work package that collects time entries and fixed costs before it is ready to invoice.
+- **Bucket**: a project work package that collects time entries and fixed charges before it is ready to invoice.
+- **Bucket Billing Mode**: the pricing rule for a bucket: hourly, fixed, or retainer.
+- **Fixed Charge**: a manually priced amount billed to a client inside a bucket, not derived from tracked time and not treated as an expense.
+- **Retainer**: a client agreement where the freelancer is paid a recurring amount to reserve availability, provide ongoing support, or include a defined amount of work for a period.
 - **Invoice**: a finalized billing document created from an invoiceable bucket. Its business, client, project, bucket, line-item, and status details are snapshotted at finalization time.
 - **Expense**: an amount-bearing business cost the freelancer records for profit tracking, payment follow-up, and tax-deductible evidence.
 - **Expense Title**: the short human label used to identify an expense in lists and summaries.
@@ -83,14 +86,23 @@
 - If the app quits during onboarding before completion or skip, reopening should restart the onboarding flow at the welcome screen while preserving any workspace data saved by completed steps.
 - Onboarding forms should prefill from existing workspace data when available, including after a debug reset or a mid-flow restart.
 - When prefilling onboarding from existing clients or projects, v1 can use the existing active projection order rather than introducing special ranking.
-- "cost" exists in invoiceable bucket language as a fixed cost that can be billed to a client; use **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
+- "cost" previously existed in invoiceable bucket language as a fixed cost billed to a client; use **Fixed Charge** for client-billed bucket items and **Expense** for outgoing amount-bearing business costs tracked for profit and tax clarity.
 - "tax document" was considered for generic tax paperwork, but Billbi's near-term scope is tax-relevant **Expenses** such as subscriptions, domains, equipment, and other business running costs.
 - "receipt" and "invoice PDF" both refer to **Expense Evidence** when they prove an outgoing business cost; do not model them as separate top-level records.
 - "batch import" was considered for mixed uploads, but Billbi's expense intake flow is centered on one intended **Expense** at a time; multiple uploaded files should be treated as evidence for that intended expense and flagged for review if they appear unrelated.
 - "bill" refers to a **Due Expense** when it is an unpaid outgoing business cost; do not model it as a separate top-level record.
 - The product surface should call the area **Expenses**, not Bills or Costs.
 - **Expenses** should have their own sidebar destination near **Invoices**.
-- "fixed cost" currently means an invoiceable project line item; future work may allow selected **Expenses** to be re-invoiced to clients, but v1 should keep outgoing **Expenses** distinct from invoice line items.
+- "fixed cost" previously meant an invoiceable project line item; call this a **Fixed Charge** instead. Future work may allow selected **Expenses** to be re-invoiced to clients, but v1 should keep outgoing **Expenses** distinct from invoice line items.
+- A **Bucket Billing Mode** can be **Hourly**, **Fixed**, or **Retainer**. **Hourly** buckets total billable time entries from an hourly rate and may also include explicit **Fixed Charges**, making "mixed" a bucket composition rather than a separate billing mode. **Fixed** buckets use one agreed bucket amount and do not expose additional bucket table entries in v1. **Retainer** buckets bill a recurring agreed amount for a period, while time entries may track included or supporting work.
+- **Hourly** buckets use the existing bucket table for both time entries and **Fixed Charges**. A separate **Mixed** mode is unnecessary because the table composition already expresses hourly work plus additional client-billed charges.
+- **Retainer** buckets may use the existing bucket table for work logs, optional overage billing, and extra **Fixed Charges** on top of the retainer amount.
+- Bucket creation and editing should ask for a bucket name plus a **Bucket Billing Mode**. **Hourly** buckets ask for an hourly rate. **Fixed** buckets ask for a fixed amount. **Retainer** buckets ask for a retainer amount, a simple period label, optional included hours, and optional overage hourly rate.
+- The **Retainer** period label is presentation/context in v1, not an automatic recurrence engine or scheduling rule.
+- A bucket's **Bucket Billing Mode** is chosen at creation and should not be changed afterward. While a bucket is still open, users may edit the values for that mode, such as hourly rate, fixed amount, retainer amount, period label, included hours, or overage rate.
+- Legacy buckets should map to **Hourly** billing mode because the existing model already totals billable time entries and optional fixed costs. Legacy fixed costs should display and import as **Fixed Charges**.
+- A **Retainer** is more than a price calculation when it includes prepaid hours, rollover, availability, overages, or recurring periods. The first retainer billing mode should support optional included hours and optional hourly overages, while avoiding rollover, automatic recurring invoices, and retainer balance ledgers until those rules are designed explicitly.
+- Invoice output should not use the word "Bucket" for client-facing line items. The bucket name becomes the client-facing line description, while time-entry, overage, and **Fixed Charge** rows use their own descriptions where shown.
 - "vendor" is useful as a plain vendor-name field on an **Expense**, but should not be a separate managed domain object in v1.
 - "category" should be controlled by user-approved **Expense Categories**; AI may suggest a new category during review, but it should not silently expand the category list.
 - "subscription" is not a separate recurring domain object in v1; repeated subscription bills are recorded as ordinary **Expenses**.
