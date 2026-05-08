@@ -90,7 +90,7 @@ struct WorkspaceInvoicingWorkflowTests {
         #expect(result.invoice.note == "Thanks.")
         #expect(result.invoice.lineItems.map(\.description) == [
             "Ready Workflow",
-            "Fixed costs",
+            "Fixed Charges",
         ])
     }
 

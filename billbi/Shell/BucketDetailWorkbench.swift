@@ -42,7 +42,8 @@ struct BucketDetailWorkbench: View {
                 BucketEntriesTable(
                     projection: projection,
                     draftDate: draftDate,
-                    showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked,
+                    showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked
+                        && projection.selectedBucket.billingMode != .fixed,
                     onAddFixedCost: onAddFixedCost,
                     onAddEntry: onAddEntry,
                     onDeleteEntry: onDeleteEntry,

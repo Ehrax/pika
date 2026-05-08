@@ -1,6 +1,176 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Billing mode": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Billing mode"
+          }
+        }
+      }
+    },
+    "Fixed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed"
+          }
+        }
+      }
+    },
+    "Fixed amount": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed amount"
+          }
+        }
+      }
+    },
+    "Fixed Charge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed Charge"
+          }
+        }
+      }
+    },
+    "Fixed Charges": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed Charges"
+          }
+        }
+      }
+    },
+    "Included hours": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Included hours"
+          }
+        }
+      }
+    },
+    "Monthly": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        }
+      }
+    },
+    "Overage rate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overage rate"
+          }
+        }
+      }
+    },
+    "Period": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period"
+          }
+        }
+      }
+    },
+    "Retainer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retainer"
+          }
+        }
+      }
+    },
+    "Retainer amount": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retainer amount"
+          }
+        }
+      }
+    },
+    "Retainer overage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retainer overage"
+          }
+        }
+      }
+    },
+    "fixed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fixed"
+          }
+        }
+      }
+    },
+    "Fixed Charges: %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed Charges: %lld"
+          }
+        }
+      }
+    },
+    "overage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "overage"
+          }
+        }
+      }
+    },
+    "retainer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "retainer"
+          }
+        }
+      }
+    },
     "%@\n\nContinuing will replace the current workspace and cannot be undone.": {
       "localizations": {
         "en": {
@@ -241,12 +411,12 @@
         }
       }
     },
-    "Add a fixed cost": {
+    "Add a Fixed Charge": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add a fixed cost"
+            "value": "Add a Fixed Charge"
           }
         }
       }
@@ -1147,26 +1317,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finalized Invoices"
-          }
-        }
-      }
-    },
-    "Fixed Cost": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fixed Cost"
-          }
-        }
-      }
-    },
-    "Fixed Costs: %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fixed Costs: %lld"
           }
         }
       }

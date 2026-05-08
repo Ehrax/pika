@@ -59,6 +59,8 @@ struct WorkspaceInlineEntryDraftProjection: Equatable {
 
 extension WorkspaceBucket {
     func entryRows(formatter: MoneyFormatting) -> [WorkspaceBucketEntryRowProjection] {
+        guard billingMode != .fixed else { return [] }
+
         if hasRowLevelEntries {
             return rowLevelEntryRows(formatter: formatter)
         }
@@ -94,7 +96,7 @@ extension WorkspaceBucket {
                     kind: .fixedCost,
                     date: entry.date,
                     dateLabel: Self.dateFormatter.string(from: entry.date),
-                    timeLabel: "Fixed cost",
+                    timeLabel: String(localized: "Fixed Charge"),
                     description: entry.description,
                     hoursLabel: "-",
                     amountLabel: formatter.string(fromMinorUnits: entry.amountMinorUnits),
@@ -136,8 +138,8 @@ extension WorkspaceBucket {
                 kind: .fixedCost,
                 date: nil,
                 dateLabel: "-",
-                timeLabel: "Fixed cost",
-                description: "Fixed costs",
+                timeLabel: String(localized: "Fixed Charge"),
+                description: String(localized: "Fixed Charges"),
                 hoursLabel: "-",
                 amountLabel: formatter.string(fromMinorUnits: fixedCostMinorUnits),
                 isBillable: true
@@ -297,11 +299,23 @@ struct WorkspaceBucketRowProjection: Equatable, Identifiable {
         updatedAt = bucket.updatedAt
 
         let amount = formatter.string(fromMinorUnits: bucket.effectiveTotalMinorUnits)
-        if bucket.effectiveFixedCostMinorUnits > 0 {
-            let fixedCost = formatter.string(fromMinorUnits: bucket.effectiveFixedCostMinorUnits)
-            meta = "\(bucket.billableHoursLabel) · \(amount) · \(fixedCost) fixed"
-        } else {
-            meta = "\(bucket.billableHoursLabel) · \(amount)"
+        switch bucket.billingMode {
+        case .hourly:
+            if bucket.effectiveFixedChargeMinorUnits > 0 {
+                let fixedCharge = formatter.string(fromMinorUnits: bucket.effectiveFixedChargeMinorUnits)
+                meta = "\(bucket.billableHoursLabel) · \(amount) · \(fixedCharge) fixed"
+            } else {
+                meta = "\(bucket.billableHoursLabel) · \(amount)"
+            }
+        case .fixed:
+            meta = "\(String(localized: "Fixed")) · \(amount)"
+        case .retainer:
+            if bucket.retainerOverageMinorUnits > 0 {
+                let overage = formatter.string(fromMinorUnits: bucket.retainerOverageMinorUnits)
+                meta = "\(String(localized: "Retainer")) · \(amount) · \(overage) \(String(localized: "overage"))"
+            } else {
+                meta = "\(String(localized: "Retainer")) · \(amount)"
+            }
         }
 
         if let linkedInvoice {
@@ -421,27 +435,95 @@ struct WorkspaceBucketDetailProjection: Equatable {
         clientName = project.clientName
         currencyCode = project.currencyCode
         totalLabel = formatter.string(fromMinorUnits: selectedBucket.effectiveTotalMinorUnits)
-        billableSummary = "\(selectedBucket.billableHoursLabel) billable"
+        billableSummary = Self.billableSummary(for: selectedBucket)
         nonBillableSummary = "\(selectedBucket.nonBillableHoursLabel) non-billable"
-        fixedCostLabel = "\(formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits)) fixed"
-        rateLabel = selectedBucket.hourlyRateMinorUnits.map { "\(formatter.string(fromMinorUnits: $0))/h" } ?? "n/b"
+        fixedCostLabel = "\(formatter.string(fromMinorUnits: selectedBucket.effectiveFixedChargeMinorUnits)) \(String(localized: "Fixed Charges"))"
+        rateLabel = Self.rateLabel(for: selectedBucket, formatter: formatter)
         entryRows = selectedBucket.entryRows(formatter: formatter)
-        lineItems = [
-            WorkspaceBucketLineItemProjection(
-                description: selectedBucket.name,
-                quantity: selectedBucket.billableHoursLabel,
-                amountLabel: formatter.string(fromMinorUnits: selectedBucket.billableTimeMinorUnits),
-                isBillable: true
-            ),
-            WorkspaceBucketLineItemProjection(
-                description: selectedBucket.fixedCostLineItemDescription,
-                quantity: selectedBucket.effectiveFixedCostMinorUnits > 0
-                    ? max(selectedBucket.fixedCostEntries.count, 1).formattedItemCount
-                    : "0 items",
-                amountLabel: formatter.string(fromMinorUnits: selectedBucket.effectiveFixedCostMinorUnits),
-                isBillable: selectedBucket.effectiveFixedCostMinorUnits > 0
-            ),
-        ].filter { $0.isBillable }
+        lineItems = Self.lineItems(for: selectedBucket, formatter: formatter)
+    }
+
+    private static func billableSummary(for bucket: WorkspaceBucket) -> String {
+        switch bucket.billingMode {
+        case .hourly:
+            return "\(bucket.billableHoursLabel) billable"
+        case .fixed:
+            return String(localized: "Fixed amount")
+        case .retainer:
+            return "\(bucket.billableHoursLabel) logged"
+        }
+    }
+
+    private static func rateLabel(for bucket: WorkspaceBucket, formatter: MoneyFormatting) -> String {
+        switch bucket.billingMode {
+        case .hourly:
+            return bucket.hourlyRateMinorUnits.map { "\(formatter.string(fromMinorUnits: $0))/h" } ?? "n/b"
+        case .fixed:
+            return String(localized: "fixed")
+        case .retainer:
+            return bucket.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? String(localized: "retainer")
+                : bucket.retainerPeriodLabel
+        }
+    }
+
+    private static func lineItems(
+        for bucket: WorkspaceBucket,
+        formatter: MoneyFormatting
+    ) -> [WorkspaceBucketLineItemProjection] {
+        switch bucket.billingMode {
+        case .hourly:
+            return [
+                WorkspaceBucketLineItemProjection(
+                    description: bucket.name,
+                    quantity: bucket.billableHoursLabel,
+                    amountLabel: formatter.string(fromMinorUnits: bucket.billableTimeMinorUnits),
+                    isBillable: true
+                ),
+                fixedChargeLineItem(for: bucket, formatter: formatter),
+            ].filter { $0.isBillable }
+        case .fixed:
+            return [
+                WorkspaceBucketLineItemProjection(
+                    description: bucket.name,
+                    quantity: "1 item",
+                    amountLabel: formatter.string(fromMinorUnits: bucket.effectiveFixedAmountMinorUnits),
+                    isBillable: bucket.effectiveFixedAmountMinorUnits > 0
+                ),
+            ]
+        case .retainer:
+            return [
+                WorkspaceBucketLineItemProjection(
+                    description: bucket.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? bucket.name
+                        : "\(bucket.name) - \(bucket.retainerPeriodLabel)",
+                    quantity: "1 item",
+                    amountLabel: formatter.string(fromMinorUnits: bucket.effectiveRetainerAmountMinorUnits),
+                    isBillable: bucket.effectiveRetainerAmountMinorUnits > 0
+                ),
+                WorkspaceBucketLineItemProjection(
+                    description: String(localized: "Retainer overage"),
+                    quantity: WorkspaceBucket.billingHoursLabel(minutes: bucket.retainerOverageMinutes),
+                    amountLabel: formatter.string(fromMinorUnits: bucket.retainerOverageMinorUnits),
+                    isBillable: bucket.retainerOverageMinorUnits > 0
+                ),
+                fixedChargeLineItem(for: bucket, formatter: formatter),
+            ].filter { $0.isBillable }
+        }
+    }
+
+    private static func fixedChargeLineItem(
+        for bucket: WorkspaceBucket,
+        formatter: MoneyFormatting
+    ) -> WorkspaceBucketLineItemProjection {
+        WorkspaceBucketLineItemProjection(
+            description: bucket.fixedChargeLineItemDescription,
+            quantity: bucket.effectiveFixedChargeMinorUnits > 0
+                ? max(bucket.fixedCostEntries.count, 1).formattedItemCount
+                : "0 items",
+            amountLabel: formatter.string(fromMinorUnits: bucket.effectiveFixedChargeMinorUnits),
+            isBillable: bucket.effectiveFixedChargeMinorUnits > 0
+        )
     }
 }
 
@@ -452,12 +534,12 @@ private extension Int {
 }
 
 private extension WorkspaceBucket {
-    var fixedCostLineItemDescription: String {
+    var fixedChargeLineItemDescription: String {
         guard fixedCostEntries.count == 1,
               let description = fixedCostEntries.first?.description.trimmingCharacters(in: .whitespacesAndNewlines),
               !description.isEmpty
         else {
-            return "Fixed costs"
+            return String(localized: "Fixed Charges")
         }
 
         return description

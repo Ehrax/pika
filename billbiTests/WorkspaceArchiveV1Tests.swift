@@ -14,6 +14,7 @@ struct WorkspaceArchiveV1Tests {
         #expect(json.contains("\"exportedAt\" : \"2026-05-02T10:00:00Z\""))
         #expect(json.contains("\"issueDate\" : \"2026-05-01\""))
         #expect(json.contains("\"totalMinorUnits\" : 52000"))
+        #expect(json.contains("\"billingMode\" : \"hourly\""))
 
         let decoded = try WorkspaceArchiveCodec.decode(data)
         #expect(decoded.format == WorkspaceArchiveEnvelope.formatMarker)
@@ -21,7 +22,21 @@ struct WorkspaceArchiveV1Tests {
         #expect(decoded.generator?.app == "Billbi")
         #expect(decoded.workspace.onboardingCompleted)
         #expect(decoded.workspace.projects.first?.name == "Snapshot Project")
+        #expect(decoded.workspace.buckets.first?.billingMode == .hourly)
         #expect(decoded.workspace.invoices.first?.totalMinorUnits == 52_000)
+    }
+
+    @Test func decodeDefaultsLegacyBucketsToHourlyMode() throws {
+        let data = try archiveData(
+            replacing: "      \"billingMode\" : \"hourly\",\n",
+            with: ""
+        )
+
+        let decoded = try WorkspaceArchiveCodec.decode(data)
+
+        #expect(decoded.workspace.buckets.first?.billingMode == .hourly)
+        #expect(decoded.workspace.buckets.first?.fixedAmountMinorUnits == 0)
+        #expect(decoded.workspace.buckets.first?.retainerAmountMinorUnits == 0)
     }
 
     @Test func decodeRejectsWrongFormatMarker() throws {

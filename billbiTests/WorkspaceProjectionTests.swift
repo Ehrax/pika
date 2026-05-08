@@ -155,7 +155,7 @@ struct WorkspaceProjectionTests {
         ])
         #expect(summary.unbilledProjectRevenue.map(\.amountMinorUnits) == [
             315_000,
-            187_500,
+            237_500,
         ])
         #expect(summary.unbilledProjectRevenue.map(\.colorIndex) == [
             0,
@@ -179,7 +179,7 @@ struct WorkspaceProjectionTests {
             250_000,
             315_000,
             157_500,
-            187_500,
+            237_500,
         ])
         #expect(summary.unbilledRevenueHistory.map(\.projectID) == [
             UUID(uuidString: "20000000-0000-0000-0000-000000000001")!,
@@ -541,7 +541,7 @@ struct WorkspaceProjectionTests {
         #expect(projection.totalLabel == "EUR 2,500.00")
         #expect(projection.billableSummary == "10h billable")
         #expect(projection.nonBillableSummary == "0.5h non-billable")
-        #expect(projection.fixedCostLabel == "EUR 500.00 fixed")
+        #expect(projection.fixedCostLabel == "EUR 500.00 Fixed Charges")
         #expect(projection.lineItems.map(\.description) == [
             "April sprint",
             "Prototype hosting",
@@ -576,7 +576,7 @@ struct WorkspaceProjectionTests {
             "10:00-12:00",
             "14:00-15:00",
             "14:30-15:00",
-            "Fixed cost",
+            "Fixed Charge",
         ])
         #expect(projection.entryRows.map(\.hoursLabel) == [
             "3.50",
@@ -810,7 +810,7 @@ struct WorkspaceProjectionTests {
         )
 
         #expect(summary.projectCount == 2)
-        #expect(summary.openMinorUnits == 95_000)
+        #expect(summary.openMinorUnits == 145_000)
         #expect(summary.readyMinorUnits == 407_500)
         #expect(summary.overdueMinorUnits == 0)
     }

@@ -114,11 +114,23 @@ extension WorkspaceStore {
                     id: archiveBucket.id,
                     name: archiveBucket.name,
                     status: bucketStatus(archiveBucket.status),
+                    billingMode: archiveBucket.billingMode,
                     totalMinorUnits: billableTimeMinorUnits + fixedCostMinorUnits,
                     billableMinutes: billableMinutes,
                     fixedCostMinorUnits: fixedCostMinorUnits,
                     nonBillableMinutes: nonBillableMinutes,
                     defaultHourlyRateMinorUnits: archiveBucket.defaultHourlyRateMinorUnits,
+                    fixedAmountMinorUnits: archiveBucket.fixedAmountMinorUnits > 0
+                        ? archiveBucket.fixedAmountMinorUnits
+                        : nil,
+                    retainerAmountMinorUnits: archiveBucket.retainerAmountMinorUnits > 0
+                        ? archiveBucket.retainerAmountMinorUnits
+                        : nil,
+                    retainerPeriodLabel: archiveBucket.retainerPeriodLabel,
+                    retainerIncludedMinutes: archiveBucket.retainerIncludedMinutes,
+                    retainerOverageRateMinorUnits: archiveBucket.retainerOverageRateMinorUnits > 0
+                        ? archiveBucket.retainerOverageRateMinorUnits
+                        : nil,
                     timeEntries: timeEntries,
                     fixedCostEntries: fixedCosts
                 )

@@ -21,6 +21,10 @@ extension WorkspaceStore {
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
+        guard bucket.billingMode != .fixed else {
+            throw WorkspaceStoreError.invalidTimeEntry
+        }
+
         guard !bucket.status.isInvoiceLocked else {
             throw WorkspaceStoreError.bucketLocked(bucket.status)
         }
@@ -78,6 +82,10 @@ extension WorkspaceStore {
         let projectIndex = try projectIndex(projectID)
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
         var bucket = workspace.projects[projectIndex].buckets[bucketIndex]
+
+        guard bucket.billingMode != .fixed else {
+            throw WorkspaceStoreError.invalidFixedCost
+        }
 
         guard !bucket.status.isInvoiceLocked else {
             throw WorkspaceStoreError.bucketLocked(bucket.status)

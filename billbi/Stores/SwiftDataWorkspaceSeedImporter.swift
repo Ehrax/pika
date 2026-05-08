@@ -208,7 +208,21 @@ enum SwiftDataWorkspaceSeedImporter {
                 projectID: projectID,
                 name: bucket.name,
                 statusRaw: bucket.status.rawValue,
-                defaultHourlyRateMinorUnits: bucket.defaultHourlyRateMinorUnits ?? 0,
+                billingModeRaw: bucket.billingMode.rawValue,
+                defaultHourlyRateMinorUnits: bucket.billingMode == .hourly
+                    ? bucket.defaultHourlyRateMinorUnits ?? 0
+                    : 0,
+                fixedAmountMinorUnits: bucket.billingMode == .fixed
+                    ? bucket.effectiveFixedAmountMinorUnits
+                    : 0,
+                retainerAmountMinorUnits: bucket.billingMode == .retainer
+                    ? bucket.effectiveRetainerAmountMinorUnits
+                    : 0,
+                retainerPeriodLabel: bucket.billingMode == .retainer ? bucket.retainerPeriodLabel : "",
+                retainerIncludedMinutes: bucket.billingMode == .retainer ? bucket.retainerIncludedMinutes : nil,
+                retainerOverageRateMinorUnits: bucket.billingMode == .retainer
+                    ? bucket.retainerOverageRateMinorUnits ?? 0
+                    : 0,
                 createdAt: importedAt,
                 updatedAt: importedAt,
                 project: projectRecord
@@ -232,6 +246,8 @@ enum SwiftDataWorkspaceSeedImporter {
         importedAt: Date,
         into context: ModelContext
     ) {
+        guard bucket.billingMode != .fixed else { return }
+
         if bucket.hasRowLevelEntries {
             persistTimeEntries(
                 bucket.timeEntries,
@@ -454,7 +470,7 @@ enum SwiftDataWorkspaceSeedImporter {
                 id: derivedUUID(from: bucket.id, variant: 3),
                 bucketID: bucket.id,
                 date: importedAt,
-                descriptionText: "Imported fixed costs",
+                descriptionText: "Imported Fixed Charges",
                 quantity: 1,
                 unitPriceMinorUnits: bucket.fixedCostMinorUnits,
                 isBillable: true,

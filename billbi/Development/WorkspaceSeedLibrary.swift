@@ -117,9 +117,11 @@ enum WorkspaceSeedLibrary {
                         id: UUID(uuidString: "30000000-0000-0000-0000-000000000002")!,
                         name: "Discovery notes",
                         status: .open,
+                        billingMode: .fixed,
                         totalMinorUnits: 65_000,
-                        billableMinutes: 390,
-                        fixedCostMinorUnits: 0
+                        billableMinutes: 0,
+                        fixedCostMinorUnits: 0,
+                        fixedAmountMinorUnits: 65_000
                     ),
                     WorkspaceBucket(
                         id: UUID(uuidString: "30000000-0000-0000-0000-000000000003")!,
@@ -151,9 +153,14 @@ enum WorkspaceSeedLibrary {
                         id: UUID(uuidString: "30000000-0000-0000-0000-000000000005")!,
                         name: "Follow-up checks",
                         status: .open,
+                        billingMode: .retainer,
                         totalMinorUnits: 30_000,
                         billableMinutes: 120,
-                        fixedCostMinorUnits: 0
+                        fixedCostMinorUnits: 0,
+                        retainerAmountMinorUnits: 80_000,
+                        retainerPeriodLabel: "Monthly",
+                        retainerIncludedMinutes: 300,
+                        retainerOverageRateMinorUnits: 15_000
                     ),
                 ],
                 invoices: [
@@ -211,7 +218,7 @@ enum WorkspaceSeedLibrary {
                                 amountMinorUnits: 100_000
                             ),
                             WorkspaceInvoiceLineItemSnapshot(
-                                description: "Fixed costs",
+                                description: "Fixed Charges",
                                 quantityLabel: "1 item",
                                 amountMinorUnits: 25_000
                             ),

@@ -24,7 +24,7 @@ struct CreateFixedCostSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
-                BillbiInputSheetSection(title: "Fixed cost") {
+                BillbiInputSheetSection(title: "Fixed Charge") {
                     BillbiInputSheetFieldRow(label: "Date") {
                         DatePicker("", selection: $draftDate, displayedComponents: .date)
                             .labelsHidden()
