@@ -64,15 +64,18 @@ struct CreateBucketSheet: View {
                             .textFieldStyle(.billbiInput)
                     }
                     BillbiInputSheetDivider()
-                    BillbiInputSheetFieldRow(label: "Billing mode") {
+                    HStack {
                         Picker("Billing mode", selection: $billingMode) {
                             ForEach(WorkspaceBucketBillingMode.allCases, id: \.self) { mode in
                                 Text(mode.displayTitle).tag(mode)
                             }
                         }
                         .pickerStyle(.segmented)
+                        .labelsHidden()
                         .disabled(!isBillingModeEditable)
                     }
+                    .padding(.horizontal, BillbiSpacing.md)
+                    .padding(.vertical, BillbiSpacing.sm)
                     BillbiInputSheetDivider()
                     modeFields
                 }
