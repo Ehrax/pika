@@ -42,6 +42,7 @@ struct CreateProjectSheet: View {
                                     }
                                 }
                                 .labelsHidden()
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         BillbiInputSheetDivider()

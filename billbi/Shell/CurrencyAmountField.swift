@@ -12,20 +12,19 @@ struct CurrencyAmountField: View {
     }
 
     var body: some View {
-        LabeledContent(title) {
-            HStack(spacing: BillbiSpacing.sm) {
-                TextField(title, value: $value, format: .number.precision(.fractionLength(0...2)))
-                    .labelsHidden()
-                    .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
-                    .frame(minWidth: 72, idealWidth: 86, maxWidth: 120)
+        HStack(spacing: BillbiSpacing.sm) {
+            TextField("", value: $value, format: .number.precision(.fractionLength(0...2)))
+                .monospacedDigit()
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityLabel(title)
 
-                if !currencyLabel.isEmpty {
-                    Text(currencyLabel)
-                        .foregroundStyle(BillbiColor.textSecondary)
-                }
+            if !currencyLabel.isEmpty {
+                Text(currencyLabel)
+                    .foregroundStyle(BillbiColor.textSecondary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private var currencyLabel: String {

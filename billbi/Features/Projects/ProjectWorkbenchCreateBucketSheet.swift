@@ -60,12 +60,7 @@ struct CreateBucketSheet: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: BillbiSpacing.lg) {
                 BillbiInputSheetSection(title: "Bucket") {
-                    BillbiInputSheetFieldRow(label: "Bucket name") {
-                        TextField("Bucket name", text: $name)
-                            .textFieldStyle(.billbiInput)
-                    }
-                    BillbiInputSheetDivider()
-                    HStack {
+                    BillbiInputSheetFieldRow(label: "Billing mode") {
                         Picker("Billing mode", selection: $billingMode) {
                             ForEach(WorkspaceBucketBillingMode.allCases, id: \.self) { mode in
                                 Text(mode.displayTitle).tag(mode)
@@ -75,8 +70,11 @@ struct CreateBucketSheet: View {
                         .labelsHidden()
                         .disabled(!isBillingModeEditable)
                     }
-                    .padding(.horizontal, BillbiSpacing.md)
-                    .padding(.vertical, BillbiSpacing.sm)
+                    BillbiInputSheetDivider()
+                    BillbiInputSheetFieldRow(label: "Bucket name") {
+                        TextField("Bucket name", text: $name)
+                            .textFieldStyle(.billbiInput)
+                    }
                     BillbiInputSheetDivider()
                     modeFields
                 }
