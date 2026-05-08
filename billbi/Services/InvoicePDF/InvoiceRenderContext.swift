@@ -18,9 +18,11 @@ struct InvoiceRenderContext: Equatable {
     var businessPhone: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var canonicalSenderTaxLegalFields: [WorkspaceTaxLegalField]
     var senderTaxLegalFields: [WorkspaceTaxLegalField]
     var clientName: String
     var billingAddress: String
+    var canonicalRecipientTaxLegalFields: [WorkspaceTaxLegalField]
     var recipientTaxLegalFields: [WorkspaceTaxLegalField]
     var invoiceNumber: String
     var issueDate: String
@@ -31,6 +33,7 @@ struct InvoiceRenderContext: Equatable {
     var lineItems: [LineItem]
     var totalLabel: String
     var paymentDetails: String
+    var selectedPaymentMethod: WorkspacePaymentMethod?
     var paymentIBAN: String
     var paymentBIC: String
     var paymentQRCodeDataURL: String
@@ -59,12 +62,19 @@ struct InvoiceRenderContext: Equatable {
         businessPhone = profile.phone
         taxIdentifier = profile.taxIdentifier
         economicIdentifier = profile.economicIdentifier
+        canonicalSenderTaxLegalFields = profile.senderTaxLegalFields
+            .filter(\.isRenderable)
+            .sorted { $0.sortOrder < $1.sortOrder }
         senderTaxLegalFields = profile.senderTaxLegalFields
             .filter { $0.placement == .senderDetails && $0.isRenderable }
             .sorted { $0.sortOrder < $1.sortOrder }
         clientName = row.clientName
         billingAddress = row.billingAddress
-        recipientTaxLegalFields = (row.invoice.clientSnapshot?.recipientTaxLegalFields ?? [])
+        let recipientFields = (row.invoice.clientSnapshot?.recipientTaxLegalFields ?? [])
+        canonicalRecipientTaxLegalFields = recipientFields
+            .filter(\.isRenderable)
+            .sorted { $0.sortOrder < $1.sortOrder }
+        recipientTaxLegalFields = recipientFields
             .filter { $0.placement == .recipientDetails && $0.isRenderable }
             .sorted { $0.sortOrder < $1.sortOrder }
         invoiceNumber = row.number
@@ -85,6 +95,7 @@ struct InvoiceRenderContext: Equatable {
         }
         totalLabel = row.totalLabel
         let selectedPaymentMethod = row.invoice.selectedPaymentMethodSnapshot ?? profile.defaultPaymentMethod
+        self.selectedPaymentMethod = selectedPaymentMethod
         let selectedPaymentDetails = selectedPaymentMethod?.printableInstructions ?? profile.paymentDetails
         paymentDetails = selectedPaymentDetails
         let parsedPaymentDetails = ParsedPaymentDetails(rawValue: selectedPaymentDetails)
