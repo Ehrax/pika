@@ -50,7 +50,8 @@ struct CreateBucketSheet: View {
         _hourlyRate = State(initialValue: Double(defaultRateMinorUnits) / 100)
         _fixedAmount = State(initialValue: Double(initialFixedAmountMinorUnits ?? defaultRateMinorUnits) / 100)
         _retainerAmount = State(initialValue: Double(initialRetainerAmountMinorUnits ?? defaultRateMinorUnits) / 100)
-        _retainerPeriodLabel = State(initialValue: initialRetainerPeriodLabel)
+        let periodLabel = initialRetainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        _retainerPeriodLabel = State(initialValue: periodLabel.isEmpty ? "Monthly" : periodLabel)
         _retainerIncludedHours = State(initialValue: initialRetainerIncludedMinutes.map { Self.hoursText(minutes: $0) } ?? "")
         _retainerOverageRate = State(initialValue: Double(initialRetainerOverageRateMinorUnits ?? defaultRateMinorUnits) / 100)
     }
@@ -127,8 +128,14 @@ struct CreateBucketSheet: View {
             }
             BillbiInputSheetDivider()
             BillbiInputSheetFieldRow(label: "Period") {
-                TextField("Monthly", text: $retainerPeriodLabel)
-                    .textFieldStyle(.billbiInput)
+                Picker("Period", selection: $retainerPeriodLabel) {
+                    ForEach(retainerPeriodChoices, id: \.self) { period in
+                        Text(LocalizedStringKey(period)).tag(period)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             BillbiInputSheetDivider()
             BillbiInputSheetFieldRow(label: "Included hours") {
@@ -140,6 +147,17 @@ struct CreateBucketSheet: View {
                 CurrencyAmountField("Overage rate", value: $retainerOverageRate, currencyCode: currencyCode)
             }
         }
+    }
+
+    private var retainerPeriodChoices: [String] {
+        let trimmedPeriod = retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPeriod.isEmpty,
+              !Self.standardRetainerPeriodLabels.contains(trimmedPeriod)
+        else {
+            return Self.standardRetainerPeriodLabels
+        }
+
+        return [trimmedPeriod] + Self.standardRetainerPeriodLabels
     }
 
     private var draft: WorkspaceBucketDraft {
@@ -175,6 +193,13 @@ struct CreateBucketSheet: View {
         guard let hours = Double(normalized), hours >= 0 else { return -1 }
         return Int((hours * 60).rounded())
     }
+
+    private static let standardRetainerPeriodLabels = [
+        "Weekly",
+        "Monthly",
+        "Quarterly",
+        "Yearly",
+    ]
 
     private static func hoursText(minutes: Int) -> String {
         let hours = Double(minutes) / 60

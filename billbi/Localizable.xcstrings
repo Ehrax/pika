@@ -71,6 +71,16 @@
         }
       }
     },
+    "Quarterly": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quarterly"
+          }
+        }
+      }
+    },
     "Optional": {
       "localizations": {
         "en": {
@@ -127,6 +137,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Retainer overage"
+          }
+        }
+      }
+    },
+    "Weekly": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly"
+          }
+        }
+      }
+    },
+    "Yearly": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly"
           }
         }
       }
