@@ -1,0 +1,99 @@
+{
+  "countries": [
+    {
+      "countryCode": "DE",
+      "sourceName": "Bundesministerium der Finanzen",
+      "sourceURL": "https://www.bundesfinanzministerium.de/",
+      "fields": [
+        {"key": "de.tax_number", "label": "Steuernummer", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "de.vat_id", "label": "USt-IdNr", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "AT",
+      "sourceName": "USP Österreich",
+      "sourceURL": "https://www.usp.gv.at/",
+      "fields": [
+        {"key": "at.vat_id", "label": "UID-Nummer", "placement": "senderDetails", "owner": "sender", "sortOrder": 0}
+      ]
+    },
+    {
+      "countryCode": "CH",
+      "sourceName": "ESTV",
+      "sourceURL": "https://www.estv.admin.ch/",
+      "fields": [
+        {"key": "ch.vat", "label": "MWST-Nr.", "placement": "senderDetails", "owner": "sender", "sortOrder": 0}
+      ]
+    },
+    {
+      "countryCode": "GB",
+      "sourceName": "HMRC",
+      "sourceURL": "https://www.gov.uk/government/organisations/hm-revenue-customs",
+      "fields": [
+        {"key": "gb.vat", "label": "VAT Number", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "gb.company_number", "label": "Company Number", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "US",
+      "sourceName": "IRS",
+      "sourceURL": "https://www.irs.gov/",
+      "fields": [
+        {"key": "us.ein", "label": "EIN", "placement": "senderDetails", "owner": "sender", "sortOrder": 0}
+      ]
+    },
+    {
+      "countryCode": "AU",
+      "sourceName": "ATO",
+      "sourceURL": "https://www.ato.gov.au/",
+      "fields": [
+        {"key": "au.abn", "label": "ABN", "placement": "senderDetails", "owner": "sender", "sortOrder": 0}
+      ]
+    },
+    {
+      "countryCode": "CA",
+      "sourceName": "CRA",
+      "sourceURL": "https://www.canada.ca/en/revenue-agency.html",
+      "fields": [
+        {"key": "ca.bn", "label": "Business Number", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "ca.gst_hst", "label": "GST/HST Number", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "NL",
+      "sourceName": "Belastingdienst",
+      "sourceURL": "https://www.belastingdienst.nl/",
+      "fields": [
+        {"key": "nl.vat", "label": "BTW-nummer", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "nl.kvk", "label": "KvK-nummer", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "FR",
+      "sourceName": "impots.gouv.fr",
+      "sourceURL": "https://www.impots.gouv.fr/",
+      "fields": [
+        {"key": "fr.vat", "label": "Numéro TVA", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "fr.siren", "label": "SIREN", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "ES",
+      "sourceName": "Agencia Tributaria",
+      "sourceURL": "https://sede.agenciatributaria.gob.es/",
+      "fields": [
+        {"key": "es.nif", "label": "NIF", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "es.vat", "label": "IVA ID", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    },
+    {
+      "countryCode": "IT",
+      "sourceName": "Agenzia delle Entrate",
+      "sourceURL": "https://www.agenziaentrate.gov.it/",
+      "fields": [
+        {"key": "it.vat", "label": "Partita IVA", "placement": "senderDetails", "owner": "sender", "sortOrder": 0},
+        {"key": "it.cf", "label": "Codice Fiscale", "placement": "senderDetails", "owner": "sender", "sortOrder": 1}
+      ]
+    }
+  ]
+}
