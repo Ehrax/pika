@@ -39,16 +39,17 @@ struct BucketDetailWorkbench: View {
                     )
                 }
 
-                BucketEntriesTable(
-                    projection: projection,
-                    draftDate: draftDate,
-                    showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked
-                        && projection.selectedBucket.billingMode != .fixed,
-                    onAddFixedCost: onAddFixedCost,
-                    onAddEntry: onAddEntry,
-                    onDeleteEntry: onDeleteEntry,
-                    onUpdateEntryDate: onUpdateEntryDate
-                )
+                if projection.selectedBucket.billingMode != .fixed {
+                    BucketEntriesTable(
+                        projection: projection,
+                        draftDate: draftDate,
+                        showsInlineEditor: !projection.selectedBucket.status.isInvoiceLocked,
+                        onAddFixedCost: onAddFixedCost,
+                        onAddEntry: onAddEntry,
+                        onDeleteEntry: onDeleteEntry,
+                        onUpdateEntryDate: onUpdateEntryDate
+                    )
+                }
             }
             .padding(.horizontal, BillbiSpacing.xl + BillbiSpacing.md)
             .padding(.vertical, BillbiSpacing.lg)
