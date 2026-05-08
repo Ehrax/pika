@@ -67,6 +67,7 @@ struct SettingsProfileSection: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .labelsHidden()
                 .controlSize(.small)
             }
         }
