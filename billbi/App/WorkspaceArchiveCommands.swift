@@ -176,7 +176,7 @@ struct WorkspaceArchiveCommands: Commands {
             String(localized: "Projects: \(summary.projectCount)"),
             String(localized: "Buckets: \(summary.bucketCount)"),
             String(localized: "Time Entries: \(summary.timeEntryCount)"),
-            String(localized: "Fixed Costs: \(summary.fixedCostCount)"),
+            String(localized: "Fixed Charges: \(summary.fixedCostCount)"),
             String(localized: "Invoices: \(summary.invoiceCount)"),
         ].joined(separator: " · ")
     }

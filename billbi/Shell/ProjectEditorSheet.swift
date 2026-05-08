@@ -42,6 +42,7 @@ struct ProjectEditorSheet: View {
                             }
                         }
                         .labelsHidden()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     BillbiInputSheetDivider()
                     BillbiInputSheetFieldRow(label: "Project name") {
@@ -94,4 +95,5 @@ struct ProjectEditorSheet: View {
             && clientID != nil
             && !currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
 }

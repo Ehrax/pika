@@ -49,7 +49,7 @@ extension WorkspaceStore {
         occurredAt: Date
     ) throws -> WorkspaceBucket {
         let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
+        guard Self.isValidBucketDraft(draft, name: bucketName, mode: draft.billingMode) else {
             throw WorkspaceStoreError.invalidBucket
         }
 
@@ -62,7 +62,17 @@ extension WorkspaceStore {
             projectID: projectID,
             name: bucketName,
             statusRaw: BucketStatus.open.rawValue,
-            defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits,
+            billingModeRaw: draft.billingMode.rawValue,
+            defaultHourlyRateMinorUnits: draft.billingMode == .hourly ? draft.hourlyRateMinorUnits : 0,
+            fixedAmountMinorUnits: draft.billingMode == .fixed ? draft.fixedAmountMinorUnits ?? 0 : 0,
+            retainerAmountMinorUnits: draft.billingMode == .retainer ? draft.retainerAmountMinorUnits ?? 0 : 0,
+            retainerPeriodLabel: draft.billingMode == .retainer
+                ? draft.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+                : "",
+            retainerIncludedMinutes: draft.billingMode == .retainer ? draft.retainerIncludedMinutes : nil,
+            retainerOverageRateMinorUnits: draft.billingMode == .retainer
+                ? draft.retainerOverageRateMinorUnits ?? 0
+                : 0,
             createdAt: now,
             updatedAt: now,
             project: projectRecord
@@ -96,18 +106,41 @@ extension WorkspaceStore {
         occurredAt: Date
     ) throws -> WorkspaceBucket {
         let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
-            throw WorkspaceStoreError.invalidBucket
-        }
-
         guard let bucketRecord = try bucketRecord(bucketID),
               bucketRecord.projectID == projectID
         else {
             throw WorkspaceStoreError.bucketNotFound
         }
 
+        let currentMode = bucketRecord.billingMode
+        guard Self.isValidBucketDraft(draft, name: bucketName, mode: currentMode) else {
+            throw WorkspaceStoreError.invalidBucket
+        }
+
         bucketRecord.name = bucketName
-        bucketRecord.defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
+        switch currentMode {
+        case .hourly:
+            bucketRecord.defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
+            bucketRecord.fixedAmountMinorUnits = 0
+            bucketRecord.retainerAmountMinorUnits = 0
+            bucketRecord.retainerPeriodLabel = ""
+            bucketRecord.retainerIncludedMinutes = nil
+            bucketRecord.retainerOverageRateMinorUnits = 0
+        case .fixed:
+            bucketRecord.defaultHourlyRateMinorUnits = 0
+            bucketRecord.fixedAmountMinorUnits = draft.fixedAmountMinorUnits ?? 0
+            bucketRecord.retainerAmountMinorUnits = 0
+            bucketRecord.retainerPeriodLabel = ""
+            bucketRecord.retainerIncludedMinutes = nil
+            bucketRecord.retainerOverageRateMinorUnits = 0
+        case .retainer:
+            bucketRecord.defaultHourlyRateMinorUnits = 0
+            bucketRecord.fixedAmountMinorUnits = 0
+            bucketRecord.retainerAmountMinorUnits = draft.retainerAmountMinorUnits ?? 0
+            bucketRecord.retainerPeriodLabel = draft.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            bucketRecord.retainerIncludedMinutes = draft.retainerIncludedMinutes
+            bucketRecord.retainerOverageRateMinorUnits = draft.retainerOverageRateMinorUnits ?? 0
+        }
         bucketRecord.updatedAt = .now
 
         let committed = try commitNormalizedWorkspaceMutation {

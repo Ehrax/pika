@@ -78,7 +78,13 @@ struct WorkspaceProjectUpdateDraft: Equatable {
 
 struct WorkspaceBucketDraft: Equatable {
     var name: String
+    var billingMode: WorkspaceBucketBillingMode = .hourly
     var hourlyRateMinorUnits: Int
+    var fixedAmountMinorUnits: Int? = nil
+    var retainerAmountMinorUnits: Int? = nil
+    var retainerPeriodLabel: String = ""
+    var retainerIncludedMinutes: Int? = nil
+    var retainerOverageRateMinorUnits: Int? = nil
 }
 
 struct WorkspaceClientDraft: Equatable {

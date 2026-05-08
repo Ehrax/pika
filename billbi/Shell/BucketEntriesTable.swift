@@ -26,10 +26,10 @@ struct BucketEntriesTable: View {
                     Button {
                         onAddFixedCost()
                     } label: {
-                        Label("Fixed Cost", systemImage: "plus.square")
+                        Label("Fixed Charge", systemImage: "plus.square")
                     }
                     .buttonStyle(.borderless)
-                    .help("Add a fixed cost")
+                    .help("Add a Fixed Charge")
                     .tint(BillbiColor.brand)
                 }
 

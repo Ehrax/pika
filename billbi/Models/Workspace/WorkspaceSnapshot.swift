@@ -70,6 +70,10 @@ struct WorkspaceSnapshot: Codable, Equatable {
             let fallbackRate = projects[projectIndex].defaultHourlyRateMinorUnits ?? defaultRateMinorUnits
 
             for bucketIndex in projects[projectIndex].buckets.indices {
+                guard projects[projectIndex].buckets[bucketIndex].billingMode == .hourly else {
+                    continue
+                }
+
                 let bucketRate = projects[projectIndex].buckets[bucketIndex].hourlyRateMinorUnits
                 if projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits.map({ $0 <= 0 }) == true {
                     projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = bucketRate ?? fallbackRate

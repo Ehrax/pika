@@ -601,7 +601,7 @@ struct OnboardingProjectPreview: View {
 
     private var miniEntriesTable: some View {
         VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
-            Label("Fixed Cost", systemImage: "plus.square")
+            Label("Fixed Charge", systemImage: "plus.square")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(BillbiColor.brand)
 

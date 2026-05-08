@@ -170,6 +170,7 @@ enum SwiftDataWorkspaceProjectionLoader {
             id: record.id,
             name: record.name,
             status: record.status,
+            billingMode: record.billingMode,
             updatedAt: record.updatedAt,
             totalMinorUnits: billableTimeMinorUnits + fixedCostMinorUnits,
             billableMinutes: billableMinutes,
@@ -178,6 +179,11 @@ enum SwiftDataWorkspaceProjectionLoader {
             defaultHourlyRateMinorUnits: timeEntries
                 .first(where: { $0.isBillable && $0.hourlyRateMinorUnits > 0 })?
                 .hourlyRateMinorUnits ?? positiveMinorUnits(record.defaultHourlyRateMinorUnits),
+            fixedAmountMinorUnits: positiveMinorUnits(record.fixedAmountMinorUnits),
+            retainerAmountMinorUnits: positiveMinorUnits(record.retainerAmountMinorUnits),
+            retainerPeriodLabel: record.retainerPeriodLabel,
+            retainerIncludedMinutes: record.retainerIncludedMinutes,
+            retainerOverageRateMinorUnits: positiveMinorUnits(record.retainerOverageRateMinorUnits),
             timeEntries: timeEntries,
             fixedCostEntries: fixedCostEntries
         )

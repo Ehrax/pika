@@ -75,7 +75,7 @@ extension WorkspaceStore {
 
         let projectIndex = try projectIndex(projectID)
         let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
+        guard Self.isValidBucketDraft(draft, name: bucketName, mode: draft.billingMode) else {
             throw WorkspaceStoreError.invalidBucket
         }
 
@@ -83,10 +83,16 @@ extension WorkspaceStore {
             id: UUID(),
             name: bucketName,
             status: .open,
+            billingMode: draft.billingMode,
             totalMinorUnits: 0,
             billableMinutes: 0,
             fixedCostMinorUnits: 0,
-            defaultHourlyRateMinorUnits: draft.hourlyRateMinorUnits
+            defaultHourlyRateMinorUnits: draft.billingMode == .hourly ? draft.hourlyRateMinorUnits : nil,
+            fixedAmountMinorUnits: draft.billingMode == .fixed ? draft.fixedAmountMinorUnits : nil,
+            retainerAmountMinorUnits: draft.billingMode == .retainer ? draft.retainerAmountMinorUnits : nil,
+            retainerPeriodLabel: draft.billingMode == .retainer ? draft.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines) : "",
+            retainerIncludedMinutes: draft.billingMode == .retainer ? draft.retainerIncludedMinutes : nil,
+            retainerOverageRateMinorUnits: draft.billingMode == .retainer ? draft.retainerOverageRateMinorUnits : nil
         )
 
         workspace.projects[projectIndex].buckets.append(bucket)
@@ -118,13 +124,36 @@ extension WorkspaceStore {
 
         let projectIndex = try projectIndex(projectID)
         let bucketIndex = try bucketIndex(bucketID, in: workspace.projects[projectIndex])
+        let currentMode = workspace.projects[projectIndex].buckets[bucketIndex].billingMode
         let bucketName = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !bucketName.isEmpty, draft.hourlyRateMinorUnits > 0 else {
+        guard Self.isValidBucketDraft(draft, name: bucketName, mode: currentMode) else {
             throw WorkspaceStoreError.invalidBucket
         }
 
         workspace.projects[projectIndex].buckets[bucketIndex].name = bucketName
-        workspace.projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
+        switch currentMode {
+        case .hourly:
+            workspace.projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = draft.hourlyRateMinorUnits
+            workspace.projects[projectIndex].buckets[bucketIndex].fixedAmountMinorUnits = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerAmountMinorUnits = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerPeriodLabel = ""
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerIncludedMinutes = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerOverageRateMinorUnits = nil
+        case .fixed:
+            workspace.projects[projectIndex].buckets[bucketIndex].fixedAmountMinorUnits = draft.fixedAmountMinorUnits
+            workspace.projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerAmountMinorUnits = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerPeriodLabel = ""
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerIncludedMinutes = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerOverageRateMinorUnits = nil
+        case .retainer:
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerAmountMinorUnits = draft.retainerAmountMinorUnits
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerPeriodLabel = draft.retainerPeriodLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerIncludedMinutes = draft.retainerIncludedMinutes
+            workspace.projects[projectIndex].buckets[bucketIndex].retainerOverageRateMinorUnits = draft.retainerOverageRateMinorUnits
+            workspace.projects[projectIndex].buckets[bucketIndex].defaultHourlyRateMinorUnits = nil
+            workspace.projects[projectIndex].buckets[bucketIndex].fixedAmountMinorUnits = nil
+        }
         let bucket = workspace.projects[projectIndex].buckets[bucketIndex]
 
         appendActivity(
@@ -134,6 +163,30 @@ extension WorkspaceStore {
         )
         try persistWorkspace()
         return bucket
+    }
+
+    static func isValidBucketDraft(
+        _ draft: WorkspaceBucketDraft,
+        name bucketName: String,
+        mode: WorkspaceBucketBillingMode
+    ) -> Bool {
+        guard !bucketName.isEmpty else { return false }
+
+        switch mode {
+        case .hourly:
+            return draft.hourlyRateMinorUnits > 0
+        case .fixed:
+            return (draft.fixedAmountMinorUnits ?? 0) > 0
+        case .retainer:
+            guard (draft.retainerAmountMinorUnits ?? 0) > 0 else { return false }
+            if let included = draft.retainerIncludedMinutes, included < 0 {
+                return false
+            }
+            if let overageRate = draft.retainerOverageRateMinorUnits, overageRate < 0 {
+                return false
+            }
+            return true
+        }
     }
 
     func markBucketReady(
