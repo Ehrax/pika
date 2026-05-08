@@ -98,7 +98,7 @@ struct SettingsFeatureView: View {
                 case .tax:
                     SettingsTaxIdentitySection(draft: $draft)
                 case .payment:
-                    SettingsPaymentDetailsSection(paymentDetails: $paymentDetails)
+                    SettingsPaymentDetailsSection(draft: $draft)
                 }
 
                 if let saveFailure {
@@ -152,7 +152,7 @@ struct SettingsFeatureView: View {
             saveFailure = nil
         } catch WorkspaceStoreError.invalidBusinessProfile {
             saveFailure = SettingsSaveFailure(
-                message: String(localized: "Business name, email, address, invoice prefix, payment details, payment terms, and next number are required.")
+                message: String(localized: "Business name, email, address, invoice prefix, valid payment method, payment terms, and next number are required.")
             )
         } catch {
             saveFailure = SettingsSaveFailure(message: String(localized: "Settings could not be saved."))

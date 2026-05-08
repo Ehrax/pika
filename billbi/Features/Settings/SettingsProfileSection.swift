@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsProfileSection: View {
     @Binding var draft: WorkspaceBusinessProfileDraft
     @Binding var address: BillingAddressComponents
+    private let countryOptions = ISOCountryCatalog.options()
 
     var body: some View {
         SettingsSection(title: "Business profile") {
@@ -52,6 +53,22 @@ struct SettingsProfileSection: View {
                             .frame(maxWidth: 180)
                     }
                 }
+            }
+            SettingsDivider()
+            SettingsEditableFieldRow(label: "Business country/region") {
+                Picker(
+                    "Business country/region",
+                    selection: $draft.countryCode
+                ) {
+                    Text("None").tag("")
+                    ForEach(countryOptions) { option in
+                        Text("\(option.localizedName) (\(option.code))")
+                            .tag(option.code)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .controlSize(.small)
             }
         }
     }

@@ -72,6 +72,18 @@ struct CreateInvoiceConfirmationSheet: View {
                         InvoiceFinalizationReviewRow("Service period", value: draft.servicePeriod)
                         BillbiInputSheetDivider()
                         InvoiceFinalizationReviewRow("Currency", value: draft.currencyCode)
+                        if !presentation.availablePaymentMethods.isEmpty {
+                            BillbiInputSheetDivider()
+                            BillbiInputSheetFieldRow(label: "Payment method") {
+                                Picker("Payment method", selection: $draft.selectedPaymentMethodID) {
+                                    ForEach(presentation.availablePaymentMethods) { method in
+                                        Text(method.title).tag(Optional(method.id))
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
                     }
 
                     BillbiInputSheetSection(title: "Totals") {

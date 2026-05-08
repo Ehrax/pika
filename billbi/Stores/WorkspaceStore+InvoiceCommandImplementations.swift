@@ -195,6 +195,8 @@ extension WorkspaceStore {
             return .bucketNotInvoiceable
         case .duplicateInvoiceNumber:
             return .duplicateInvoiceNumber
+        case .invalidPaymentMethodSelection:
+            return .invalidPaymentMethodSelection
         case let .invalidInvoiceStatusTransition(from, to):
             return .invalidInvoiceStatusTransition(from: from, to: to)
         }

@@ -48,12 +48,16 @@ extension WorkspaceStore {
             address: archiveWorkspace.businessProfile.address,
             taxIdentifier: archiveWorkspace.businessProfile.taxIdentifier,
             economicIdentifier: archiveWorkspace.businessProfile.economicIdentifier,
+            countryCode: "",
             invoicePrefix: archiveWorkspace.businessProfile.invoicePrefix,
             nextInvoiceNumber: archiveWorkspace.businessProfile.nextInvoiceNumber,
             currencyCode: archiveWorkspace.businessProfile.currencyCode,
             paymentDetails: archiveWorkspace.businessProfile.paymentDetails,
+            paymentMethods: archiveWorkspace.businessProfile.paymentMethods,
+            defaultPaymentMethodID: archiveWorkspace.businessProfile.defaultPaymentMethodID,
             taxNote: archiveWorkspace.businessProfile.taxNote,
-            defaultTermsDays: archiveWorkspace.businessProfile.defaultTermsDays
+            defaultTermsDays: archiveWorkspace.businessProfile.defaultTermsDays,
+            senderTaxLegalFields: archiveWorkspace.businessProfile.senderTaxLegalFields
         )
 
         let clients = archiveWorkspace.clients.map { client in
@@ -63,7 +67,10 @@ extension WorkspaceStore {
                 email: client.email,
                 billingAddress: client.billingAddress,
                 defaultTermsDays: client.defaultTermsDays,
+                preferredPaymentMethodID: client.preferredPaymentMethodID,
                 isArchived: client.isArchived
+                ,
+                recipientTaxLegalFields: client.recipientTaxLegalFields
             )
         }
         let clientNameByID = Dictionary(uniqueKeysWithValues: clients.map { ($0.id, $0.name) })
@@ -163,12 +170,16 @@ extension WorkspaceStore {
                         address: archiveInvoice.businessSnapshot.address,
                         taxIdentifier: archiveInvoice.businessSnapshot.taxIdentifier,
                         economicIdentifier: archiveInvoice.businessSnapshot.economicIdentifier,
+                        countryCode: "",
                         invoicePrefix: businessProfile.invoicePrefix,
                         nextInvoiceNumber: businessProfile.nextInvoiceNumber,
                         currencyCode: archiveInvoice.currencyCode,
                         paymentDetails: archiveInvoice.businessSnapshot.paymentDetails,
+                        paymentMethods: [],
+                        defaultPaymentMethodID: nil,
                         taxNote: archiveInvoice.businessSnapshot.taxNote,
-                        defaultTermsDays: businessProfile.defaultTermsDays
+                        defaultTermsDays: businessProfile.defaultTermsDays,
+                        senderTaxLegalFields: archiveInvoice.businessSnapshot.senderTaxLegalFields
                     ),
                     clientSnapshot: WorkspaceClient(
                         id: archiveProject.clientID,
@@ -176,7 +187,8 @@ extension WorkspaceStore {
                         email: archiveInvoice.clientSnapshot.email,
                         billingAddress: archiveInvoice.clientSnapshot.billingAddress,
                         defaultTermsDays: businessProfile.defaultTermsDays,
-                        isArchived: false
+                        isArchived: false,
+                        recipientTaxLegalFields: archiveInvoice.clientSnapshot.recipientTaxLegalFields
                     ),
                     clientID: archiveProject.clientID,
                     clientName: archiveInvoice.clientSnapshot.name,
@@ -192,6 +204,7 @@ extension WorkspaceStore {
                     totalMinorUnits: max(archiveInvoice.totalMinorUnits, 0),
                     lineItems: lineItems,
                     currencyCode: archiveInvoice.currencyCode,
+                    selectedPaymentMethodSnapshot: archiveInvoice.businessSnapshot.selectedPaymentMethod,
                     note: archiveInvoice.note
                 )
             }

@@ -11,6 +11,7 @@ struct InvoiceFinalizationDraft: Equatable {
     var servicePeriod: String
     var currencyCode: String
     var taxNote: String
+    var selectedPaymentMethodID: UUID? = nil
 }
 
 enum InvoiceFinalizationField: CaseIterable, Equatable {
@@ -24,10 +25,11 @@ enum InvoiceFinalizationField: CaseIterable, Equatable {
     case servicePeriod
     case currencyCode
     case taxNote
+    case selectedPaymentMethodID
 
     var isEditable: Bool {
         switch self {
-        case .template, .issueDate, .dueDate:
+        case .template, .issueDate, .dueDate, .selectedPaymentMethodID:
             true
         case .recipientName,
              .recipientEmail,
@@ -92,6 +94,7 @@ struct WorkspaceClientDraft: Equatable {
     var email: String
     var billingAddress: String
     var defaultTermsDays: Int
+    var preferredPaymentMethodID: UUID?
 }
 
 struct WorkspaceBusinessProfileDraft: Equatable {
@@ -102,12 +105,16 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     var address: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var countryCode: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
     var paymentDetails: String
+    var paymentMethods: [WorkspacePaymentMethod]
+    var defaultPaymentMethodID: UUID?
     var taxNote: String
     var defaultTermsDays: Int
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
 
     init(
         businessName: String,
@@ -117,12 +124,16 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         address: String,
         taxIdentifier: String,
         economicIdentifier: String = "",
+        countryCode: String = "",
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
         paymentDetails: String,
+        paymentMethods: [WorkspacePaymentMethod] = [],
+        defaultPaymentMethodID: UUID? = nil,
         taxNote: String,
-        defaultTermsDays: Int
+        defaultTermsDays: Int,
+        senderTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.businessName = businessName
         self.personName = personName
@@ -131,12 +142,16 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.address = address
         self.taxIdentifier = taxIdentifier
         self.economicIdentifier = economicIdentifier
+        self.countryCode = countryCode
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
         self.paymentDetails = paymentDetails
+        self.paymentMethods = paymentMethods
+        self.defaultPaymentMethodID = defaultPaymentMethodID
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
+        self.senderTaxLegalFields = senderTaxLegalFields
     }
 
     init(profile: BusinessProfileProjection) {
@@ -148,12 +163,16 @@ struct WorkspaceBusinessProfileDraft: Equatable {
             address: profile.address,
             taxIdentifier: profile.taxIdentifier,
             economicIdentifier: profile.economicIdentifier,
+            countryCode: profile.countryCode,
             invoicePrefix: profile.invoicePrefix,
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
             paymentDetails: profile.paymentDetails,
+            paymentMethods: profile.paymentMethods,
+            defaultPaymentMethodID: profile.defaultPaymentMethodID,
             taxNote: profile.taxNote,
-            defaultTermsDays: profile.defaultTermsDays
+            defaultTermsDays: profile.defaultTermsDays,
+            senderTaxLegalFields: profile.senderTaxLegalFields
         )
     }
 }

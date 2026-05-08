@@ -26,7 +26,11 @@ extension WorkspaceStore {
             dueDate: dueDate,
             servicePeriod: defaultServicePeriod(for: project.buckets.first { $0.id == bucketID }),
             currencyCode: project.currencyCode,
-            taxNote: workspace.businessProfile.taxNote
+            taxNote: workspace.businessProfile.taxNote,
+            selectedPaymentMethodID: workspace.businessProfile.resolvedPaymentMethod(
+                invoiceOverrideID: nil,
+                clientPreferredID: client?.preferredPaymentMethodID
+            )?.id
         )
     }
 

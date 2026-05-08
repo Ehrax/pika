@@ -17,6 +17,7 @@ enum WorkspaceArchiveImportError: Error, Equatable {
     case invalidMoneyValue(field: String, value: Int)
     case invalidTermsDays(field: String, value: Int)
     case invalidInvoiceTemplate(String)
+    case invalidPaymentMethodReference(field: String, id: UUID)
     case duplicateInvoiceNumber(String)
     case invoiceTotalMismatch(invoiceID: UUID, expected: Int, actual: Int)
 }
@@ -33,6 +34,7 @@ enum WorkspaceArchiveImportValidator {
         try validateRelationships(in: workspace)
         try validateCurrencies(in: workspace)
         try validateInvoiceTemplates(in: workspace)
+        try validatePaymentMethodReferences(in: workspace)
         try validateMoneyAndAccounting(in: workspace)
         try validateInvoiceNumbers(in: workspace)
 
@@ -44,6 +46,28 @@ enum WorkspaceArchiveImportValidator {
             fixedCostCount: workspace.fixedCosts.count,
             invoiceCount: workspace.invoices.count
         )
+    }
+
+    private static func validatePaymentMethodReferences(in workspace: WorkspaceArchiveV1Workspace) throws {
+        let methodIDs = Set(workspace.businessProfile.paymentMethods.map(\.id))
+
+        if let defaultPaymentMethodID = workspace.businessProfile.defaultPaymentMethodID,
+           !methodIDs.contains(defaultPaymentMethodID) {
+            throw WorkspaceArchiveImportError.invalidPaymentMethodReference(
+                field: "businessProfile.defaultPaymentMethodID",
+                id: defaultPaymentMethodID
+            )
+        }
+
+        for client in workspace.clients {
+            guard let preferredPaymentMethodID = client.preferredPaymentMethodID else { continue }
+            if !methodIDs.contains(preferredPaymentMethodID) {
+                throw WorkspaceArchiveImportError.invalidPaymentMethodReference(
+                    field: "client.preferredPaymentMethodID",
+                    id: preferredPaymentMethodID
+                )
+            }
+        }
     }
 
     private static func validateUniqueIDs(in workspace: WorkspaceArchiveV1Workspace) throws {

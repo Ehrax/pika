@@ -12,10 +12,10 @@
   <p class="bank-lines">{{{paymentDetails}}}</p>
   {{/hasPaymentIBAN}}
   <p class="thank-you">{{thankYouNote}}</p>
-  {{#paymentQRCodeDataURL}}
+  {{#hasPaymentQRCode}}
   <figure class="payment-qr">
     <img src="{{paymentQRCodeDataURL}}" alt="SEPA Zahlungs-QR-Code">
     <figcaption>Für Banking-App scannen</figcaption>
   </figure>
-  {{/paymentQRCodeDataURL}}
+  {{/hasPaymentQRCode}}
 </section>

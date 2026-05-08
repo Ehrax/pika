@@ -26,8 +26,14 @@ private extension InvoiceRenderContext {
             "businessPhone": businessPhone,
             "taxIdentifier": taxIdentifier,
             "economicIdentifier": economicIdentifier,
+            "canonicalSenderTaxLegalFields": canonicalSenderTaxLegalFields.map(\.mustacheValues),
+            "senderTaxLegalFields": senderTaxLegalFields.map(\.mustacheValues),
+            "hasSenderTaxLegalFields": !senderTaxLegalFields.isEmpty,
             "clientName": clientName,
             "billingAddress": lineBreaks(billingAddress),
+            "canonicalRecipientTaxLegalFields": canonicalRecipientTaxLegalFields.map(\.mustacheValues),
+            "recipientTaxLegalFields": recipientTaxLegalFields.map(\.mustacheValues),
+            "hasRecipientTaxLegalFields": !recipientTaxLegalFields.isEmpty,
             "invoiceNumber": invoiceNumber,
             "issueDate": issueDate,
             "dueDate": dueDate,
@@ -37,10 +43,13 @@ private extension InvoiceRenderContext {
             "lineItems": lineItems.map(\.mustacheValues),
             "totalLabel": totalLabel,
             "paymentDetails": lineBreaks(paymentDetails),
+            "selectedPaymentMethodTitle": selectedPaymentMethod?.title ?? "",
+            "selectedPaymentMethodType": selectedPaymentMethod?.type.rawValue ?? "",
             "paymentIBAN": paymentIBAN,
             "paymentBIC": paymentBIC,
             "hasPaymentIBAN": !paymentIBAN.isEmpty,
             "hasPaymentBIC": !paymentBIC.isEmpty,
+            "hasPaymentQRCode": !paymentQRCodeDataURL.isEmpty,
             "paymentQRCodeDataURL": paymentQRCodeDataURL,
             "paymentTransferNote": paymentTransferNote.htmlEscaped,
             "taxNote": lineBreaks(taxNote),
@@ -53,6 +62,15 @@ private extension InvoiceRenderContext {
         value
             .htmlEscaped
             .replacingOccurrences(of: "\n", with: "<br>")
+    }
+}
+
+private extension WorkspaceTaxLegalField {
+    var mustacheValues: [String: Any] {
+        [
+            "label": label.htmlEscaped,
+            "value": value.htmlEscaped,
+        ]
     }
 }
 

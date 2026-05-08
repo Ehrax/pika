@@ -177,6 +177,148 @@ struct InvoicePDFServiceTests {
         #expect(!rendered.html.contains(#"<p class="invoice-note">Steuernummer: 151/260/41486</p>"#))
     }
 
+    @Test func renderInvoiceHTMLSuppressesSEPAPaymentQRCodeForNonEURInvoices() throws {
+        let issueDate = Date.billbiDate(year: 2026, month: 5, day: 1)
+        let dueDate = Date.billbiDate(year: 2026, month: 5, day: 15)
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let invoice = WorkspaceInvoice(
+            id: UUID(uuidString: "40000000-0000-0000-0000-000000000803")!,
+            number: "EHX-2026-803",
+            businessSnapshot: BusinessProfileProjection(
+                businessName: "Snapshot Studio",
+                personName: "Ada Grace",
+                email: "billing@example.test",
+                address: "Snapshot Street 4\n10115 Berlin",
+                taxIdentifier: "151/260/41486",
+                economicIdentifier: "DE320253387",
+                invoicePrefix: "EHX",
+                nextInvoiceNumber: 90,
+                currencyCode: "USD",
+                paymentDetails: "IBAN DE32 1001 1001 2141 1444 52",
+                taxNote: "Steuernummer: 151/260/41486",
+                defaultTermsDays: 14
+            ),
+            clientSnapshot: WorkspaceClient(
+                id: UUID(uuidString: "10000000-0000-0000-0000-000000000803")!,
+                name: "Client Co",
+                email: "client@example.test",
+                billingAddress: "Client Road 9\n10999 Berlin",
+                defaultTermsDays: 14
+            ),
+            clientID: UUID(uuidString: "10000000-0000-0000-0000-000000000803")!,
+            clientName: "Client Co",
+            projectName: "Launch sprint",
+            bucketName: "Design implementation",
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "April 2026",
+            status: .finalized,
+            totalMinorUnits: 120_000,
+            lineItems: [
+                WorkspaceInvoiceLineItemSnapshot(
+                    id: UUID(uuidString: "50000000-0000-0000-0000-000000000803")!,
+                    description: "Design implementation",
+                    quantityLabel: "12h",
+                    amountMinorUnits: 120_000
+                ),
+            ],
+            currencyCode: "USD",
+            note: "Steuernummer: 151/260/41486"
+        )
+
+        let row = WorkspaceInvoiceRowProjection(
+            invoice: invoice,
+            projectName: "Launch sprint",
+            billingAddress: "Client Road 9\n10999 Berlin",
+            on: issueDate,
+            formatter: formatter
+        )
+
+        let rendered = try InvoicePDFService.placeholder().renderInvoiceHTML(
+            profile: invoice.businessSnapshot!,
+            row: row
+        )
+
+        #expect(rendered.html.contains("SEPA Zahlungs-QR-Code") == false)
+    }
+
+    @Test func renderInvoiceHTMLUsesSelectedPaymentMethodSnapshotDetails() throws {
+        let issueDate = Date.billbiDate(year: 2026, month: 5, day: 1)
+        let dueDate = Date.billbiDate(year: 2026, month: 5, day: 15)
+        let formatter = MoneyFormatting.euros(locale: Locale(identifier: "en_US_POSIX"))
+
+        let selectedMethod = WorkspacePaymentMethod(
+            id: UUID(uuidString: "3D410482-8EE9-4D6E-A8F5-6D7AF7458A40")!,
+            title: "Invoice override",
+            type: .other,
+            instructions: "Use card terminal in person."
+        )
+
+        let invoice = WorkspaceInvoice(
+            id: UUID(uuidString: "40000000-0000-0000-0000-000000000804")!,
+            number: "EHX-2026-804",
+            businessSnapshot: BusinessProfileProjection(
+                businessName: "Snapshot Studio",
+                personName: "Ada Grace",
+                email: "billing@example.test",
+                address: "Snapshot Street 4\n10115 Berlin",
+                taxIdentifier: "151/260/41486",
+                economicIdentifier: "DE320253387",
+                invoicePrefix: "EHX",
+                nextInvoiceNumber: 90,
+                currencyCode: "EUR",
+                paymentDetails: "IBAN DE32 1001 1001 2141 1444 52",
+                taxNote: "Steuernummer: 151/260/41486",
+                defaultTermsDays: 14
+            ),
+            clientSnapshot: WorkspaceClient(
+                id: UUID(uuidString: "10000000-0000-0000-0000-000000000804")!,
+                name: "Client Co",
+                email: "client@example.test",
+                billingAddress: "Client Road 9\n10999 Berlin",
+                defaultTermsDays: 14
+            ),
+            clientID: UUID(uuidString: "10000000-0000-0000-0000-000000000804")!,
+            clientName: "Client Co",
+            projectName: "Launch sprint",
+            bucketName: "Design implementation",
+            issueDate: issueDate,
+            dueDate: dueDate,
+            servicePeriod: "April 2026",
+            status: .finalized,
+            totalMinorUnits: 120_000,
+            lineItems: [
+                WorkspaceInvoiceLineItemSnapshot(
+                    id: UUID(uuidString: "50000000-0000-0000-0000-000000000804")!,
+                    description: "Design implementation",
+                    quantityLabel: "12h",
+                    amountMinorUnits: 120_000
+                ),
+            ],
+            currencyCode: "EUR",
+            selectedPaymentMethodSnapshot: selectedMethod,
+            note: nil
+        )
+
+        let row = WorkspaceInvoiceRowProjection(
+            invoice: invoice,
+            projectName: "Launch sprint",
+            billingAddress: "Client Road 9\n10999 Berlin",
+            on: issueDate,
+            formatter: formatter
+        )
+
+        let rendered = try InvoicePDFService.placeholder().renderInvoiceHTML(
+            profile: invoice.businessSnapshot!,
+            row: row
+        )
+
+        #expect(rendered.html.contains("Use card terminal in person."))
+        #expect(rendered.html.contains("IBAN: <strong>DE32 1001 1001 2141 1444 52</strong>") == false)
+        #expect(rendered.html.contains("SEPA Zahlungs-QR-Code") == false)
+    }
+
     @Test func invoiceTemplateResourceLookupFindsBundledDocumentStylesheetAndPartials() throws {
         let resources = try InvoiceTemplateResources(template: .kleinunternehmerClassic)
 

@@ -19,8 +19,13 @@
           {{businessPhone}}
         </p>
         <p class="business-tax">
+          {{#hasSenderTaxLegalFields}}
+          {{#senderTaxLegalFields}}<span class="tax-label">{{label}}:</span> <strong>{{value}}</strong><br>{{/senderTaxLegalFields}}
+          {{/hasSenderTaxLegalFields}}
+          {{^hasSenderTaxLegalFields}}
           {{#taxIdentifier}}<span class="tax-label">Steuernummer:</span> <strong>{{taxIdentifier}}</strong><br>{{/taxIdentifier}}
           {{#economicIdentifier}}<span class="tax-label">Wirtschafts-IdNr:</span> <strong>{{economicIdentifier}}</strong>{{/economicIdentifier}}
+          {{/hasSenderTaxLegalFields}}
         </p>
       </section>
       <section class="invoice-title">
@@ -39,6 +44,11 @@
         <div class="section-label">Rechnungsempfänger</div>
         <h3>{{clientName}}</h3>
         <p>{{{billingAddress}}}</p>
+        {{#hasRecipientTaxLegalFields}}
+        <p class="business-tax">
+          {{#recipientTaxLegalFields}}<span class="tax-label">{{label}}:</span> <strong>{{value}}</strong><br>{{/recipientTaxLegalFields}}
+        </p>
+        {{/hasRecipientTaxLegalFields}}
       </div>
     </section>
 

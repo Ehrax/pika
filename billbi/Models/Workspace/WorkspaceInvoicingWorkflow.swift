@@ -69,6 +69,7 @@ enum WorkspaceInvoicingWorkflowError: Error, Equatable {
     case bucketStatusNotReady(BucketStatus)
     case bucketNotInvoiceable
     case duplicateInvoiceNumber
+    case invalidPaymentMethodSelection
     case invalidInvoiceStatusTransition(from: InvoiceStatus, to: InvoiceStatus)
 }
 
@@ -107,6 +108,18 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
         }
 
         let clientSnapshot = snapshotClient(in: workspace, project: project, draft: draft)
+        let selectedPaymentMethod = workspace.businessProfile.resolvedPaymentMethod(
+            invoiceOverrideID: draft.selectedPaymentMethodID,
+            clientPreferredID: clientSnapshot.preferredPaymentMethodID
+        )
+        if !workspace.businessProfile.paymentMethods.isEmpty,
+           selectedPaymentMethod == nil {
+            throw WorkspaceInvoicingWorkflowError.invalidPaymentMethodSelection
+        }
+        if let selectedPaymentMethod,
+           !selectedPaymentMethod.isValidForInvoiceFinalization {
+            throw WorkspaceInvoicingWorkflowError.invalidPaymentMethodSelection
+        }
         let invoice = WorkspaceInvoice(
             id: UUID(),
             number: invoiceNumber,
@@ -126,6 +139,7 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
             totalMinorUnits: bucket.effectiveTotalMinorUnits,
             lineItems: lineItems,
             currencyCode: CurrencyTextFormatting.normalizedInput(draft.currencyCode),
+            selectedPaymentMethodSnapshot: selectedPaymentMethod,
             note: draft.taxNote.isEmpty ? nil : draft.taxNote
         )
 
@@ -171,7 +185,8 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
             email: draft.recipientEmail,
             billingAddress: draft.recipientBillingAddress,
             defaultTermsDays: termsDays,
-            isArchived: false
+            isArchived: false,
+            recipientTaxLegalFields: matchedClient?.recipientTaxLegalFields ?? []
         )
     }
 

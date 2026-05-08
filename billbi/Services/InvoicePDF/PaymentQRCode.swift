@@ -24,8 +24,8 @@ struct ParsedPaymentDetails: Equatable {
                 parsedIBAN = Self.value(afterLabelIn: line)
             } else if lowercased.hasPrefix("bic") {
                 parsedBIC = Self.value(afterLabelIn: line)
-            } else if parsedIBAN.isEmpty, line.filter({ !$0.isWhitespace }).count >= 15 {
-                parsedIBAN = line
+            } else if parsedIBAN.isEmpty, let candidateIBAN = Self.unlabeledIBANCandidate(in: line) {
+                parsedIBAN = candidateIBAN
             }
         }
 
@@ -48,6 +48,20 @@ struct ParsedPaymentDetails: Equatable {
             }
             result.append(element.element)
         }
+    }
+
+    private static func unlabeledIBANCandidate(in line: String) -> String? {
+        let normalized = line
+            .uppercased()
+            .filter { $0.isLetter || $0.isNumber }
+        guard normalized.count >= 15, normalized.count <= 34 else { return nil }
+
+        let characters = Array(normalized)
+        guard characters.count >= 4 else { return nil }
+        guard characters[0].isLetter, characters[1].isLetter else { return nil }
+        guard characters[2].isNumber, characters[3].isNumber else { return nil }
+
+        return normalized
     }
 }
 

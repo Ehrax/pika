@@ -18,8 +18,12 @@ struct InvoiceRenderContext: Equatable {
     var businessPhone: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var canonicalSenderTaxLegalFields: [WorkspaceTaxLegalField]
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
     var clientName: String
     var billingAddress: String
+    var canonicalRecipientTaxLegalFields: [WorkspaceTaxLegalField]
+    var recipientTaxLegalFields: [WorkspaceTaxLegalField]
     var invoiceNumber: String
     var issueDate: String
     var dueDate: String
@@ -29,6 +33,7 @@ struct InvoiceRenderContext: Equatable {
     var lineItems: [LineItem]
     var totalLabel: String
     var paymentDetails: String
+    var selectedPaymentMethod: WorkspacePaymentMethod?
     var paymentIBAN: String
     var paymentBIC: String
     var paymentQRCodeDataURL: String
@@ -57,8 +62,21 @@ struct InvoiceRenderContext: Equatable {
         businessPhone = profile.phone
         taxIdentifier = profile.taxIdentifier
         economicIdentifier = profile.economicIdentifier
+        canonicalSenderTaxLegalFields = profile.senderTaxLegalFields
+            .filter(\.isRenderable)
+            .sorted { $0.sortOrder < $1.sortOrder }
+        senderTaxLegalFields = profile.senderTaxLegalFields
+            .filter { $0.placement == .senderDetails && $0.isRenderable }
+            .sorted { $0.sortOrder < $1.sortOrder }
         clientName = row.clientName
         billingAddress = row.billingAddress
+        let recipientFields = (row.invoice.clientSnapshot?.recipientTaxLegalFields ?? [])
+        canonicalRecipientTaxLegalFields = recipientFields
+            .filter(\.isRenderable)
+            .sorted { $0.sortOrder < $1.sortOrder }
+        recipientTaxLegalFields = recipientFields
+            .filter { $0.placement == .recipientDetails && $0.isRenderable }
+            .sorted { $0.sortOrder < $1.sortOrder }
         invoiceNumber = row.number
         issueDate = Self.dateLabel(row.issueDate)
         dueDate = Self.dateLabel(row.dueDate)
@@ -76,15 +94,19 @@ struct InvoiceRenderContext: Equatable {
             )
         }
         totalLabel = row.totalLabel
-        paymentDetails = profile.paymentDetails
-        let parsedPaymentDetails = ParsedPaymentDetails(rawValue: profile.paymentDetails)
+        let selectedPaymentMethod = row.invoice.selectedPaymentMethodSnapshot ?? profile.defaultPaymentMethod
+        self.selectedPaymentMethod = selectedPaymentMethod
+        let selectedPaymentDetails = selectedPaymentMethod?.printableInstructions ?? profile.paymentDetails
+        paymentDetails = selectedPaymentDetails
+        let parsedPaymentDetails = ParsedPaymentDetails(rawValue: selectedPaymentDetails)
         paymentIBAN = parsedPaymentDetails.formattedIBAN
         paymentBIC = parsedPaymentDetails.bic
         paymentTransferNote = "Der Rechnungsbetrag ist bitte innerhalb von \(profile.defaultTermsDays) Tagen nach Rechnungseingang auf folgendes Konto zu überweisen:"
         paymentQRCodeDataURL = Self.paymentQRCodeDataURL(
             profile: profile,
             row: row,
-            paymentDetails: parsedPaymentDetails
+            paymentDetails: parsedPaymentDetails,
+            selectedPaymentMethod: selectedPaymentMethod
         )
         taxNote = Self.taxNote(profile.taxNote, taxIdentifier: profile.taxIdentifier)
         note = Self.invoiceNote(row.invoice.note, taxNote: profile.taxNote, taxIdentifier: profile.taxIdentifier)
@@ -133,15 +155,28 @@ struct InvoiceRenderContext: Equatable {
     private static func paymentQRCodeDataURL(
         profile: BusinessProfileProjection,
         row: WorkspaceInvoiceRowProjection,
-        paymentDetails: ParsedPaymentDetails
+        paymentDetails: ParsedPaymentDetails,
+        selectedPaymentMethod: WorkspacePaymentMethod?
     ) -> String {
+        let invoiceCurrencyCode = row.invoice.currencyCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        let effectiveCurrencyCode = invoiceCurrencyCode.isEmpty
+            ? profile.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            : invoiceCurrencyCode
+        guard effectiveCurrencyCode == "EUR" else { return "" }
+        if let selectedPaymentMethod {
+            guard selectedPaymentMethod.isSEPAEligible else { return "" }
+        } else {
+            guard !paymentDetails.iban.isEmpty else { return "" }
+        }
         do {
             let payload = try PaymentQRCodePayload(
                 recipientName: profile.businessName,
                 iban: paymentDetails.iban,
                 bic: paymentDetails.bic,
                 amountMinorUnits: row.invoice.totalMinorUnits,
-                currencyCode: profile.currencyCode,
+                currencyCode: effectiveCurrencyCode,
                 remittanceText: row.number
             )
             return PaymentQRCodeRenderer().dataURL(for: payload.text) ?? ""

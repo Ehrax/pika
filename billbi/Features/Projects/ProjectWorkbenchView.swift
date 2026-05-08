@@ -396,6 +396,8 @@ struct ProjectWorkbenchView: View {
                 projectID: projectID,
                 bucketID: bucketID,
                 draft: draft,
+                availablePaymentMethods: workspaceStore.workspace.businessProfile.paymentMethods
+                    .sorted(by: { $0.sortOrder < $1.sortOrder }),
                 totalLabel: totalLabel,
                 lineItems: lineItems.filter(\.isBillable)
             )

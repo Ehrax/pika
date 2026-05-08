@@ -8,12 +8,16 @@ struct BusinessProfileProjection: Codable, Equatable {
     var address: String
     var taxIdentifier: String
     var economicIdentifier: String
+    var countryCode: String
     var invoicePrefix: String
     var nextInvoiceNumber: Int
     var currencyCode: String
     var paymentDetails: String
+    var paymentMethods: [WorkspacePaymentMethod]
+    var defaultPaymentMethodID: UUID?
     var taxNote: String
     var defaultTermsDays: Int
+    var senderTaxLegalFields: [WorkspaceTaxLegalField]
 
     private enum CodingKeys: String, CodingKey {
         case businessName
@@ -23,12 +27,16 @@ struct BusinessProfileProjection: Codable, Equatable {
         case address
         case taxIdentifier
         case economicIdentifier
+        case countryCode
         case invoicePrefix
         case nextInvoiceNumber
         case currencyCode
         case paymentDetails
+        case paymentMethods
+        case defaultPaymentMethodID
         case taxNote
         case defaultTermsDays
+        case senderTaxLegalFields
     }
 
     init(
@@ -39,12 +47,16 @@ struct BusinessProfileProjection: Codable, Equatable {
         address: String,
         taxIdentifier: String = "",
         economicIdentifier: String = "",
+        countryCode: String = "",
         invoicePrefix: String,
         nextInvoiceNumber: Int,
         currencyCode: String,
         paymentDetails: String,
+        paymentMethods: [WorkspacePaymentMethod] = [],
+        defaultPaymentMethodID: UUID? = nil,
         taxNote: String,
-        defaultTermsDays: Int
+        defaultTermsDays: Int,
+        senderTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.businessName = businessName
         self.personName = personName
@@ -53,12 +65,20 @@ struct BusinessProfileProjection: Codable, Equatable {
         self.address = address
         self.taxIdentifier = taxIdentifier
         self.economicIdentifier = economicIdentifier
+        self.countryCode = countryCode
         self.invoicePrefix = invoicePrefix
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
         self.paymentDetails = paymentDetails
+        self.paymentMethods = paymentMethods.isEmpty
+            ? .migratedFromLegacyPaymentDetails(paymentDetails, businessName: businessName)
+            : paymentMethods
+        self.defaultPaymentMethodID = defaultPaymentMethodID ?? self.paymentMethods.first?.id
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
+        self.senderTaxLegalFields = senderTaxLegalFields.isEmpty
+            ? .migratedSenderFields(taxIdentifier: taxIdentifier, economicIdentifier: economicIdentifier)
+            : senderTaxLegalFields
     }
 
     init(from decoder: Decoder) throws {
@@ -70,12 +90,22 @@ struct BusinessProfileProjection: Codable, Equatable {
         address = try container.decode(String.self, forKey: .address)
         taxIdentifier = try container.decodeIfPresent(String.self, forKey: .taxIdentifier) ?? ""
         economicIdentifier = try container.decodeIfPresent(String.self, forKey: .economicIdentifier) ?? ""
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
         invoicePrefix = try container.decode(String.self, forKey: .invoicePrefix)
         nextInvoiceNumber = try container.decode(Int.self, forKey: .nextInvoiceNumber)
         currencyCode = try container.decode(String.self, forKey: .currencyCode)
         paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
+        let decodedPaymentMethods = try container.decodeIfPresent([WorkspacePaymentMethod].self, forKey: .paymentMethods) ?? []
+        paymentMethods = decodedPaymentMethods.isEmpty
+            ? .migratedFromLegacyPaymentDetails(paymentDetails, businessName: businessName)
+            : decodedPaymentMethods
+        defaultPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .defaultPaymentMethodID) ?? paymentMethods.first?.id
         taxNote = try container.decode(String.self, forKey: .taxNote)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        let decodedSenderFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .senderTaxLegalFields) ?? []
+        senderTaxLegalFields = decodedSenderFields.isEmpty
+            ? .migratedSenderFields(taxIdentifier: taxIdentifier, economicIdentifier: economicIdentifier)
+            : decodedSenderFields
     }
 }
 
@@ -85,7 +115,9 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
     var email: String
     var billingAddress: String
     var defaultTermsDays: Int
+    var preferredPaymentMethodID: UUID?
     var isArchived: Bool
+    var recipientTaxLegalFields: [WorkspaceTaxLegalField]
 
     init(
         id: UUID,
@@ -93,14 +125,18 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         email: String,
         billingAddress: String,
         defaultTermsDays: Int,
-        isArchived: Bool = false
+        preferredPaymentMethodID: UUID? = nil,
+        isArchived: Bool = false,
+        recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.id = id
         self.name = name
         self.email = email
         self.billingAddress = billingAddress
         self.defaultTermsDays = defaultTermsDays
+        self.preferredPaymentMethodID = preferredPaymentMethodID
         self.isArchived = isArchived
+        self.recipientTaxLegalFields = recipientTaxLegalFields
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -109,7 +145,9 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         case email
         case billingAddress
         case defaultTermsDays
+        case preferredPaymentMethodID
         case isArchived
+        case recipientTaxLegalFields
     }
 
     init(from decoder: Decoder) throws {
@@ -119,6 +157,8 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         email = try container.decode(String.self, forKey: .email)
         billingAddress = try container.decode(String.self, forKey: .billingAddress)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
+        preferredPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .preferredPaymentMethodID)
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        recipientTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .recipientTaxLegalFields) ?? []
     }
 }

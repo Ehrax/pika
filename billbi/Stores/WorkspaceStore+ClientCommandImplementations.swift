@@ -47,6 +47,8 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
+            preferredPaymentMethodIDString: draft.preferredPaymentMethodID?.uuidString ?? "",
+            recipientTaxLegalFieldsData: "[]",
             isArchived: false,
             createdAt: now,
             updatedAt: now
@@ -95,6 +97,7 @@ extension WorkspaceStore {
         record.email = email
         record.billingAddress = billingAddress
         record.defaultTermsDays = draft.defaultTermsDays
+        record.preferredPaymentMethodIDString = draft.preferredPaymentMethodID?.uuidString ?? ""
         record.updatedAt = .now
 
         return try commitNormalizedWorkspaceMutation {

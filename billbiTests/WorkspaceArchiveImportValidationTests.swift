@@ -372,9 +372,57 @@ struct WorkspaceArchiveImportValidationTests {
         }
         #expect(store.workspace == originalWorkspace)
     }
+
+    @Test func invalidDefaultPaymentMethodReferenceFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let brokenID = UUID(uuidString: "9E000000-0000-0000-0000-000000000001")!
+        var workspace = WorkspaceArchiveImportFixture.makeValidWorkspaceForReferences()
+        workspace.businessProfile.defaultPaymentMethodID = brokenID
+
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeEnvelopeForReferences(workspace: workspace)
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidPaymentMethodReference(
+            field: "businessProfile.defaultPaymentMethodID",
+            id: brokenID
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
+
+    @Test func invalidClientPreferredPaymentMethodReferenceFailsWithoutMutatingWorkspace() throws {
+        let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
+        let originalWorkspace = store.workspace
+        let brokenID = UUID(uuidString: "9E000000-0000-0000-0000-000000000002")!
+        var workspace = WorkspaceArchiveImportFixture.makeValidWorkspaceForReferences()
+        workspace.clients[0].preferredPaymentMethodID = brokenID
+
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeEnvelopeForReferences(workspace: workspace)
+        )
+
+        #expect(throws: WorkspaceArchiveImportError.invalidPaymentMethodReference(
+            field: "client.preferredPaymentMethodID",
+            id: brokenID
+        )) {
+            _ = try store.validateImportedWorkspaceArchive(archiveData)
+        }
+        #expect(store.workspace == originalWorkspace)
+    }
 }
 
 private enum WorkspaceArchiveImportFixture {
+    static func makeEnvelopeForReferences(workspace: WorkspaceArchiveV1Workspace) -> WorkspaceArchiveEnvelope {
+        makeEnvelope(workspace: workspace)
+    }
+
+    static func makeValidWorkspaceForReferences() -> WorkspaceArchiveV1Workspace {
+        makeValidWorkspace()
+    }
+
     static func makeReplacementEnvelope() -> WorkspaceArchiveEnvelope {
         var workspace = makeValidWorkspace()
         workspace.timeEntries.append(WorkspaceArchiveV1Workspace.TimeEntry(
@@ -561,6 +609,7 @@ private enum WorkspaceArchiveImportFixture {
         let fixedCostID = UUID(uuidString: "60000000-0000-0000-0000-000000000001")!
         let invoiceID = UUID(uuidString: "70000000-0000-0000-0000-000000000001")!
         let lineItemID = UUID(uuidString: "80000000-0000-0000-0000-000000000001")!
+        let paymentMethodID = UUID(uuidString: "3D410482-8EE9-4D6E-A8F5-6D7AF7458A31")!
 
         return WorkspaceArchiveV1Workspace(
             businessProfile: WorkspaceArchiveV1Workspace.BusinessProfile(
@@ -575,6 +624,9 @@ private enum WorkspaceArchiveImportFixture {
                 nextInvoiceNumber: 42,
                 currencyCode: "EUR",
                 paymentDetails: "IBAN DE00 1234",
+                senderTaxLegalFields: [WorkspaceTaxLegalField(label: "VAT ID", value: "DE123", placement: .senderDetails, sortOrder: 0)],
+                paymentMethods: [WorkspacePaymentMethod(id: paymentMethodID, title: "SEPA", type: .sepaBankTransfer, iban: "DE00 1234", bic: "NTSBDEB1XXX")],
+                defaultPaymentMethodID: paymentMethodID,
                 taxNote: "VAT exempt",
                 defaultTermsDays: 14
             ),
@@ -585,7 +637,9 @@ private enum WorkspaceArchiveImportFixture {
                     email: "billing@snapshot.example",
                     billingAddress: "1 Snapshot Way",
                     defaultTermsDays: 21,
-                    isArchived: false
+                    preferredPaymentMethodID: paymentMethodID,
+                    isArchived: false,
+                    recipientTaxLegalFields: [WorkspaceTaxLegalField(label: "UID", value: "CHE-123", placement: .recipientDetails, sortOrder: 0)]
                 ),
             ],
             projects: [
@@ -643,12 +697,15 @@ private enum WorkspaceArchiveImportFixture {
                         taxIdentifier: "DE123",
                         economicIdentifier: "ECO123",
                         paymentDetails: "IBAN DE00 1234",
+                        senderTaxLegalFields: [WorkspaceTaxLegalField(label: "VAT ID", value: "DE123", placement: .senderDetails, sortOrder: 0)],
+                        selectedPaymentMethod: WorkspacePaymentMethod(id: paymentMethodID, title: "SEPA", type: .sepaBankTransfer, iban: "DE00 1234", bic: "NTSBDEB1XXX"),
                         taxNote: "VAT exempt"
                     ),
                     clientSnapshot: WorkspaceArchiveV1Workspace.ClientSnapshot(
                         name: "Snapshot Client",
                         email: "billing@snapshot.example",
-                        billingAddress: "1 Snapshot Way"
+                        billingAddress: "1 Snapshot Way",
+                        recipientTaxLegalFields: [WorkspaceTaxLegalField(label: "UID", value: "CHE-123", placement: .recipientDetails, sortOrder: 0)]
                     ),
                     template: InvoiceTemplate.kleinunternehmerClassic.rawValue,
                     issueDate: "2026-05-01",
