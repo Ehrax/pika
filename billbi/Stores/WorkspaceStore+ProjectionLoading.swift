@@ -138,7 +138,8 @@ enum SwiftDataWorkspaceProjectionLoader {
             email: record.email,
             billingAddress: record.billingAddress,
             defaultTermsDays: record.defaultTermsDays,
-            isArchived: record.isArchived
+            isArchived: record.isArchived,
+            recipientTaxLegalFields: SenderTaxLegalFieldCoding.decode(record.recipientTaxLegalFieldsData)
         )
     }
 

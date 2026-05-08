@@ -101,6 +101,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
     var billingAddress: String
     var defaultTermsDays: Int
     var isArchived: Bool
+    var recipientTaxLegalFields: [WorkspaceTaxLegalField]
 
     init(
         id: UUID,
@@ -108,7 +109,8 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         email: String,
         billingAddress: String,
         defaultTermsDays: Int,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        recipientTaxLegalFields: [WorkspaceTaxLegalField] = []
     ) {
         self.id = id
         self.name = name
@@ -116,6 +118,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         self.billingAddress = billingAddress
         self.defaultTermsDays = defaultTermsDays
         self.isArchived = isArchived
+        self.recipientTaxLegalFields = recipientTaxLegalFields
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -125,6 +128,7 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         case billingAddress
         case defaultTermsDays
         case isArchived
+        case recipientTaxLegalFields
     }
 
     init(from decoder: Decoder) throws {
@@ -135,5 +139,6 @@ struct WorkspaceClient: Codable, Equatable, Identifiable {
         billingAddress = try container.decode(String.self, forKey: .billingAddress)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        recipientTaxLegalFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .recipientTaxLegalFields) ?? []
     }
 }

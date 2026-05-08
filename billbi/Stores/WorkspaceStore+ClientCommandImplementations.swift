@@ -47,6 +47,7 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
+            recipientTaxLegalFieldsData: "[]",
             isArchived: false,
             createdAt: now,
             updatedAt: now

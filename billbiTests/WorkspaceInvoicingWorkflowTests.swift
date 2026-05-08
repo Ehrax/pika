@@ -149,6 +149,75 @@ struct WorkspaceInvoicingWorkflowTests {
         #expect(result.invoice.businessSnapshot?.senderTaxLegalFields.map(\.label) == ["VAT ID", "Hidden"])
     }
 
+    @Test func workflowSnapshotsRecipientTaxLegalFieldsFromClient() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000001698")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001698")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000001698")!
+        let workspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Workflow Client",
+                    email: "billing@workflow.example",
+                    billingAddress: "1 Workflow Way",
+                    defaultTermsDays: 21,
+                    recipientTaxLegalFields: [
+                        WorkspaceTaxLegalField(
+                            label: "Client VAT",
+                            value: "CH-123",
+                            placement: .recipientDetails,
+                            isVisible: true,
+                            sortOrder: 0
+                        ),
+                    ]
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Workflow Project",
+                    clientName: "Workflow Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Ready Workflow",
+                            status: .ready,
+                            totalMinorUnits: 10_000,
+                            billableMinutes: 60,
+                            fixedCostMinorUnits: 0
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        let result = try WorkspaceInvoicingWorkflow().finalizeInvoice(
+            workspace: workspace,
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Workflow Client",
+                recipientEmail: "billing@workflow.example",
+                recipientBillingAddress: "1 Workflow Way",
+                invoiceNumber: "EHX-2026-698",
+                template: .kleinunternehmerClassic,
+                issueDate: Date.billbiDate(year: 2026, month: 5, day: 2),
+                dueDate: Date.billbiDate(year: 2026, month: 5, day: 16),
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            )
+        )
+
+        #expect(result.invoice.clientSnapshot?.recipientTaxLegalFields.map(\.label) == ["Client VAT"])
+    }
+
     @Test func workflowRejectsDuplicateInvoiceNumberFromWorkspaceSnapshot() {
         let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000001602")!
         let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000001602")!

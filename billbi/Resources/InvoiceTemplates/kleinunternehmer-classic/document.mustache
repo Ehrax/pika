@@ -44,6 +44,11 @@
         <div class="section-label">Rechnungsempfänger</div>
         <h3>{{clientName}}</h3>
         <p>{{{billingAddress}}}</p>
+        {{#hasRecipientTaxLegalFields}}
+        <p class="business-tax">
+          {{#recipientTaxLegalFields}}<span class="tax-label">{{label}}:</span> <strong>{{value}}</strong><br>{{/recipientTaxLegalFields}}
+        </p>
+        {{/hasRecipientTaxLegalFields}}
       </div>
     </section>
 

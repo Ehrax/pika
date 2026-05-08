@@ -171,7 +171,8 @@ struct WorkspaceInvoicingWorkflow: WorkspaceInvoicing {
             email: draft.recipientEmail,
             billingAddress: draft.recipientBillingAddress,
             defaultTermsDays: termsDays,
-            isArchived: false
+            isArchived: false,
+            recipientTaxLegalFields: matchedClient?.recipientTaxLegalFields ?? []
         )
     }
 

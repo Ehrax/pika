@@ -24,7 +24,8 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
-            isArchived: false
+            isArchived: false,
+            recipientTaxLegalFields: []
         )
 
         workspace.clients.append(client)
@@ -74,7 +75,8 @@ extension WorkspaceStore {
             email: email,
             billingAddress: billingAddress,
             defaultTermsDays: draft.defaultTermsDays,
-            isArchived: workspace.clients[clientIndex].isArchived
+            isArchived: workspace.clients[clientIndex].isArchived,
+            recipientTaxLegalFields: workspace.clients[clientIndex].recipientTaxLegalFields
         )
 
         workspace.clients[clientIndex] = client

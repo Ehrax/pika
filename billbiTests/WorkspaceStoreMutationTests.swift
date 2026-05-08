@@ -1788,6 +1788,45 @@ struct WorkspaceStoreMutationTests {
         #expect(reloadedField.isVisible)
     }
 
+    @Test func workspaceStoreMutatesRecipientTaxLegalFields() throws {
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000000955")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Client",
+                    email: "billing@example.com",
+                    billingAddress: "Road 1",
+                    defaultTermsDays: 14
+                ),
+            ],
+            projects: [],
+            activity: []
+        ))
+
+        try store.createRecipientTaxLegalField(clientID: clientID, label: "VAT", value: "CH-123")
+        let created = try #require(store.workspace.clients[0].recipientTaxLegalFields.first)
+        #expect(created.placement == .recipientDetails)
+
+        try store.updateRecipientTaxLegalField(
+            clientID: clientID,
+            fieldID: created.id,
+            label: "VAT ID",
+            value: "CH-999",
+            placement: .footer,
+            isVisible: false
+        )
+        let updated = try #require(store.workspace.clients[0].recipientTaxLegalFields.first)
+        #expect(updated.label == "VAT ID")
+        #expect(updated.value == "CH-999")
+        #expect(updated.placement == .footer)
+        #expect(!updated.isVisible)
+
+        try store.deleteRecipientTaxLegalField(clientID: clientID, fieldID: created.id)
+        #expect(store.workspace.clients[0].recipientTaxLegalFields.isEmpty)
+    }
+
     @Test func inMemoryWorkspaceStoreCreatesBucketWithRateDefaults() throws {
         let store = WorkspaceStore(seed: WorkspaceFixtures.demoWorkspace)
         let project = try #require(store.workspace.project(named: "Launch sprint"))

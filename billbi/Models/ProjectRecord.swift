@@ -73,6 +73,7 @@ final class ClientRecord {
     var email: String = ""
     var billingAddress: String = ""
     var defaultTermsDays: Int = 14
+    var recipientTaxLegalFieldsData: String = ""
     var isArchived: Bool = false
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
@@ -83,6 +84,7 @@ final class ClientRecord {
         email: String = "",
         billingAddress: String = "",
         defaultTermsDays: Int = 14,
+        recipientTaxLegalFieldsData: String = "",
         isArchived: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -92,6 +94,7 @@ final class ClientRecord {
         self.email = email
         self.billingAddress = billingAddress
         self.defaultTermsDays = defaultTermsDays
+        self.recipientTaxLegalFieldsData = recipientTaxLegalFieldsData
         self.isArchived = isArchived
         self.createdAt = createdAt
         self.updatedAt = updatedAt

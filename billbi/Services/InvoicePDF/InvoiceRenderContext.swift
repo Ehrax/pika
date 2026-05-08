@@ -21,6 +21,7 @@ struct InvoiceRenderContext: Equatable {
     var senderTaxLegalFields: [WorkspaceTaxLegalField]
     var clientName: String
     var billingAddress: String
+    var recipientTaxLegalFields: [WorkspaceTaxLegalField]
     var invoiceNumber: String
     var issueDate: String
     var dueDate: String
@@ -63,6 +64,9 @@ struct InvoiceRenderContext: Equatable {
             .sorted { $0.sortOrder < $1.sortOrder }
         clientName = row.clientName
         billingAddress = row.billingAddress
+        recipientTaxLegalFields = (row.invoice.clientSnapshot?.recipientTaxLegalFields ?? [])
+            .filter { $0.placement == .recipientDetails && $0.isRenderable }
+            .sorted { $0.sortOrder < $1.sortOrder }
         invoiceNumber = row.number
         issueDate = Self.dateLabel(row.issueDate)
         dueDate = Self.dateLabel(row.dueDate)

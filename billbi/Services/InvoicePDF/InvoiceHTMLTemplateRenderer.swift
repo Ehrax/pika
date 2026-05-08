@@ -30,6 +30,8 @@ private extension InvoiceRenderContext {
             "hasSenderTaxLegalFields": !senderTaxLegalFields.isEmpty,
             "clientName": clientName,
             "billingAddress": lineBreaks(billingAddress),
+            "recipientTaxLegalFields": recipientTaxLegalFields.map(\.mustacheValues),
+            "hasRecipientTaxLegalFields": !recipientTaxLegalFields.isEmpty,
             "invoiceNumber": invoiceNumber,
             "issueDate": issueDate,
             "dueDate": dueDate,

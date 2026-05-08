@@ -123,6 +123,7 @@ enum SwiftDataWorkspaceSeedImporter {
                 email: client.email,
                 billingAddress: client.billingAddress,
                 defaultTermsDays: client.defaultTermsDays,
+                recipientTaxLegalFieldsData: SenderTaxLegalFieldCoding.encode(client.recipientTaxLegalFields),
                 isArchived: client.isArchived,
                 createdAt: importedAt,
                 updatedAt: importedAt
@@ -187,6 +188,7 @@ enum SwiftDataWorkspaceSeedImporter {
             email: "",
             billingAddress: "",
             defaultTermsDays: profile.defaultTermsDays,
+            recipientTaxLegalFieldsData: "[]",
             isArchived: false,
             createdAt: importedAt,
             updatedAt: importedAt
