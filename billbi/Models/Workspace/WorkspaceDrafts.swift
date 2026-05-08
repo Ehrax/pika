@@ -107,6 +107,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
     var nextInvoiceNumber: Int
     var currencyCode: String
     var paymentDetails: String
+    var paymentMethods: [WorkspacePaymentMethod]
+    var defaultPaymentMethodID: UUID?
     var taxNote: String
     var defaultTermsDays: Int
     var senderTaxLegalFields: [WorkspaceTaxLegalField]
@@ -124,6 +126,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         nextInvoiceNumber: Int,
         currencyCode: String,
         paymentDetails: String,
+        paymentMethods: [WorkspacePaymentMethod] = [],
+        defaultPaymentMethodID: UUID? = nil,
         taxNote: String,
         defaultTermsDays: Int,
         senderTaxLegalFields: [WorkspaceTaxLegalField] = []
@@ -140,6 +144,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
         self.paymentDetails = paymentDetails
+        self.paymentMethods = paymentMethods
+        self.defaultPaymentMethodID = defaultPaymentMethodID
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
         self.senderTaxLegalFields = senderTaxLegalFields
@@ -159,6 +165,8 @@ struct WorkspaceBusinessProfileDraft: Equatable {
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
             paymentDetails: profile.paymentDetails,
+            paymentMethods: profile.paymentMethods,
+            defaultPaymentMethodID: profile.defaultPaymentMethodID,
             taxNote: profile.taxNote,
             defaultTermsDays: profile.defaultTermsDays,
             senderTaxLegalFields: profile.senderTaxLegalFields

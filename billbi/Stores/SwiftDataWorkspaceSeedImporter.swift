@@ -102,6 +102,8 @@ enum SwiftDataWorkspaceSeedImporter {
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
             paymentDetails: profile.paymentDetails,
+            paymentMethodsData: PaymentMethodCoding.encode(profile.paymentMethods),
+            defaultPaymentMethodIDString: profile.defaultPaymentMethodID?.uuidString ?? "",
             taxNote: profile.taxNote,
             defaultTermsDays: profile.defaultTermsDays,
             onboardingCompleted: onboardingCompleted,

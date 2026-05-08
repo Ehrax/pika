@@ -15,6 +15,8 @@ extension WorkspaceStore {
         let paymentDetails = draft.paymentDetails.trimmingCharacters(in: .whitespacesAndNewlines)
         let taxNote = draft.taxNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let senderTaxLegalFields = draft.senderTaxLegalFields
+        let paymentMethods = draft.paymentMethods
+        let defaultPaymentMethodID = draft.defaultPaymentMethodID
         guard !businessName.isEmpty,
               !email.isEmpty,
               !address.isEmpty,
@@ -40,6 +42,8 @@ extension WorkspaceStore {
             nextInvoiceNumber: draft.nextInvoiceNumber,
             currencyCode: currencyCode,
             paymentDetails: paymentDetails,
+            paymentMethods: paymentMethods,
+            defaultPaymentMethodID: defaultPaymentMethodID,
             taxNote: taxNote,
             defaultTermsDays: draft.defaultTermsDays,
             senderTaxLegalFields: senderTaxLegalFields

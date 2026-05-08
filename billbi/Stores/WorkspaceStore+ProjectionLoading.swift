@@ -121,6 +121,8 @@ enum SwiftDataWorkspaceProjectionLoader {
             nextInvoiceNumber: record.nextInvoiceNumber,
             currencyCode: record.currencyCode,
             paymentDetails: record.paymentDetails,
+            paymentMethods: PaymentMethodCoding.decode(record.paymentMethodsData),
+            defaultPaymentMethodID: UUID(uuidString: record.defaultPaymentMethodIDString),
             taxNote: record.taxNote,
             defaultTermsDays: record.defaultTermsDays,
             senderTaxLegalFields: SenderTaxLegalFieldCoding.decode(record.senderTaxLegalFieldsData)

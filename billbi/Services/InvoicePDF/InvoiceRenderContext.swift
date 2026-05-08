@@ -84,15 +84,18 @@ struct InvoiceRenderContext: Equatable {
             )
         }
         totalLabel = row.totalLabel
-        paymentDetails = profile.paymentDetails
-        let parsedPaymentDetails = ParsedPaymentDetails(rawValue: profile.paymentDetails)
+        let selectedPaymentMethod = profile.defaultPaymentMethod
+        let selectedPaymentDetails = selectedPaymentMethod?.printableInstructions ?? profile.paymentDetails
+        paymentDetails = selectedPaymentDetails
+        let parsedPaymentDetails = ParsedPaymentDetails(rawValue: selectedPaymentDetails)
         paymentIBAN = parsedPaymentDetails.formattedIBAN
         paymentBIC = parsedPaymentDetails.bic
         paymentTransferNote = "Der Rechnungsbetrag ist bitte innerhalb von \(profile.defaultTermsDays) Tagen nach Rechnungseingang auf folgendes Konto zu überweisen:"
         paymentQRCodeDataURL = Self.paymentQRCodeDataURL(
             profile: profile,
             row: row,
-            paymentDetails: parsedPaymentDetails
+            paymentDetails: parsedPaymentDetails,
+            selectedPaymentMethod: selectedPaymentMethod
         )
         taxNote = Self.taxNote(profile.taxNote, taxIdentifier: profile.taxIdentifier)
         note = Self.invoiceNote(row.invoice.note, taxNote: profile.taxNote, taxIdentifier: profile.taxIdentifier)
@@ -141,15 +144,28 @@ struct InvoiceRenderContext: Equatable {
     private static func paymentQRCodeDataURL(
         profile: BusinessProfileProjection,
         row: WorkspaceInvoiceRowProjection,
-        paymentDetails: ParsedPaymentDetails
+        paymentDetails: ParsedPaymentDetails,
+        selectedPaymentMethod: WorkspacePaymentMethod?
     ) -> String {
+        let invoiceCurrencyCode = row.invoice.currencyCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        let effectiveCurrencyCode = invoiceCurrencyCode.isEmpty
+            ? profile.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            : invoiceCurrencyCode
+        guard effectiveCurrencyCode == "EUR" else { return "" }
+        if let selectedPaymentMethod {
+            guard selectedPaymentMethod.isSEPAEligible else { return "" }
+        } else {
+            guard !paymentDetails.iban.isEmpty else { return "" }
+        }
         do {
             let payload = try PaymentQRCodePayload(
                 recipientName: profile.businessName,
                 iban: paymentDetails.iban,
                 bic: paymentDetails.bic,
                 amountMinorUnits: row.invoice.totalMinorUnits,
-                currencyCode: profile.currencyCode,
+                currencyCode: effectiveCurrencyCode,
                 remittanceText: row.number
             )
             return PaymentQRCodeRenderer().dataURL(for: payload.text) ?? ""

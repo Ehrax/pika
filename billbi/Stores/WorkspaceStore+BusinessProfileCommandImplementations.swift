@@ -30,6 +30,8 @@ extension WorkspaceStore {
             nextInvoiceNumber: profile.nextInvoiceNumber,
             currencyCode: profile.currencyCode,
             paymentDetails: profile.paymentDetails,
+            paymentMethodsData: PaymentMethodCoding.encode(profile.paymentMethods),
+            defaultPaymentMethodIDString: profile.defaultPaymentMethodID?.uuidString ?? "",
             taxNote: profile.taxNote,
             defaultTermsDays: profile.defaultTermsDays,
             onboardingCompleted: workspace.onboardingCompleted,
@@ -58,6 +60,8 @@ extension WorkspaceStore {
         record.nextInvoiceNumber = profile.nextInvoiceNumber
         record.currencyCode = profile.currencyCode
         record.paymentDetails = profile.paymentDetails
+        record.paymentMethodsData = PaymentMethodCoding.encode(profile.paymentMethods)
+        record.defaultPaymentMethodIDString = profile.defaultPaymentMethodID?.uuidString ?? ""
         record.taxNote = profile.taxNote
         record.defaultTermsDays = profile.defaultTermsDays
         record.updatedAt = updatedAt

@@ -13,6 +13,8 @@ struct BusinessProfileProjection: Codable, Equatable {
     var nextInvoiceNumber: Int
     var currencyCode: String
     var paymentDetails: String
+    var paymentMethods: [WorkspacePaymentMethod]
+    var defaultPaymentMethodID: UUID?
     var taxNote: String
     var defaultTermsDays: Int
     var senderTaxLegalFields: [WorkspaceTaxLegalField]
@@ -30,6 +32,8 @@ struct BusinessProfileProjection: Codable, Equatable {
         case nextInvoiceNumber
         case currencyCode
         case paymentDetails
+        case paymentMethods
+        case defaultPaymentMethodID
         case taxNote
         case defaultTermsDays
         case senderTaxLegalFields
@@ -48,6 +52,8 @@ struct BusinessProfileProjection: Codable, Equatable {
         nextInvoiceNumber: Int,
         currencyCode: String,
         paymentDetails: String,
+        paymentMethods: [WorkspacePaymentMethod] = [],
+        defaultPaymentMethodID: UUID? = nil,
         taxNote: String,
         defaultTermsDays: Int,
         senderTaxLegalFields: [WorkspaceTaxLegalField] = []
@@ -64,6 +70,10 @@ struct BusinessProfileProjection: Codable, Equatable {
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
         self.paymentDetails = paymentDetails
+        self.paymentMethods = paymentMethods.isEmpty
+            ? .migratedFromLegacyPaymentDetails(paymentDetails, businessName: businessName)
+            : paymentMethods
+        self.defaultPaymentMethodID = defaultPaymentMethodID ?? self.paymentMethods.first?.id
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
         self.senderTaxLegalFields = senderTaxLegalFields.isEmpty
@@ -85,6 +95,11 @@ struct BusinessProfileProjection: Codable, Equatable {
         nextInvoiceNumber = try container.decode(Int.self, forKey: .nextInvoiceNumber)
         currencyCode = try container.decode(String.self, forKey: .currencyCode)
         paymentDetails = try container.decode(String.self, forKey: .paymentDetails)
+        let decodedPaymentMethods = try container.decodeIfPresent([WorkspacePaymentMethod].self, forKey: .paymentMethods) ?? []
+        paymentMethods = decodedPaymentMethods.isEmpty
+            ? .migratedFromLegacyPaymentDetails(paymentDetails, businessName: businessName)
+            : decodedPaymentMethods
+        defaultPaymentMethodID = try container.decodeIfPresent(UUID.self, forKey: .defaultPaymentMethodID) ?? paymentMethods.first?.id
         taxNote = try container.decode(String.self, forKey: .taxNote)
         defaultTermsDays = try container.decode(Int.self, forKey: .defaultTermsDays)
         let decodedSenderFields = try container.decodeIfPresent([WorkspaceTaxLegalField].self, forKey: .senderTaxLegalFields) ?? []

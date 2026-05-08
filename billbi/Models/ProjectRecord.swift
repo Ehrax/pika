@@ -17,6 +17,8 @@ final class BusinessProfileRecord {
     var nextInvoiceNumber: Int = 1
     var currencyCode: String = "EUR"
     var paymentDetails: String = ""
+    var paymentMethodsData: String = ""
+    var defaultPaymentMethodIDString: String = ""
     var taxNote: String = ""
     var defaultTermsDays: Int = 14
     var onboardingCompleted: Bool = false
@@ -38,6 +40,8 @@ final class BusinessProfileRecord {
         nextInvoiceNumber: Int = 1,
         currencyCode: String = "EUR",
         paymentDetails: String = "",
+        paymentMethodsData: String = "",
+        defaultPaymentMethodIDString: String = "",
         taxNote: String = "",
         defaultTermsDays: Int = 14,
         onboardingCompleted: Bool = false,
@@ -58,6 +62,8 @@ final class BusinessProfileRecord {
         self.nextInvoiceNumber = nextInvoiceNumber
         self.currencyCode = currencyCode
         self.paymentDetails = paymentDetails
+        self.paymentMethodsData = paymentMethodsData
+        self.defaultPaymentMethodIDString = defaultPaymentMethodIDString
         self.taxNote = taxNote
         self.defaultTermsDays = defaultTermsDays
         self.onboardingCompleted = onboardingCompleted

@@ -45,6 +45,7 @@ private extension InvoiceRenderContext {
             "paymentBIC": paymentBIC,
             "hasPaymentIBAN": !paymentIBAN.isEmpty,
             "hasPaymentBIC": !paymentBIC.isEmpty,
+            "hasPaymentQRCode": !paymentQRCodeDataURL.isEmpty,
             "paymentQRCodeDataURL": paymentQRCodeDataURL,
             "paymentTransferNote": paymentTransferNote.htmlEscaped,
             "taxNote": lineBreaks(taxNote),
