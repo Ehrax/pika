@@ -11,6 +11,10 @@ extension WorkspaceStore {
         let project = try project(projectID)
         let bucket = try bucket(bucketID, in: project)
 
+        guard bucket.billingMode != .fixed else {
+            throw WorkspaceStoreError.invalidTimeEntry
+        }
+
         let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard
             !description.isEmpty,
@@ -71,7 +75,11 @@ extension WorkspaceStore {
         occurredAt: Date
     ) throws {
         let project = try project(projectID)
-        _ = try bucket(bucketID, in: project)
+        let bucket = try bucket(bucketID, in: project)
+
+        guard bucket.billingMode != .fixed else {
+            throw WorkspaceStoreError.invalidFixedCost
+        }
 
         let description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !description.isEmpty, draft.amountMinorUnits > 0 else {

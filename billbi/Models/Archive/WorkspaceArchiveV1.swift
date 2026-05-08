@@ -150,7 +150,68 @@ struct WorkspaceArchiveV1Workspace: Codable, Equatable {
         var projectID: UUID
         var name: String
         var status: WorkspaceArchiveBucketStatus
+        var billingMode: WorkspaceBucketBillingMode
         var defaultHourlyRateMinorUnits: Int
+        var fixedAmountMinorUnits: Int
+        var retainerAmountMinorUnits: Int
+        var retainerPeriodLabel: String
+        var retainerIncludedMinutes: Int?
+        var retainerOverageRateMinorUnits: Int
+
+        init(
+            id: UUID,
+            projectID: UUID,
+            name: String,
+            status: WorkspaceArchiveBucketStatus,
+            billingMode: WorkspaceBucketBillingMode = .hourly,
+            defaultHourlyRateMinorUnits: Int,
+            fixedAmountMinorUnits: Int = 0,
+            retainerAmountMinorUnits: Int = 0,
+            retainerPeriodLabel: String = "",
+            retainerIncludedMinutes: Int? = nil,
+            retainerOverageRateMinorUnits: Int = 0
+        ) {
+            self.id = id
+            self.projectID = projectID
+            self.name = name
+            self.status = status
+            self.billingMode = billingMode
+            self.defaultHourlyRateMinorUnits = defaultHourlyRateMinorUnits
+            self.fixedAmountMinorUnits = fixedAmountMinorUnits
+            self.retainerAmountMinorUnits = retainerAmountMinorUnits
+            self.retainerPeriodLabel = retainerPeriodLabel
+            self.retainerIncludedMinutes = retainerIncludedMinutes
+            self.retainerOverageRateMinorUnits = retainerOverageRateMinorUnits
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case projectID
+            case name
+            case status
+            case billingMode
+            case defaultHourlyRateMinorUnits
+            case fixedAmountMinorUnits
+            case retainerAmountMinorUnits
+            case retainerPeriodLabel
+            case retainerIncludedMinutes
+            case retainerOverageRateMinorUnits
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            projectID = try container.decode(UUID.self, forKey: .projectID)
+            name = try container.decode(String.self, forKey: .name)
+            status = try container.decode(WorkspaceArchiveBucketStatus.self, forKey: .status)
+            billingMode = try container.decodeIfPresent(WorkspaceBucketBillingMode.self, forKey: .billingMode) ?? .hourly
+            defaultHourlyRateMinorUnits = try container.decode(Int.self, forKey: .defaultHourlyRateMinorUnits)
+            fixedAmountMinorUnits = try container.decodeIfPresent(Int.self, forKey: .fixedAmountMinorUnits) ?? 0
+            retainerAmountMinorUnits = try container.decodeIfPresent(Int.self, forKey: .retainerAmountMinorUnits) ?? 0
+            retainerPeriodLabel = try container.decodeIfPresent(String.self, forKey: .retainerPeriodLabel) ?? ""
+            retainerIncludedMinutes = try container.decodeIfPresent(Int.self, forKey: .retainerIncludedMinutes)
+            retainerOverageRateMinorUnits = try container.decodeIfPresent(Int.self, forKey: .retainerOverageRateMinorUnits) ?? 0
+        }
     }
 
     struct TimeEntry: Codable, Equatable {
@@ -395,7 +456,19 @@ enum WorkspaceArchiveCodec {
         try validateArrayObjects(
             workspace["buckets"],
             path: "workspace.buckets",
-            allowedKeys: ["id", "projectID", "name", "status", "defaultHourlyRateMinorUnits"]
+            allowedKeys: [
+                "id",
+                "projectID",
+                "name",
+                "status",
+                "billingMode",
+                "defaultHourlyRateMinorUnits",
+                "fixedAmountMinorUnits",
+                "retainerAmountMinorUnits",
+                "retainerPeriodLabel",
+                "retainerIncludedMinutes",
+                "retainerOverageRateMinorUnits",
+            ]
         )
         try validateArrayObjects(
             workspace["timeEntries"],

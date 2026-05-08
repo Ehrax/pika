@@ -55,7 +55,7 @@ extension WorkspaceStoreError: LocalizedError {
         case .invalidTimeEntry:
             "Time entry details are incomplete or invalid."
         case .invalidFixedCost:
-            "Fixed cost details are incomplete or invalid."
+            "Fixed Charge details are incomplete or invalid."
         case .entryNotFound:
             "Entry not found."
         case .invalidInvoiceStatusTransition(let from, let to):

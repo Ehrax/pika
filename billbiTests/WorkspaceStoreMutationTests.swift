@@ -128,7 +128,7 @@ struct WorkspaceStoreMutationTests {
         #expect(storedInvoice.note == "Thank you.")
         #expect(storedInvoice.lineItems.map(\.description) == [
             "Ready Snapshot",
-            "Fixed costs",
+            "Fixed Charges",
         ])
         #expect(storedInvoice.lineItems.map(\.quantityLabel) == [
             "10h",
@@ -240,6 +240,97 @@ struct WorkspaceStoreMutationTests {
         #expect(project.buckets.first?.hourlyRateMinorUnits == 12_000)
         #expect(store.workspace.projects.map(\.id) == [project.id])
         #expect(store.workspace.activity.map(\.message) == ["Client portal project created"])
+    }
+
+    @Test func inMemoryWorkspaceStoreCreatesModeSpecificBucketsAndLocksBillingModeOnUpdate() throws {
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000004801")!
+        let store = WorkspaceStore(seed: WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Billing modes",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        ))
+
+        let fixedBucket = try store.createBucket(
+            projectID: projectID,
+            WorkspaceBucketDraft(
+                name: "  Launch package  ",
+                billingMode: .fixed,
+                hourlyRateMinorUnits: 0,
+                fixedAmountMinorUnits: 240_000
+            )
+        )
+        let retainerBucket = try store.createBucket(
+            projectID: projectID,
+            WorkspaceBucketDraft(
+                name: "Support retainer",
+                billingMode: .retainer,
+                hourlyRateMinorUnits: 0,
+                retainerAmountMinorUnits: 160_000,
+                retainerPeriodLabel: "Monthly",
+                retainerIncludedMinutes: 600,
+                retainerOverageRateMinorUnits: 12_000
+            )
+        )
+
+        #expect(fixedBucket.name == "Launch package")
+        #expect(fixedBucket.billingMode == .fixed)
+        #expect(fixedBucket.fixedAmountMinorUnits == 240_000)
+        #expect(retainerBucket.billingMode == .retainer)
+        #expect(retainerBucket.retainerAmountMinorUnits == 160_000)
+        #expect(retainerBucket.retainerPeriodLabel == "Monthly")
+        #expect(retainerBucket.retainerIncludedMinutes == 600)
+        #expect(retainerBucket.retainerOverageRateMinorUnits == 12_000)
+
+        let updatedFixedBucket = try store.updateBucket(
+            projectID: projectID,
+            bucketID: fixedBucket.id,
+            WorkspaceBucketDraft(
+                name: "Launch package revised",
+                billingMode: .retainer,
+                hourlyRateMinorUnits: 0,
+                fixedAmountMinorUnits: 275_000,
+                retainerAmountMinorUnits: 99_000
+            )
+        )
+
+        #expect(updatedFixedBucket.billingMode == .fixed)
+        #expect(updatedFixedBucket.name == "Launch package revised")
+        #expect(updatedFixedBucket.fixedAmountMinorUnits == 275_000)
+        #expect(updatedFixedBucket.retainerAmountMinorUnits == nil)
+        #expect(throws: WorkspaceStoreError.invalidTimeEntry) {
+            try store.addTimeEntry(
+                projectID: projectID,
+                bucketID: fixedBucket.id,
+                draft: WorkspaceTimeEntryDraft(
+                    date: Date.billbiDate(year: 2026, month: 4, day: 27),
+                    timeInput: "1h",
+                    description: "Should stay amount-only",
+                    isBillable: true
+                )
+            )
+        }
+        #expect(throws: WorkspaceStoreError.invalidFixedCost) {
+            try store.addFixedCost(
+                projectID: projectID,
+                bucketID: fixedBucket.id,
+                draft: WorkspaceFixedCostDraft(
+                    date: Date.billbiDate(year: 2026, month: 4, day: 27),
+                    description: "Should stay amount-only",
+                    amountMinorUnits: 10_000
+                )
+            )
+        }
     }
 
     @Test func workspaceStoreNormalizesMissingRatesForExistingActiveBuckets() throws {

@@ -6,7 +6,7 @@ struct BillbiInputSheetSection<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: BillbiSpacing.sm) {
+        VStack(alignment: .leading, spacing: BillbiSpacing.md) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
                     .font(BillbiTypography.subheading)

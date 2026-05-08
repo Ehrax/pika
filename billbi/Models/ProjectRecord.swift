@@ -139,7 +139,13 @@ final class BucketRecord {
     var projectID: UUID = UUID()
     var name: String = ""
     var statusRaw: String = BucketStatus.open.rawValue
+    var billingModeRaw: String = WorkspaceBucketBillingMode.hourly.rawValue
     var defaultHourlyRateMinorUnits: Int = 0
+    var fixedAmountMinorUnits: Int = 0
+    var retainerAmountMinorUnits: Int = 0
+    var retainerPeriodLabel: String = ""
+    var retainerIncludedMinutes: Int?
+    var retainerOverageRateMinorUnits: Int = 0
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var project: ProjectRecord? = nil
@@ -149,12 +155,23 @@ final class BucketRecord {
         set { statusRaw = newValue.rawValue }
     }
 
+    var billingMode: WorkspaceBucketBillingMode {
+        get { WorkspaceBucketBillingMode(rawValue: billingModeRaw) ?? .hourly }
+        set { billingModeRaw = newValue.rawValue }
+    }
+
     init(
         id: UUID = UUID(),
         projectID: UUID,
         name: String = "",
         statusRaw: String = BucketStatus.open.rawValue,
+        billingModeRaw: String = WorkspaceBucketBillingMode.hourly.rawValue,
         defaultHourlyRateMinorUnits: Int = 0,
+        fixedAmountMinorUnits: Int = 0,
+        retainerAmountMinorUnits: Int = 0,
+        retainerPeriodLabel: String = "",
+        retainerIncludedMinutes: Int? = nil,
+        retainerOverageRateMinorUnits: Int = 0,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         project: ProjectRecord? = nil
@@ -163,7 +180,13 @@ final class BucketRecord {
         self.projectID = projectID
         self.name = name
         self.statusRaw = statusRaw
+        self.billingModeRaw = billingModeRaw
         self.defaultHourlyRateMinorUnits = defaultHourlyRateMinorUnits
+        self.fixedAmountMinorUnits = fixedAmountMinorUnits
+        self.retainerAmountMinorUnits = retainerAmountMinorUnits
+        self.retainerPeriodLabel = retainerPeriodLabel
+        self.retainerIncludedMinutes = retainerIncludedMinutes
+        self.retainerOverageRateMinorUnits = retainerOverageRateMinorUnits
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.project = project

@@ -76,7 +76,13 @@ extension WorkspaceStore {
                         projectID: record.projectID,
                         name: record.name,
                         status: Self.archiveStatus(record.status),
-                        defaultHourlyRateMinorUnits: record.defaultHourlyRateMinorUnits
+                        billingMode: record.billingMode,
+                        defaultHourlyRateMinorUnits: record.defaultHourlyRateMinorUnits,
+                        fixedAmountMinorUnits: record.fixedAmountMinorUnits,
+                        retainerAmountMinorUnits: record.retainerAmountMinorUnits,
+                        retainerPeriodLabel: record.retainerPeriodLabel,
+                        retainerIncludedMinutes: record.retainerIncludedMinutes,
+                        retainerOverageRateMinorUnits: record.retainerOverageRateMinorUnits
                     )
                 },
                 timeEntries: sortedForArchive(timeEntryRecords).map { record in
@@ -173,7 +179,13 @@ extension WorkspaceStore {
                     projectID: project.id,
                     name: bucket.name,
                     status: Self.archiveStatus(bucket.status),
-                    defaultHourlyRateMinorUnits: bucket.hourlyRateMinorUnits ?? 0
+                    billingMode: bucket.billingMode,
+                    defaultHourlyRateMinorUnits: bucket.defaultHourlyRateMinorUnits ?? 0,
+                    fixedAmountMinorUnits: bucket.fixedAmountMinorUnits ?? 0,
+                    retainerAmountMinorUnits: bucket.retainerAmountMinorUnits ?? 0,
+                    retainerPeriodLabel: bucket.retainerPeriodLabel,
+                    retainerIncludedMinutes: bucket.retainerIncludedMinutes,
+                    retainerOverageRateMinorUnits: bucket.retainerOverageRateMinorUnits ?? 0
                 )
             }
         }

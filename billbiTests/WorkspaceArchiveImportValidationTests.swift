@@ -103,6 +103,24 @@ struct WorkspaceArchiveImportValidationTests {
         ])
     }
 
+    @Test func confirmedImportPreservesBucketBillingModeValues() throws {
+        let initialWorkspace = WorkspaceFixtures.demoWorkspace
+        let persistence = CapturingArchiveImportWorkspacePersistence(bootWorkspace: initialWorkspace)
+        let store = WorkspaceStore(seed: initialWorkspace, workspacePersistence: persistence)
+        let archiveData = try WorkspaceArchiveCodec.encode(
+            WorkspaceArchiveImportFixture.makeRetainerBucketEnvelope()
+        )
+
+        _ = try store.importWorkspaceArchive(archiveData) {}
+
+        let bucket = try #require(store.workspace.projects.first?.buckets.first)
+        #expect(bucket.billingMode == .retainer)
+        #expect(bucket.retainerAmountMinorUnits == 160_000)
+        #expect(bucket.retainerPeriodLabel == "Monthly")
+        #expect(bucket.retainerIncludedMinutes == 600)
+        #expect(bucket.retainerOverageRateMinorUnits == 12_000)
+    }
+
     @Test func backupFailureBlocksImportBeforeReplacement() throws {
         let initialWorkspace = WorkspaceFixtures.demoWorkspace
         let persistence = CapturingArchiveImportWorkspacePersistence(bootWorkspace: initialWorkspace)
@@ -395,6 +413,17 @@ private enum WorkspaceArchiveImportFixture {
 
     static func makeValidEnvelope() -> WorkspaceArchiveEnvelope {
         makeEnvelope(workspace: makeValidWorkspace())
+    }
+
+    static func makeRetainerBucketEnvelope() -> WorkspaceArchiveEnvelope {
+        var workspace = makeValidWorkspace()
+        workspace.buckets[0].billingMode = .retainer
+        workspace.buckets[0].defaultHourlyRateMinorUnits = 0
+        workspace.buckets[0].retainerAmountMinorUnits = 160_000
+        workspace.buckets[0].retainerPeriodLabel = "Monthly"
+        workspace.buckets[0].retainerIncludedMinutes = 600
+        workspace.buckets[0].retainerOverageRateMinorUnits = 12_000
+        return makeEnvelope(workspace: workspace)
     }
 
     static func makeDuplicateInvoiceNumberEnvelope() -> WorkspaceArchiveEnvelope {

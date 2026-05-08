@@ -31,6 +31,73 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedStore.workspace.activity.isEmpty)
     }
 
+    @Test func persistentWorkspaceReloadPreservesBucketBillingModeValues() throws {
+        let (modelContext, storeURL) = try makePersistentModelContext()
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000004811")!
+        let fixedBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000004811")!
+        let retainerBucketID = UUID(uuidString: "30000000-0000-0000-0000-000000004812")!
+        let seededWorkspace = WorkspaceSnapshot(
+            businessProfile: WorkspaceFixtures.demoWorkspace.businessProfile,
+            clients: WorkspaceFixtures.demoWorkspace.clients,
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    name: "Mode persistence",
+                    clientName: "Happ.ines",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: fixedBucketID,
+                            name: "Launch package",
+                            status: .open,
+                            billingMode: .fixed,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            fixedAmountMinorUnits: 240_000
+                        ),
+                        WorkspaceBucket(
+                            id: retainerBucketID,
+                            name: "Support retainer",
+                            status: .open,
+                            billingMode: .retainer,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            retainerAmountMinorUnits: 160_000,
+                            retainerPeriodLabel: "Monthly",
+                            retainerIncludedMinutes: 600,
+                            retainerOverageRateMinorUnits: 12_000
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        _ = WorkspaceStore(seed: seededWorkspace, modelContext: modelContext)
+        let reloadedStore = WorkspaceStore(seed: .empty, modelContext: modelContext)
+        let reloadedProject = try #require(reloadedStore.workspace.projects.first(where: { $0.id == projectID }))
+        let fixedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == fixedBucketID }))
+        let retainerBucket = try #require(reloadedProject.buckets.first(where: { $0.id == retainerBucketID }))
+
+        #expect(fixedBucket.billingMode == .fixed)
+        #expect(fixedBucket.fixedAmountMinorUnits == 240_000)
+        #expect(fixedBucket.effectiveTotalMinorUnits == 240_000)
+        #expect(retainerBucket.billingMode == .retainer)
+        #expect(retainerBucket.retainerAmountMinorUnits == 160_000)
+        #expect(retainerBucket.retainerPeriodLabel == "Monthly")
+        #expect(retainerBucket.retainerIncludedMinutes == 600)
+        #expect(retainerBucket.retainerOverageRateMinorUnits == 12_000)
+        #expect(retainerBucket.effectiveTotalMinorUnits == 160_000)
+    }
+
     @Test func persistentWorkspaceStoreFinalizesInvoiceSnapshotsIntoNormalizedRecords() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
@@ -797,6 +864,106 @@ struct WorkspacePersistenceReloadTests {
         #expect(reloadedProject.buckets.first(where: { $0.id == bucketID })?.status == .finalized)
     }
 
+    @Test func persistentWorkspaceStoreFinalizesFixedBucket() throws {
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("billbi-workspace-\(UUID().uuidString)")
+            .appendingPathComponent("workspace.store")
+        let container = try WorkspaceStore.makeModelContainer(mode: .local, storeURL: storeURL)
+        defer {
+            try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent())
+        }
+
+        let clientID = UUID(uuidString: "10000000-0000-0000-0000-000000004901")!
+        let projectID = UUID(uuidString: "20000000-0000-0000-0000-000000004901")!
+        let bucketID = UUID(uuidString: "30000000-0000-0000-0000-000000004901")!
+        let issueDate = Date.billbiDate(year: 2026, month: 5, day: 8)
+        let dueDate = Date.billbiDate(year: 2026, month: 5, day: 22)
+        let seededWorkspace = WorkspaceSnapshot(
+            businessProfile: BusinessProfileProjection(
+                businessName: "North Coast Studio",
+                personName: "Avery North",
+                email: "billing@northcoast.example",
+                phone: "+49 555 0100",
+                address: "1 Harbour Way",
+                taxIdentifier: "DE123",
+                economicIdentifier: "ECO123",
+                invoicePrefix: "NCS",
+                nextInvoiceNumber: 49,
+                currencyCode: "EUR",
+                paymentDetails: "IBAN DE00 1234",
+                taxNote: "VAT exempt",
+                defaultTermsDays: 14
+            ),
+            clients: [
+                WorkspaceClient(
+                    id: clientID,
+                    name: "Snapshot Client",
+                    email: "billing@snapshot.example",
+                    billingAddress: "1 Snapshot Way",
+                    defaultTermsDays: 21
+                ),
+            ],
+            projects: [
+                WorkspaceProject(
+                    id: projectID,
+                    clientID: clientID,
+                    name: "Snapshot Project",
+                    clientName: "Snapshot Client",
+                    currencyCode: "EUR",
+                    isArchived: false,
+                    buckets: [
+                        WorkspaceBucket(
+                            id: bucketID,
+                            name: "Fixed Snapshot",
+                            status: .ready,
+                            billingMode: .fixed,
+                            totalMinorUnits: 0,
+                            billableMinutes: 0,
+                            fixedCostMinorUnits: 0,
+                            fixedAmountMinorUnits: 20_000
+                        ),
+                    ],
+                    invoices: []
+                ),
+            ],
+            activity: []
+        )
+
+        _ = WorkspaceStore(
+            seed: seededWorkspace,
+            modelContext: ModelContext(container),
+            resetForSeedImport: true
+        )
+        let store = WorkspaceStore(seed: .empty, modelContext: ModelContext(container))
+
+        let invoice = try store.finalizeInvoice(
+            projectID: projectID,
+            bucketID: bucketID,
+            draft: InvoiceFinalizationDraft(
+                recipientName: "Snapshot Client",
+                recipientEmail: "billing@snapshot.example",
+                recipientBillingAddress: "1 Snapshot Way",
+                invoiceNumber: " NCS-2026-049 ",
+                template: .kleinunternehmerClassic,
+                issueDate: issueDate,
+                dueDate: dueDate,
+                servicePeriod: "May 2026",
+                currencyCode: "EUR",
+                taxNote: ""
+            ),
+            occurredAt: issueDate
+        )
+
+        let reloadedProject = try #require(store.workspace.projects.first(where: { $0.id == projectID }))
+        let reloadedBucket = try #require(reloadedProject.buckets.first(where: { $0.id == bucketID }))
+        #expect(invoice.number == "NCS-2026-049")
+        #expect(invoice.totalMinorUnits == 20_000)
+        #expect(invoice.lineItems.map(\.description) == ["Fixed Snapshot"])
+        #expect(invoice.lineItems.map(\.quantityLabel) == ["1 item"])
+        #expect(reloadedBucket.status == .finalized)
+        #expect(reloadedProject.invoices.map(\.number) == ["NCS-2026-049"])
+    }
+
     @Test func persistentWorkspaceStoreLoadsSavedWorkspaceOnRelaunch() throws {
         let (modelContext, storeURL) = try makePersistentModelContext()
         defer {
@@ -1077,6 +1244,7 @@ struct WorkspacePersistenceReloadTests {
         let clientID = UUID(uuidString: "20000000-0000-0000-0000-000000008801")!
         let projectID = UUID(uuidString: "30000000-0000-0000-0000-000000008801")!
         let bucketID = UUID(uuidString: "40000000-0000-0000-0000-000000008801")!
+        let fixedBucketID = UUID(uuidString: "40000000-0000-0000-0000-000000008802")!
         let billableEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000008801")!
         let nonBillableEntryID = UUID(uuidString: "50000000-0000-0000-0000-000000008802")!
         let fixedCostID = UUID(uuidString: "60000000-0000-0000-0000-000000008801")!
@@ -1135,6 +1303,17 @@ struct WorkspacePersistenceReloadTests {
             project: projectRecord
         )
         modelContext.insert(bucketRecord)
+        modelContext.insert(BucketRecord(
+            id: fixedBucketID,
+            projectID: projectID,
+            name: "Fixed Snapshot",
+            statusRaw: BucketStatus.open.rawValue,
+            billingModeRaw: WorkspaceBucketBillingMode.fixed.rawValue,
+            fixedAmountMinorUnits: 240_000,
+            createdAt: issuedAt,
+            updatedAt: issuedAt,
+            project: projectRecord
+        ))
         modelContext.insert(TimeEntryRecord(
             id: billableEntryID,
             bucketID: bucketID,
@@ -1234,6 +1413,9 @@ struct WorkspacePersistenceReloadTests {
         #expect(decoded.workspace.businessProfile.businessName == "North Coast Studio")
         #expect(decoded.workspace.projects.map(\.currencyCode) == ["USD"])
         #expect(decoded.workspace.invoices.map(\.currencyCode) == ["USD"])
+        let fixedBucket = try #require(decoded.workspace.buckets.first { $0.id == fixedBucketID })
+        #expect(fixedBucket.billingMode == .fixed)
+        #expect(fixedBucket.fixedAmountMinorUnits == 240_000)
         #expect(decoded.workspace.timeEntries.count == 2)
         #expect(decoded.workspace.timeEntries.contains { !$0.isBillable && $0.id == nonBillableEntryID })
         #expect(decoded.workspace.fixedCosts == [
